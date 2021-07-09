@@ -4,6 +4,7 @@ using PyPlot
 using LinearAlgebra
 using Random
 using JLD
+using CUDA, NNlib, NNlibCUDA
 
 include("param.jl")
 include("genInitialWeights.jl")
@@ -32,8 +33,30 @@ wpWeightOut = load("data/wpWeightOut.jld")["wpWeightOut"]
 ncpIn = load("data/ncpIn.jld")["ncpIn"]
 ncpOut = load("data/ncpOut.jld")["ncpOut"]
 
+#--- set up correlation matrix ---#
+P = Array{Float64}(undef, (p.Lexc+p.Linh, p.Lexc+p.Linh, p.Ncells)); 
+Px = Array{Int64}(undef, (p.Lexc+p.Linh, p.Ncells));
+for ci=1:Int(p.Ncells)
+    ci_numExcSyn = p.Lexc;
+    ci_numInhSyn = p.Linh;
+    ci_numSyn = ci_numExcSyn + ci_numInhSyn
+
+    # neurons presynaptic to ci
+    Px[:,ci] = wpIndexIn[ci,:]
+
+    # L2-penalty
+    Pinv_L2 = p.penlambda*one(zeros(ci_numSyn,ci_numSyn))
+    # row sum penalty
+    vec10 = [ones(ci_numExcSyn); zeros(ci_numInhSyn)];
+    vec01 = [zeros(ci_numExcSyn); ones(ci_numInhSyn)];
+    Pinv_rowsum = penmu*(vec10*vec10' + vec01*vec01')
+    # sum of penalties
+    Pinv = Pinv_L2 + Pinv_rowsum;
+    P[:,:,ci] = Pinv\one(zeros(ci_numSyn,ci_numSyn));
+end
+
 #----------- train the network --------------#
-wpWeightIn, wpWeightOut = runtrain(p,w0Index,w0Weights,nc0,stim,xtarg,wpIndexIn,wpIndexOut,wpIndexConvert,wpWeightIn,wpWeightOut,ncpIn,ncpOut)
+wpWeightIn, wpWeightOut = runtrain(p,P,Px,w0Index,w0Weights,nc0,stim,xtarg,wpIndexIn,wpIndexOut,wpIndexConvert,wpWeightIn,wpWeightOut,ncpIn,ncpOut)
 
 #----------- test the network --------------#
 times, ns, 

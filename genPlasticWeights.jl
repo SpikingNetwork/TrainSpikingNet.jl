@@ -23,8 +23,8 @@ function genPlasticWeights(p, w0Index, nc0, ns0)
     inh_selected = inh_ordered[end-frac_cells+1:end]
     
     # define weights_plastic
-    wpWeightIn = zeros(p.Ncells,round(Int,p.Lexc+p.Linh))
-    wpIndexIn = zeros(p.Ncells,round(Int,p.Lexc+p.Linh))
+    wpWeightIn = zeros(p.Lexc+p.Linh, 1, p.Ncells)
+    wpIndexIn = zeros(Int, p.Ncells, p.Lexc+p.Linh)
     ncpIn = zeros(Int,p.Ncells)
     for postCell = 1:p.Ncells
         # select random exc and inh presynaptic neurons
@@ -46,16 +46,16 @@ function genPlasticWeights(p, w0Index, nc0, ns0)
         if postCell <= p.Ne
             wpee = p.wpee*ones(p.Lexc)
             wpei = p.wpei*ones(p.Linh)
-            wpWeightIn[postCell,:] = [wpee; wpei]
+            wpWeightIn[:, 1, postCell] = [wpee; wpei]
         else
             wpie = p.wpie*ones(p.Lexc)
             wpii = p.wpii*ones(p.Linh)
-            wpWeightIn[postCell,:] = [wpie; wpii]
+            wpWeightIn[:, 1, postCell] = [wpie; wpii]
         end
     end
     
     # get indices of postsynaptic cells for each presynaptic cell
-    wpIndexConvert = zeros(p.Ncells,round(Int,p.Lexc+p.Linh))
+    wpIndexConvert = zeros(Int, p.Ncells, p.Lexc+p.Linh)
     wpIndexOutD = Dict{Int,Array{Int,1}}()
     ncpOut = zeros(Int,p.Ncells)
     for i = 1:p.Ncells
@@ -74,7 +74,7 @@ function genPlasticWeights(p, w0Index, nc0, ns0)
 
     # get weight, index of outgoing connections
     ncpOutMax = Int(maximum(ncpOut))
-    wpIndexOut = zeros(ncpOutMax,p.Ncells)
+    wpIndexOut = zeros(Int, ncpOutMax,p.Ncells)
     wpWeightOut = zeros(ncpOutMax,p.Ncells)
     for preCell = 1:p.Ncells
         wpIndexOut[1:ncpOut[preCell],preCell] = wpIndexOutD[preCell]

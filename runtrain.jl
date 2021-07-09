@@ -1,4 +1,6 @@
-function runtrain(p,w0Index,w0Weights,nc0,stim,xtarg,wpIndexIn,wpIndexOut,wpIndexConvert,wpWeightIn,wpWeightOut,ncpIn,ncpOut)
+function runtrain(p,P,Px,w0Index,w0Weights,nc0,stim,xtarg,wpIndexIn,wpIndexOut,wpIndexConvert,wpWeightIn,wpWeightOut,ncpIn,ncpOut)
+
+CUDA.allowscalar(false)
 
 # copy simulation param
 nloop = copy(p.nloop)                       # number of training iterations
@@ -43,20 +45,19 @@ thresh = zeros(Ncells)
 thresh[1:Ne] .= threshe
 thresh[(1+Ne):Ncells] .= threshi
 
-tau = zeros(Ncells)
-tau[1:Ne] .= taue
-tau[(1+Ne):Ncells] .= taui
+invtau = zeros(Ncells)
+invtau[1:Ne] .= 1/taue
+invtau[(1+Ne):Ncells] .= 1/taui
 
 maxTimes = round(Int,maxrate*train_time/1000)
-times = zeros(Ncells,maxTimes)
 ns = zeros(Int,Ncells)
 
-forwardInputsE = zeros(Ncells)              # excitatory synaptic currents to neurons via balanced connections at one time step
-forwardInputsI = zeros(Ncells)              # inhibitory synaptic currents to neurons via balanced connections at one time step
-forwardInputsP = zeros(Ncells)              # synaptic currents to neurons via plastic connections at one time step
-forwardInputsEPrev = zeros(Ncells)          # copy of forwardInputsE from previous time step
-forwardInputsIPrev = zeros(Ncells)          # copy of forwardInputsI from previous time step
-forwardInputsPPrev = zeros(Ncells)          # copy of forwardInputsP from previous time step
+forwardInputsE = zeros(Ncells+1)              # excitatory synaptic currents to neurons via balanced connections at one time step
+forwardInputsI = zeros(Ncells+1)              # inhibitory synaptic currents to neurons via balanced connections at one time step
+forwardInputsP = zeros(Ncells+1)              # synaptic currents to neurons via plastic connections at one time step
+forwardInputsEPrev = zeros(Ncells+1)          # copy of forwardInputsE from previous time step
+forwardInputsIPrev = zeros(Ncells+1)          # copy of forwardInputsI from previous time step
+forwardInputsPPrev = zeros(Ncells+1)          # copy of forwardInputsP from previous time step
 forwardSpike = zeros(Ncells)                # spikes emitted by each neuron at one time step
 forwardSpikePrev = zeros(Ncells)            # copy of forwardSpike from previous time step
 
@@ -66,177 +67,158 @@ xpdecay = zeros(Ncells)                     # synapse-filtered plastic current (
 synInputBalanced = zeros(Ncells)            # sum of xedecay and xidecay (i.e. synaptic current from the balanced connections)
 r = zeros(Ncells)                           # synapse-filtered spikes (i.e. filtered version of forwardSpike)
 
-v = rand(Ncells)                            # membrane potential
 bias = zeros(Ncells)                        # total external input to neurons
 lastSpike = -100.0*ones(Ncells)             # last time a neuron spiked
 t = 0.0                                     # simulation time (ms)
 
-# set up correlation matrix
-P = Vector{Array{Float64,2}}(); 
-Px = Vector{Array{Int64,1}}();
-for ci=1:Int(Ncells)
-    ci_numExcSyn = p.Lexc;
-    ci_numInhSyn = p.Linh;
-    ci_numSyn = ci_numExcSyn + ci_numInhSyn
+FloatPrecision = Float32
+IntPrecision = UInt16
 
-    # neurons presynaptic to ci
-    push!(Px, wpIndexIn[ci,:]) 
+plusone = convert(FloatPrecision, 1.0)
+minusone = convert(FloatPrecision, -1.0)
 
-    # L2-penalty
-    Pinv_L2 = penlambda*one(zeros(ci_numSyn,ci_numSyn))
-    # row sum penalty
-    vec10 = [ones(ci_numExcSyn); zeros(ci_numInhSyn)];
-    vec01 = [zeros(ci_numExcSyn); ones(ci_numInhSyn)];
-    Pinv_rowsum = penmu*(vec10*vec10' + vec01*vec01')
-    # sum of penalties
-    Pinv = Pinv_L2 + Pinv_rowsum;
-    push!(P, Pinv\one(zeros(ci_numSyn,ci_numSyn)));
+Px = CuArray(Px);
+P = CuArray{FloatPrecision}(P);
+r = CuArray{FloatPrecision}(r);
+wpWeightIn = CuArray{FloatPrecision}(wpWeightIn);
+synInputBalanced = CuArray{FloatPrecision}(synInputBalanced);
+stim = CuArray{FloatPrecision}(stim);
+xtarg = CuArray{FloatPrecision}(xtarg);
+xedecay = CuArray{FloatPrecision}(xedecay);
+xidecay = CuArray{FloatPrecision}(xidecay);
+xpdecay = CuArray{FloatPrecision}(xpdecay);
+forwardInputsEPrev = CuArray{FloatPrecision}(forwardInputsEPrev);
+forwardInputsIPrev = CuArray{FloatPrecision}(forwardInputsIPrev);
+forwardInputsPPrev = CuArray{FloatPrecision}(forwardInputsPPrev);
+forwardInputsE = CuArray{FloatPrecision}(forwardInputsE);
+forwardInputsI = CuArray{FloatPrecision}(forwardInputsI);
+forwardInputsP = CuArray{FloatPrecision}(forwardInputsP);
+forwardSpikePrev = CuArray{FloatPrecision}(forwardSpikePrev);
+invtauedecay = convert(FloatPrecision, 1/tauedecay)
+invtauidecay = convert(FloatPrecision, 1/tauidecay)
+invtaudecay_plastic = convert(FloatPrecision, 1/taudecay_plastic)
+dt = convert(FloatPrecision, p.dt)
+ncpIn = convert(Array{IntPrecision}, ncpIn)
+w0Index = CuArray{IntPrecision}(w0Index)
+w0Weights = CuArray{FloatPrecision}(w0Weights)
+wpIndexIn = CuArray{IntPrecision}(wpIndexIn)
+wpIndexConvert = CuArray{IntPrecision}(wpIndexConvert)
+wpIndexOut = CuArray{IntPrecision}(wpIndexOut)
+wpWeightOut = CuArray{FloatPrecision}(wpWeightOut)
+bias = CuArray{FloatPrecision}(bias)
+mu = CuArray{FloatPrecision}(mu)
+forwardSpike = CuArray{FloatPrecision}(forwardSpike)
+lastSpike = CuArray{FloatPrecision}(lastSpike)
+ns = CuArray{IntPrecision}(ns)
+invtau = CuArray{FloatPrecision}(invtau)
+thresh = CuArray{FloatPrecision}(thresh)
+
+function kernelEI(ispike, w0Index, w0Weights, forwardInputsE, forwardInputsI)
+    i0 = threadIdx().x + (blockIdx().x - 1) * blockDim().x
+    j0 = threadIdx().y + (blockIdx().y - 1) * blockDim().y
+    istride = blockDim().x * gridDim().x
+    jstride = blockDim().y * gridDim().y
+
+    @inbounds for i=i0:istride:size(w0Index,1), j=j0:jstride:length(ispike)
+        @atomic forwardInputsE[0x1 + w0Index[i,ispike[j]]] += max(w0Weights[i,ispike[j]], 0)
+        @atomic forwardInputsI[0x1 + w0Index[i,ispike[j]]] += min(w0Weights[i,ispike[j]], 0)
+    end
+    return nothing
 end
+
+function kernelP(ispike, wpIndexOut, wpWeightOut, forwardInputsP)
+    i0 = threadIdx().x + (blockIdx().x - 1) * blockDim().x
+    j0 = threadIdx().y + (blockIdx().y - 1) * blockDim().y
+    istride = blockDim().x * gridDim().x
+    jstride = blockDim().y * gridDim().y
+
+    @inbounds for i=i0:istride:size(wpIndexOut,1), j=j0:jstride:length(ispike)
+        @atomic forwardInputsP[0x1 + wpIndexOut[i,ispike[j]]] += wpWeightOut[i,ispike[j]]
+    end
+    return nothing
+end
+
+function configurator(config, size_weights)
+    xthreads = min(32, size_weights[1])
+    ythreads = min(cld(config.threads, xthreads), cld(prod(size_weights), xthreads))
+    xblocks = cld(size_weights[1], xthreads)
+    yblocks = cld(size_weights[2], ythreads)
+
+    return (threads=(xthreads, ythreads), blocks=(xblocks, yblocks))
+end
+
+cukernelEI = cufunction(kernelEI, Tuple{CuDeviceArray{UInt64,1,AS.Global}, CuDeviceArray{IntPrecision,2,AS.Global}, CuDeviceArray{FloatPrecision,2,AS.Global}, CuDeviceArray{FloatPrecision,1,AS.Global}, CuDeviceArray{FloatPrecision,1,AS.Global}})
+
+cukernelP = cufunction(kernelP, Tuple{CuDeviceArray{UInt64,1,AS.Global}, CuDeviceArray{IntPrecision,2,AS.Global}, CuDeviceArray{FloatPrecision,2,AS.Global}, CuDeviceArray{FloatPrecision,1,AS.Global}})
 
 # start training loops
 for iloop =1:nloop
     println("Loop no. ",iloop) 
 
-    # initialize variables
     lastSpike .= -100.0
     ns .= 0
     xedecay .= 0
     xidecay .= 0
     xpdecay .= 0
     r .= 0
-    v = rand(Ncells) # membrane potentials have random initial values
+    v = CuArray(rand(FloatPrecision, Ncells))
     learn_seq = 1
 
     start_time = time()
 
-    # start the actual training
     for ti=1:Nsteps
         t = dt*ti;
 
-        # reset spiking activities from the previous time step
         forwardInputsE .= 0.0;
         forwardInputsI .= 0.0;
         forwardInputsP .= 0.0;
-        forwardSpike .= 0.0;
-
-        # start training the plastic weights when the stimulus is turned off 
-        #   - training occurs within the time interval [stim_off, train_time]
-        #   - we need two versions of the plastic connectivity: 
-        #       * one for learning (wpWeightIn) and 
-        #       * the other for simulating network activity (wpWeightOut)
-        #       * wpWeightIn and wpWeightOut represent the same underlying plastic connectivity
-        #   - wpWeightIn is updated every learn_every (=10ms) by the recursive least squares algorithm
-        #   - convertWgtIn2Out() converts wpWeightIn to wpWeightOut at the end of rls
-        #   - wpWeightOut is used for simulating the network activity
-        #
-        # wpWeightIn: - plastic weights used for and modified by the rls training algorithm 
-        #             - Ncell x Kin matrix where Kin = p.Lexc + p.Linh is the number of incoming plastic synapses to each neuron
-        #             - ith row, wpWeightIn[i,:]:
-        #                 - weights of the incoming connections to neuron i
-        #                 - each row of wpWeightIn will be updated independently by the rls algorithm. (see line 153)
-        # wpIndexIn:  - Ncell x Kin matrix where Kin = p.Lexc + p.Linh
-        #             - ith row, wpIndexIn[i,:]:
-        #                 - Indices of presynaptic neurons that connect to neuron i
-        #                 - Fixed throughout the simulation. Used to define Px (see line 83)
-        # wpWeightOut: - plastic weights used for simulating network activities
-        #              - Kout x Ncell matrix where Kout is the number of outgoing plastic synapses from each neuron
-        #              - the actual number of outgoing plastic synapses is different across neurons, so we chose a fixed number Kout >= p.Lexc + p.Linh
-        #              - ith column, wpWeightOut[:,i]:
-        #                  - weights of the outgoing connections from neuron i
-        #                  - Used to compute forwardInputsP (see line 221)
-        # wpIndexOut:  - Kout x Ncell matrix
-        #              - ith column, wpIndexOut[:,i]:
-        #                  - Indices of postsynaptic neurons that neuron i connect to
-        #                  - Fixed throughout the simulation. Used to compute forwardInputsP (see line 221)
 
         if t > Int(stim_off) && t <= Int(train_time) && mod(t, learn_every) == 0
-            wpWeightIn, wpWeightOut, learn_seq = rls(p, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut)
+            wpWeightIn, wpWeightOut, learn_seq = rls(p, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, minusone)
         end
 
-        # update network activities:
-        #   - synaptic currents (xedecay, xidecay, xpdecay)
-        #   - membrane potential (v) 
-        #   - weighted spikes received by each neuron (forwardInputsE, forwardInputsI, forwardInputsP)
-        #   - activity variables used for training
-        #       * spikes emitted by each neuron (forwardSpike)
-        #       * synapse-filtered spikes emitted by each neuron (r)        
-        for ci = 1:Ncells
-            xedecay[ci] += -dt*xedecay[ci]/tauedecay + forwardInputsEPrev[ci]/tauedecay
-            xidecay[ci] += -dt*xidecay[ci]/tauidecay + forwardInputsIPrev[ci]/tauidecay
-            xpdecay[ci] += -dt*xpdecay[ci]/taudecay_plastic + forwardInputsPPrev[ci]/taudecay_plastic
-            synInputBalanced[ci] = xedecay[ci] + xidecay[ci]
-            synInput = synInputBalanced[ci] + xpdecay[ci]
+        xedecay .+= (-dt.*xedecay .+ forwardInputsEPrev[2:end]).*invtauedecay
+        xidecay .+= (-dt.*xidecay .+ forwardInputsIPrev[2:end]).*invtauidecay
+        xpdecay .+= (-dt.*xpdecay .+ forwardInputsPPrev[2:end]).*invtaudecay_plastic
+        synInputBalanced .= xedecay .+ xidecay
+        synInput = synInputBalanced .+ xpdecay
 
-            # if training, compute synapse-filtered spike trains
-            r[ci] += -dt*r[ci]/taudecay_plastic + forwardSpikePrev[ci]/taudecay_plastic
+        r .+= (-dt.*r .+ forwardSpikePrev).*invtaudecay_plastic
 
-            # external inputs
-            #   - mu: default inputs to maintain the balanced state
-            #   - stim: inputs that trigger the learned responses
-            #         : applied within the time interval [stim_on, stim_off]
-            if t > Int(stim_on) && t < Int(stim_off)
-                bias[ci] = mu[ci] + stim[ti-Int(stim_on/dt),ci]
-            else
-                bias[ci] = mu[ci]
-            end
+        if t > Int(stim_on) && t < Int(stim_off)
+            bias .= mu .+ stim[ti-round(Int,stim_on/dt),:]
+        else
+            bias .= mu
+        end
 
-            # neuron ci not in refractory period
-            if t > (lastSpike[ci] + refrac)  
-                # update membrane potential
-                v[ci] += dt*((1/tau[ci])*(bias[ci]-v[ci] + synInput))
+        bnotrefrac = t .> (lastSpike .+ refrac)
+        v .+= bnotrefrac.*dt.*(invtau.*(bias .- v .+ synInput))
 
-                #spike occurred
-                if v[ci] > thresh[ci]                      
-                    v[ci] = vre                 # reset voltage
-                    forwardSpike[ci] = 1.       # record that neuron ci spiked. Used for computing r[ci]
-                    lastSpike[ci] = t           # record neuron ci's last spike time. Used for checking ci is not in refractory period
-                    ns[ci] = ns[ci]+1           # number of spikes neuron ci emitted
-                    if ns[ci] <= maxTimes       # maxTimes is the maximum number of spikes we will track (500Hz)
-                        times[ci,ns[ci]] = t    # record spike times
-                    end
+        bspike = bnotrefrac .& (v .> thresh)
+        forwardSpike .= bspike
+        ns .+= bspike
+        v .= ifelse.(bspike, vre, v)
+        lastSpike .= ifelse.(bspike, t, lastSpike)
 
-                    # Accumulate the contribution of spikes to postsynaptic currents
-                    # Network connectivity is divided into two parts:
-                    #   - balanced connections (static) 
-                    #   - plastic connections
+        ispike = findall(bspike)  ### this single line accounts for a quarter of the time
+        if length(ispike)>0
+            configEI = configurator(CUDA.launch_configuration(cukernelEI.fun), (size(w0Weights,1),length(ispike)))
+            @cuda name="update_forwardInputsEI" threads=configEI.threads blocks=configEI.blocks kernelEI(ispike, w0Index, w0Weights, forwardInputsE, forwardInputsI)
 
-                    # (1) balanced connections (static)
-                    # loop over neurons (indexed by j) postsynaptic to neuron ci.                     
-                    # nc0[ci] is the number neurons postsynaptic neuron ci
-                    for j = 1:nc0[ci]                       
-                        post_ci = w0Index[j,ci]                 # cell index of j_th postsynaptic neuron
-                        wgt = w0Weights[j,ci]                   # synaptic weight of the connection, ci -> post_ci
-                        if wgt > 0                              # excitatory synapse
-                            forwardInputsE[post_ci] += wgt      #   - neuron ci spike's excitatory contribution to post_ci's synaptic current
-                        elseif wgt < 0                          # inhibitory synapse
-                            forwardInputsI[post_ci] += wgt      #   - neuron ci spike's inhibitory contribution to post_ci's synaptic current
-                        end
-                    end #end loop over synaptic projections
+            configP = configurator(CUDA.launch_configuration(cukernelP.fun), (size(wpWeightOut,1),length(ispike)))
+            @cuda name="update_forwardInputsP" threads=configP.threads blocks=configP.blocks kernelP(ispike, wpIndexOut, wpWeightOut, forwardInputsP)
+        end
 
-                    # (2) plastic connections
-                    # loop over neurons (indexed by j) postsynaptic to neuron ci. 
-                    # ncpOut[ci] is the number neurons postsynaptic neuron ci
-                    for j = 1:ncpOut[ci]
-                        post_ci = Int(wpIndexOut[j,ci])                 # cell index of j_th postsynaptic neuron
-                        forwardInputsP[post_ci] += wpWeightOut[j,ci]    # neuron ci spike's contribution to post_ci's synaptic current
-                    end
-                end #end if(spike occurred)
-            end #end not in refractory period
-        end #end loop over neurons
-
-        # save spiking activities produced at the current time step
-        #   - forwardInputsPrev's will be used in the next time step to compute synaptic currents (xedecay, xidecay, xpdecay)
-        #   - forwardSpikePrev will be used in the next time step to compute synapse-filter spikes (r)
         forwardInputsEPrev = copy(forwardInputsE)
         forwardInputsIPrev = copy(forwardInputsI)
         forwardInputsPPrev = copy(forwardInputsP)
-        forwardSpikePrev = copy(forwardSpike) # if training, save spike trains
+        forwardSpikePrev = copy(forwardSpike)
+    end
 
-    end #end loop over time
 elapsed_time = time()-start_time
 println("elapsed time: ",elapsed_time)
 
-end # end loop over trainings
+end
 
 
 return wpWeightIn, wpWeightOut
