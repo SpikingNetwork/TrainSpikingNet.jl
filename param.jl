@@ -1,3 +1,6 @@
+FloatPrecision = Float32
+IntPrecision = UInt32
+
 dt = 0.1 #simulation timestep (ms)
 
 # training variables
@@ -37,6 +40,8 @@ taudecay_plastic = 150
 Ncells = 5000;
 Ne = Int(Ncells*0.5);
 Ni = Int(Ncells*0.5);
+
+@assert Ncells <= typemax(IntPrecision)-1
 
 # connectivity 
 pree = 0.1
@@ -78,6 +83,8 @@ maxrate = 500 #(Hz) maximum average firing rate.  if the average firing rate acr
 
 
 mutable struct paramType
+    FloatPrecision::DataType
+    IntPrecision::DataType
     train_duration::Float64
     nloop::Int64
     penlambda::Float64
@@ -134,5 +141,5 @@ mutable struct paramType
     maxrate::Float64
 end
 
-p = paramType(train_duration,nloop,penlambda,penlamEE,penlamEI,penlamIE,penlamII,penmu,frac,learn_every,learn_step,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
+p = paramType(FloatPrecision,IntPrecision,train_duration,nloop,penlambda,penlamEE,penlamEI,penlamIE,penlamII,penmu,frac,learn_every,learn_step,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
 je,ji,jx,jee,jei,jie,jii,wpee,wpei,wpie,wpii,muemin,muemax,muimin,muimax,vre,threshe,threshi,refrac,tauedecay,tauidecay,taudecay_plastic,maxrate);

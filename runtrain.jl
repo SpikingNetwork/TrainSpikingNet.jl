@@ -71,9 +71,6 @@ bias = zeros(Ncells)                        # total external input to neurons
 lastSpike = -100.0*ones(Ncells)             # last time a neuron spiked
 t = 0.0                                     # simulation time (ms)
 
-FloatPrecision = Float32
-IntPrecision = UInt16
-
 plusone = convert(FloatPrecision, 1.0)
 minusone = convert(FloatPrecision, -1.0)
 
