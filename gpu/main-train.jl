@@ -36,26 +36,23 @@ ncpIn = load(joinpath(data_dir,"ncpIn.jld"))["ncpIn"]
 ncpOut = load(joinpath(data_dir,"ncpOut.jld"))["ncpOut"]
 
 #--- set up correlation matrix ---#
+ci_numExcSyn = p.Lexc;
+ci_numInhSyn = p.Linh;
+ci_numSyn = ci_numExcSyn + ci_numInhSyn
+
+# neurons presynaptic to ci
+Px = wpIndexIn'
+
+# L2-penalty
+Pinv_L2 = p.penlambda*one(zeros(ci_numSyn,ci_numSyn))
+# row sum penalty
+vec10 = [ones(ci_numExcSyn); zeros(ci_numInhSyn)];
+vec01 = [zeros(ci_numExcSyn); ones(ci_numInhSyn)];
+Pinv_rowsum = penmu*(vec10*vec10' + vec01*vec01')
+# sum of penalties
+Pinv = Pinv_L2 + Pinv_rowsum;
 P = Array{Float64}(undef, (p.Lexc+p.Linh, p.Lexc+p.Linh, p.Ncells)); 
-Px = Array{Int64}(undef, (p.Lexc+p.Linh, p.Ncells));
-for ci=1:Int(p.Ncells)
-    ci_numExcSyn = p.Lexc;
-    ci_numInhSyn = p.Linh;
-    ci_numSyn = ci_numExcSyn + ci_numInhSyn
-
-    # neurons presynaptic to ci
-    Px[:,ci] = wpIndexIn[ci,:]
-
-    # L2-penalty
-    Pinv_L2 = p.penlambda*one(zeros(ci_numSyn,ci_numSyn))
-    # row sum penalty
-    vec10 = [ones(ci_numExcSyn); zeros(ci_numInhSyn)];
-    vec01 = [zeros(ci_numExcSyn); ones(ci_numInhSyn)];
-    Pinv_rowsum = penmu*(vec10*vec10' + vec01*vec01')
-    # sum of penalties
-    Pinv = Pinv_L2 + Pinv_rowsum;
-    P[:,:,ci] = Pinv\one(zeros(ci_numSyn,ci_numSyn));
-end
+P .= Pinv \ one(zeros(ci_numSyn,ci_numSyn));
 
 #----------- train the network --------------#
 wpWeightIn, wpWeightOut = runtrain(p,P,Px,w0Index,w0Weights,nc0,stim,xtarg,wpIndexIn,wpIndexOut,wpIndexConvert,wpWeightIn,wpWeightOut,ncpIn,ncpOut)

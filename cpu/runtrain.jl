@@ -69,28 +69,6 @@ r = zeros(Ncells)                           # synapse-filtered spikes (i.e. filt
 bias = zeros(Ncells)                        # total external input to neurons
 lastSpike = -100.0*ones(Ncells)             # last time a neuron spiked
 
-# set up correlation matrix
-P = Vector{Array{Float64,2}}(); 
-Px = Vector{Array{Int64,1}}();
-for ci=1:Int(Ncells)
-    ci_numExcSyn = p.Lexc;
-    ci_numInhSyn = p.Linh;
-    ci_numSyn = ci_numExcSyn + ci_numInhSyn
-
-    # neurons presynaptic to ci
-    push!(Px, wpIndexIn[ci,:]) 
-
-    # L2-penalty
-    Pinv_L2 = penlambda*one(zeros(ci_numSyn,ci_numSyn))
-    # row sum penalty
-    vec10 = [ones(ci_numExcSyn); zeros(ci_numInhSyn)];
-    vec01 = [zeros(ci_numExcSyn); ones(ci_numInhSyn)];
-    Pinv_rowsum = penmu*(vec10*vec10' + vec01*vec01')
-    # sum of penalties
-    Pinv = Pinv_L2 + Pinv_rowsum;
-    push!(P, Pinv\one(zeros(ci_numSyn,ci_numSyn)));
-end
-
 # start training loops
 for iloop =1:nloop
     println("Loop no. ",iloop) 

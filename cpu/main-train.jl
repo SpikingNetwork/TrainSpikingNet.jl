@@ -38,6 +38,31 @@ wpWeightOut = load(joinpath(data_dir,"wpWeightOut.jld"))["wpWeightOut"]
 ncpIn = load(joinpath(data_dir,"ncpIn.jld"))["ncpIn"]
 ncpOut = load(joinpath(data_dir,"ncpOut.jld"))["ncpOut"]
 
+# --- set up correlation matrix --- #
+P = Vector{Array{Float64,2}}(); 
+Px = Vector{Array{Int64,1}}();
+
+ci_numExcSyn = p.Lexc;
+ci_numInhSyn = p.Linh;
+ci_numSyn = ci_numExcSyn + ci_numInhSyn
+
+# L2-penalty
+Pinv_L2 = penlambda*one(zeros(ci_numSyn,ci_numSyn))
+# row sum penalty
+vec10 = [ones(ci_numExcSyn); zeros(ci_numInhSyn)];
+vec01 = [zeros(ci_numExcSyn); ones(ci_numInhSyn)];
+Pinv_rowsum = penmu*(vec10*vec10' + vec01*vec01')
+# sum of penalties
+Pinv = Pinv_L2 + Pinv_rowsum;
+Pinv_norm = Pinv \ one(zeros(ci_numSyn,ci_numSyn))
+
+for ci=1:Int(Ncells)
+    # neurons presynaptic to ci
+    push!(Px, wpIndexIn[ci,:]) 
+
+    push!(P, copy(Pinv_norm));
+end
+
 #----------- train the network --------------#
 wpWeightIn, wpWeightOut = runtrain(p,w0Index,w0Weights,nc0,stim,xtarg,wpIndexIn,wpIndexOut,wpIndexConvert,wpWeightIn,wpWeightOut,ncpIn,ncpOut)
 
