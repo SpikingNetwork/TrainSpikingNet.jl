@@ -1,7 +1,7 @@
 function genInitialWeights(p)
 
-nc0Max = Int(p.Ncells*p.pree) # outdegree
-nc0 = Int.(nc0Max*ones(p.Ncells))
+nc0Max = round(Int, p.Ncells*p.pree) # outdegree
+nc0 = fill(nc0Max, p.Ncells)
 w0Index = zeros(Int,nc0Max,p.Ncells)
 w0Weights = zeros(nc0Max,p.Ncells)
 for i = 1:p.Ncells

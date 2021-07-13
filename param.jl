@@ -43,7 +43,7 @@ pree = 0.1
 prei = 0.1
 prie = 0.1
 prii = 0.1
-K = Int(Ne*pree)
+K = round(Int, Ne*pree)
 sqrtK = sqrt(K)
 
 # synaptic strength
@@ -136,6 +136,3 @@ end
 
 p = paramType(train_duration,nloop,penlambda,penlamEE,penlamEI,penlamIE,penlamII,penmu,frac,learn_every,learn_step,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
 je,ji,jx,jee,jei,jie,jii,wpee,wpei,wpie,wpii,muemin,muemax,muimin,muimax,vre,threshe,threshi,refrac,tauedecay,tauidecay,taudecay_plastic,maxrate);
-  
-
-
