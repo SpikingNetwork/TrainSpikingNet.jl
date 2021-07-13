@@ -69,6 +69,8 @@ r = zeros(Ncells)                           # synapse-filtered spikes (i.e. filt
 bias = zeros(Ncells)                        # total external input to neurons
 lastSpike = -100.0*ones(Ncells)             # last time a neuron spiked
 
+k = Vector{Float64}(undef, 2*L)
+
 # start training loops
 for iloop =1:nloop
     println("Loop no. ",iloop) 
@@ -126,7 +128,7 @@ for iloop =1:nloop
         #                  - Fixed throughout the simulation. Used to compute forwardInputsP (see line 221)
 
         if t > Int(stim_off) && t <= Int(train_time) && mod(t, learn_every) == 0
-            wpWeightIn, wpWeightOut, learn_seq = rls(p, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut)
+            wpWeightIn, wpWeightOut, learn_seq = rls(k, p, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut)
         end
 
         # update network activities:

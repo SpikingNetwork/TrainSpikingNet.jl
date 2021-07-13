@@ -69,6 +69,8 @@ r = zeros(Ncells)                           # synapse-filtered spikes (i.e. filt
 
 bias = zeros(Ncells)                        # total external input to neurons
 lastSpike = -100.0*ones(Ncells)             # last time a neuron spiked
+bnotrefrac = Vector{Bool}(undef, Ncells)
+bspike = Vector{Bool}(undef, Ncells)
 t = 0.0                                     # simulation time (ms)
 
 plusone = convert(FloatPrecision, 1.0)
@@ -106,6 +108,8 @@ bias = CuArray{FloatPrecision}(bias)
 mu = CuArray{FloatPrecision}(mu)
 forwardSpike = CuArray{FloatPrecision}(forwardSpike)
 lastSpike = CuArray{FloatPrecision}(lastSpike)
+bnotrefrac = CuArray(bnotrefrac)
+bspike = CuArray(bspike)
 ns = CuArray{IntPrecision}(ns)
 invtau = CuArray{FloatPrecision}(invtau)
 thresh = CuArray{FloatPrecision}(thresh)
@@ -148,6 +152,10 @@ cukernelEI = cufunction(kernelEI, Tuple{CuDeviceArray{UInt64,1,AS.Global}, CuDev
 
 cukernelP = cufunction(kernelP, Tuple{CuDeviceArray{UInt64,1,AS.Global}, CuDeviceArray{IntPrecision,2,AS.Global}, CuDeviceArray{FloatPrecision,2,AS.Global}, CuDeviceArray{FloatPrecision,1,AS.Global}})
 
+k = CuArray{FloatPrecision}(undef, 2*L, 1, Ncells)
+den = CuArray{FloatPrecision}(undef, 1, 1, Ncells)
+e = CuArray{FloatPrecision}(undef, 1, 1, Ncells)
+
 # start training loops
 for iloop =1:nloop
     println("Loop no. ",iloop) 
@@ -171,14 +179,13 @@ for iloop =1:nloop
         forwardInputsP .= 0.0;
 
         if t > Int(stim_off) && t <= Int(train_time) && mod(t, learn_every) == 0
-            wpWeightIn, wpWeightOut, learn_seq = rls(p, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, minusone)
+            wpWeightIn, wpWeightOut, learn_seq = rls(k, den, e, p, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, minusone)
         end
 
         xedecay .+= (-dt.*xedecay .+ forwardInputsEPrev[2:end]).*invtauedecay
         xidecay .+= (-dt.*xidecay .+ forwardInputsIPrev[2:end]).*invtauidecay
         xpdecay .+= (-dt.*xpdecay .+ forwardInputsPPrev[2:end]).*invtaudecay_plastic
         synInputBalanced .= xedecay .+ xidecay
-        synInput = synInputBalanced .+ xpdecay
 
         r .+= (-dt.*r .+ forwardSpikePrev).*invtaudecay_plastic
 
@@ -188,10 +195,10 @@ for iloop =1:nloop
             bias .= mu
         end
 
-        bnotrefrac = t .> (lastSpike .+ refrac)
-        v .+= bnotrefrac.*dt.*(invtau.*(bias .- v .+ synInput))
+        bnotrefrac .= t .> (lastSpike .+ refrac)
+        v .+= bnotrefrac.*dt.*(invtau.*(bias .- v .+ synInputBalanced .+ xpdecay))
 
-        bspike = bnotrefrac .& (v .> thresh)
+        bspike .= bnotrefrac .& (v .> thresh)
         forwardSpike .= bspike
         ns .+= bspike
         v .= ifelse.(bspike, vre, v)
@@ -216,7 +223,6 @@ elapsed_time = time()-start_time
 println("elapsed time: ",elapsed_time)
 
 end
-
 
 return wpWeightIn, wpWeightOut
 
