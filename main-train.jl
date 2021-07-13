@@ -6,7 +6,9 @@ using Random
 using JLD
 using CUDA, NNlib, NNlibCUDA
 
-include("param.jl")
+data_dir = length(ARGS)>0 ? ARGS[1] : "."
+
+include(joinpath(data_dir,"param.jl"))
 include("genInitialWeights.jl")
 include("genPlasticWeights.jl")
 include("convertWgtIn2Out.jl")
@@ -19,19 +21,19 @@ include("rls.jl")
 include("funSample.jl")
 
 #----------- load initialization --------------#
-p = load("data/p.jld")["p"]
-w0Index = load("data/w0Index.jld")["w0Index"]
-w0Weights = load("data/w0Weights.jld")["w0Weights"]
-nc0 = load("data/nc0.jld")["nc0"]
-stim = load("data/stim.jld")["stim"]
-xtarg = load("data/xtarg.jld")["xtarg"]
-wpIndexIn = load("data/wpIndexIn.jld")["wpIndexIn"]
-wpIndexOut = load("data/wpIndexOut.jld")["wpIndexOut"]
-wpIndexConvert = load("data/wpIndexConvert.jld")["wpIndexConvert"]
-wpWeightIn = load("data/wpWeightIn.jld")["wpWeightIn"]
-wpWeightOut = load("data/wpWeightOut.jld")["wpWeightOut"]
-ncpIn = load("data/ncpIn.jld")["ncpIn"]
-ncpOut = load("data/ncpOut.jld")["ncpOut"]
+p = load(joinpath(data_dir,"p.jld"))["p"]
+w0Index = load(joinpath(data_dir,"w0Index.jld"))["w0Index"]
+w0Weights = load(joinpath(data_dir,"w0Weights.jld"))["w0Weights"]
+nc0 = load(joinpath(data_dir,"nc0.jld"))["nc0"]
+stim = load(joinpath(data_dir,"stim.jld"))["stim"]
+xtarg = load(joinpath(data_dir,"xtarg.jld"))["xtarg"]
+wpIndexIn = load(joinpath(data_dir,"wpIndexIn.jld"))["wpIndexIn"]
+wpIndexOut = load(joinpath(data_dir,"wpIndexOut.jld"))["wpIndexOut"]
+wpIndexConvert = load(joinpath(data_dir,"wpIndexConvert.jld"))["wpIndexConvert"]
+wpWeightIn = load(joinpath(data_dir,"wpWeightIn.jld"))["wpWeightIn"]
+wpWeightOut = load(joinpath(data_dir,"wpWeightOut.jld"))["wpWeightOut"]
+ncpIn = load(joinpath(data_dir,"ncpIn.jld"))["ncpIn"]
+ncpOut = load(joinpath(data_dir,"ncpOut.jld"))["ncpOut"]
 
 #--- set up correlation matrix ---#
 P = Array{Float64}(undef, (p.Lexc+p.Linh, p.Lexc+p.Linh, p.Ncells)); 

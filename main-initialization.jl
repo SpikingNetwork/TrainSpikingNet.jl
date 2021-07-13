@@ -5,7 +5,9 @@ using LinearAlgebra
 using Random
 using JLD
 
-include("param.jl")
+data_dir = length(ARGS)>0 ? ARGS[1] : "."
+
+include(joinpath(data_dir,"param.jl"))
 include("genInitialWeights.jl")
 include("genPlasticWeights.jl")
 include("convertWgtIn2Out.jl")
@@ -25,16 +27,16 @@ xtarg = genTarget(p,uavg,"zero")
 stim = genStim(p)
 
 #----------- save initialization --------------#
-save("data/p.jld", "p", p)
-save("data/w0Index.jld", "w0Index", w0Index)
-save("data/w0Weights.jld", "w0Weights", w0Weights)
-save("data/nc0.jld", "nc0", nc0)
-save("data/stim.jld", "stim", stim)
-save("data/xtarg.jld", "xtarg", xtarg)
-save("data/wpIndexIn.jld", "wpIndexIn", wpIndexIn)
-save("data/wpIndexOut.jld", "wpIndexOut", wpIndexOut)
-save("data/wpIndexConvert.jld", "wpIndexConvert", wpIndexConvert)
-save("data/wpWeightIn.jld", "wpWeightIn", wpWeightIn)
-save("data/wpWeightOut.jld", "wpWeightOut", wpWeightOut)
-save("data/ncpIn.jld", "ncpIn", ncpIn)
-save("data/ncpOut.jld", "ncpOut", ncpOut)
+save(joinpath(data_dir,"p.jld"), "p", p)
+save(joinpath(data_dir,"w0Index.jld"), "w0Index", w0Index)
+save(joinpath(data_dir,"w0Weights.jld"), "w0Weights", w0Weights)
+save(joinpath(data_dir,"nc0.jld"), "nc0", nc0)
+save(joinpath(data_dir,"stim.jld"), "stim", stim)
+save(joinpath(data_dir,"xtarg.jld"), "xtarg", xtarg)
+save(joinpath(data_dir,"wpIndexIn.jld"), "wpIndexIn", wpIndexIn)
+save(joinpath(data_dir,"wpIndexOut.jld"), "wpIndexOut", wpIndexOut)
+save(joinpath(data_dir,"wpIndexConvert.jld"), "wpIndexConvert", wpIndexConvert)
+save(joinpath(data_dir,"wpWeightIn.jld"), "wpWeightIn", wpWeightIn)
+save(joinpath(data_dir,"wpWeightOut.jld"), "wpWeightOut", wpWeightOut)
+save(joinpath(data_dir,"ncpIn.jld"), "ncpIn", ncpIn)
+save(joinpath(data_dir,"ncpOut.jld"), "ncpOut", ncpOut)
