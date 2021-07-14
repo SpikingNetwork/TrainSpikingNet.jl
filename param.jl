@@ -1,5 +1,5 @@
-FloatPrecision = Float64
-IntPrecision = UInt64
+FloatPrecision = Float32
+IntPrecision = UInt32
 
 dt = 0.1 #simulation timestep (ms)
 
@@ -41,7 +41,11 @@ Ncells = 5000;
 Ne = Int(Ncells*0.5);
 Ni = Int(Ncells*0.5);
 
-@assert Ncells <= typemax(IntPrecision)
+if Ncells == typemax(IntPrecision)
+  @warn "IntPrecision is too small for GPU (but fine for CPU)"
+elseif Ncells > typemax(IntPrecision)
+  @error "IntPrecision is too small"
+end
 
 # connectivity 
 pree = 0.1

@@ -7,21 +7,11 @@ using JLD
 
 data_dir = length(ARGS)>0 ? ARGS[1] : "."
 
-BLAS.set_num_threads(8)
-
-Random.seed!(1)
-
 include(joinpath(data_dir,"param.jl"))
-include("genInitialWeights.jl")
-include("genPlasticWeights.jl")
 include("convertWgtIn2Out.jl")
-include("genTarget.jl")
-include("genStim.jl")
-#include("runinitial.jl")
 include("runtrain.jl")
 include("runtest.jl")
 include("rls.jl")
-include("funSample.jl")
 
 #----------- load initialization --------------#
 p = load(joinpath(data_dir,"p.jld"))["p"]
@@ -37,6 +27,8 @@ wpWeightIn = load(joinpath(data_dir,"wpWeightIn.jld"))["wpWeightIn"]
 wpWeightOut = load(joinpath(data_dir,"wpWeightOut.jld"))["wpWeightOut"]
 ncpIn = load(joinpath(data_dir,"ncpIn.jld"))["ncpIn"]
 ncpOut = load(joinpath(data_dir,"ncpOut.jld"))["ncpOut"]
+
+wpWeightIn = transpose(dropdims(wpWeightIn, dims=2))
 
 # --- set up correlation matrix --- #
 P = Vector{Array{Float64,2}}(); 

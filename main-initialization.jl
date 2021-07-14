@@ -7,18 +7,13 @@ using JLD
 
 data_dir = length(ARGS)>0 ? ARGS[1] : "."
 
-Random.seed!(1)
-
 include(joinpath(data_dir,"param.jl"))
 include("genInitialWeights.jl")
 include("genPlasticWeights.jl")
-include("convertWgtIn2Out.jl")
+include(joinpath("gpu","convertWgtIn2Out.jl"))
 include("genTarget.jl")
 include("genStim.jl")
 include("runinitial.jl")
-#include("runtrain.jl")
-#include("runtest.jl")
-#include("rls.jl")
 include("funSample.jl")
 
 #----------- initialization --------------#
