@@ -32,6 +32,10 @@ tauidecay = copy(p.tauidecay)
 taudecay_plastic = copy(p.taudecay_plastic)
 maxrate = copy(p.maxrate)
 
+invtauedecay = 1/tauedecay
+invtauidecay = 1/tauidecay
+invtaudecay_plastic = 1/taudecay_plastic
+
 # set up variables
 mu = zeros(Ncells)
 mu[1:Ne] = (muemax-muemin)*rand(Ne) .+ muemin
@@ -41,9 +45,9 @@ thresh = zeros(Ncells)
 thresh[1:Ne] .= threshe
 thresh[(1+Ne):Ncells] .= threshi
 
-tau = zeros(Ncells)
-tau[1:Ne] .= taue
-tau[(1+Ne):Ncells] .= taui
+invtau = zeros(Ncells)
+invtau[1:Ne] .= 1/taue
+invtau[(1+Ne):Ncells] .= 1/taui
 
 maxTimes = round(Int,maxrate*train_time/1000)
 times = zeros(Ncells,maxTimes)
@@ -105,9 +109,9 @@ for ti=1:Nsteps
     forwardSpike .= 0.0;
     
     for ci = 1:Ncells
-        xedecay[ci] += -dt*xedecay[ci]/tauedecay + forwardInputsEPrev[ci]/tauedecay
-        xidecay[ci] += -dt*xidecay[ci]/tauidecay + forwardInputsIPrev[ci]/tauidecay
-        xpdecay[ci] += -dt*xpdecay[ci]/taudecay_plastic + forwardInputsPPrev[ci]/taudecay_plastic
+        xedecay[ci] += -dt*xedecay[ci]*invtauedecay + forwardInputsEPrev[ci]*invtauedecay
+        xidecay[ci] += -dt*xidecay[ci]*invtauidecay + forwardInputsIPrev[ci]*invtauidecay
+        xpdecay[ci] += -dt*xpdecay[ci]*invtaudecay_plastic + forwardInputsPPrev[ci]*invtaudecay_plastic
         synInputBalanced[ci] = xedecay[ci] + xidecay[ci]
         synInput = synInputBalanced[ci] + xpdecay[ci]
 
@@ -141,7 +145,7 @@ for ti=1:Nsteps
 
         #not in refractory period
         if t > (lastSpike[ci] + refrac)  
-            v[ci] += dt*((1/tau[ci])*(bias[ci]-v[ci] + synInput))
+            v[ci] += dt*(invtau[ci]*(bias[ci]-v[ci] + synInput))
             if v[ci] > thresh[ci]  #spike occurred
                 v[ci] = vre
                 forwardSpike[ci] = 1.

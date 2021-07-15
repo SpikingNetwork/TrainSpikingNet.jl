@@ -21,6 +21,9 @@ tauedecay = copy(p.tauedecay) # synaptic time
 tauidecay = copy(p.tauidecay)
 maxrate = copy(p.maxrate)
 
+invtauedecay = 1/tauedecay
+invtauidecay = 1/tauidecay
+
 # set up variables
 mu = zeros(Ncells)
 mu[1:Ne] = (muemax-muemin)*rand(Ne) .+ muemin
@@ -30,9 +33,9 @@ thresh = zeros(Ncells)
 thresh[1:Ne] .= threshe
 thresh[(1+Ne):Ncells] .= threshi
 
-tau = zeros(Ncells)
-tau[1:Ne] .= taue
-tau[(1+Ne):Ncells] .= taui
+invtau = zeros(Ncells)
+invtau[1:Ne] .= 1/taue
+invtau[(1+Ne):Ncells] .= 1/taui
 
 maxTimes = round(Int,maxrate*train_time/1000)
 times = zeros(Ncells,maxTimes)
@@ -64,8 +67,8 @@ for ti=1:Nsteps
     forwardInputsE .= 0.0;
     forwardInputsI .= 0.0;
     for ci = 1:Ncells
-        xedecay[ci] += -dt*xedecay[ci]/tauedecay + forwardInputsEPrev[ci]/tauedecay
-        xidecay[ci] += -dt*xidecay[ci]/tauidecay + forwardInputsIPrev[ci]/tauidecay
+        xedecay[ci] += -dt*xedecay[ci]*invtauedecay + forwardInputsEPrev[ci]*invtauedecay
+        xidecay[ci] += -dt*xidecay[ci]*invtauidecay + forwardInputsIPrev[ci]*invtauidecay
         synInput = xedecay[ci] + xidecay[ci]
 
         if ti > Int(1000/p.dt) # 1000 ms
@@ -88,7 +91,7 @@ for ti=1:Nsteps
 
         #not in refractory period
         if t > (lastSpike[ci] + refrac)  
-            v[ci] += dt*((1/tau[ci])*(bias[ci]-v[ci] + synInput))
+            v[ci] += dt*(invtau[ci]*(bias[ci]-v[ci] + synInput))
             if v[ci] > thresh[ci]  #spike occurred
                 v[ci] = vre
                 lastSpike[ci] = t
