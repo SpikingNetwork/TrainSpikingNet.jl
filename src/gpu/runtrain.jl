@@ -221,6 +221,7 @@ for iloop =1:nloop
 
 elapsed_time = time()-start_time
 println("elapsed time: ",elapsed_time)
+println(mean(ns)/(dt/1000*Nsteps), " Hz")
 
 end
 

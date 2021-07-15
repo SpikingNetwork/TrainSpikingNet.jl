@@ -8,13 +8,13 @@ using JLD
 data_dir = length(ARGS)>0 ? ARGS[1] : "."
 
 include(joinpath(data_dir,"param.jl"))
-include("genInitialWeights.jl")
-include("genPlasticWeights.jl")
-include(joinpath("gpu","convertWgtIn2Out.jl"))
-include("genTarget.jl")
-include("genStim.jl")
-include("runinitial.jl")
-include("funSample.jl")
+include(joinpath(@__DIR__,"genInitialWeights.jl"))
+include(joinpath(@__DIR__,"genPlasticWeights.jl"))
+include(joinpath(@__DIR__,"gpu","convertWgtIn2Out.jl"))
+include(joinpath(@__DIR__,"genTarget.jl"))
+include(joinpath(@__DIR__,"genStim.jl"))
+include(joinpath(@__DIR__,"runinitial.jl"))
+include(joinpath(@__DIR__,"funSample.jl"))
 
 #----------- initialization --------------#
 w0Index, w0Weights, nc0 = genInitialWeights(p)

@@ -8,10 +8,10 @@ using JLD
 data_dir = length(ARGS)>0 ? ARGS[1] : "."
 
 include(joinpath(data_dir,"param.jl"))
-include("convertWgtIn2Out.jl")
-include("runtrain.jl")
-include("runtest.jl")
-include("rls.jl")
+include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
+include(joinpath(@__DIR__,"runtrain.jl"))
+include(joinpath(@__DIR__,"runtest.jl"))
+include(joinpath(@__DIR__,"rls.jl"))
 
 #----------- load initialization --------------#
 p = load(joinpath(data_dir,"p.jld"))["p"]
@@ -29,6 +29,8 @@ ncpIn = load(joinpath(data_dir,"ncpIn.jld"))["ncpIn"]
 ncpOut = load(joinpath(data_dir,"ncpOut.jld"))["ncpOut"]
 
 wpWeightIn = transpose(dropdims(wpWeightIn, dims=2))
+
+isnothing(p.seed) || Random.seed!(p.seed)
 
 # --- set up correlation matrix --- #
 P = Vector{Array{Float64,2}}(); 
@@ -74,3 +76,6 @@ for ii = 1:9
     ylim([-2,2])
 end
 tight_layout()
+
+save(joinpath(data_dir,"wpWeightIn-trained.jld"), "wpWeightIn", collect(wpWeightIn))
+save(joinpath(data_dir,"wpWeightOut-trained.jld"), "wpWeightOut", wpWeightOut)

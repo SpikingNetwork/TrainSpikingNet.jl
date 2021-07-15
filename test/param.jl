@@ -1,10 +1,11 @@
-FloatPrecision = Float32
-IntPrecision = UInt32
+FloatPrecision = Float64
+IntPrecision = UInt64
+seed=1
 
 dt = 0.1 #simulation timestep (ms)
 
 # training variables
-nloop          = 150; #200
+nloop          = 1; #200
 penlambda      = 3.0; # 0.1 or 0.5 
 penlamEE       = 3.0; # 2.0
 penlamEI       = 3.0; # 0.08
@@ -37,7 +38,7 @@ tauidecay = 3
 taudecay_plastic = 150 
 
 # network size      
-Ncells = 5000;
+Ncells = 2000;
 Ne = Int(Ncells*0.5);
 Ni = Int(Ncells*0.5);
 
@@ -89,6 +90,7 @@ maxrate = 500 #(Hz) maximum average firing rate.  if the average firing rate acr
 mutable struct paramType
     FloatPrecision::DataType
     IntPrecision::DataType
+    seed::Union{Nothing,Int}
     train_duration::Float64
     nloop::Int64
     penlambda::Float64
@@ -145,5 +147,5 @@ mutable struct paramType
     maxrate::Float64
 end
 
-p = paramType(FloatPrecision,IntPrecision,train_duration,nloop,penlambda,penlamEE,penlamEI,penlamIE,penlamII,penmu,frac,learn_every,learn_step,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
+p = paramType(FloatPrecision,IntPrecision,seed,train_duration,nloop,penlambda,penlamEE,penlamEI,penlamIE,penlamII,penmu,frac,learn_every,learn_step,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
 je,ji,jx,jee,jei,jie,jii,wpee,wpei,wpie,wpii,muemin,muemax,muimin,muimax,vre,threshe,threshi,refrac,tauedecay,tauidecay,taudecay_plastic,maxrate);

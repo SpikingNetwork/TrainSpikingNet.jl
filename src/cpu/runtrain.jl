@@ -213,6 +213,7 @@ for iloop =1:nloop
     end #end loop over time
 elapsed_time = time()-start_time
 println("elapsed time: ",elapsed_time)
+println(mean(ns)/(dt/1000*Nsteps), " Hz")
 
 end # end loop over trainings
 

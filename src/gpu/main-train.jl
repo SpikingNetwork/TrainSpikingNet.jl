@@ -9,10 +9,10 @@ using CUDA, NNlib, NNlibCUDA
 data_dir = length(ARGS)>0 ? ARGS[1] : "."
 
 include(joinpath(data_dir,"param.jl"))
-include("convertWgtIn2Out.jl")
-include("runtrain.jl")
-include("runtest.jl")
-include("rls.jl")
+include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
+include(joinpath(@__DIR__,"runtrain.jl"))
+include(joinpath(@__DIR__,"runtest.jl"))
+include(joinpath(@__DIR__,"rls.jl"))
 
 #----------- load initialization --------------#
 p = load(joinpath(data_dir,"p.jld"))["p"]
@@ -28,6 +28,8 @@ wpWeightIn = load(joinpath(data_dir,"wpWeightIn.jld"))["wpWeightIn"]
 wpWeightOut = load(joinpath(data_dir,"wpWeightOut.jld"))["wpWeightOut"]
 ncpIn = load(joinpath(data_dir,"ncpIn.jld"))["ncpIn"]
 ncpOut = load(joinpath(data_dir,"ncpOut.jld"))["ncpOut"]
+
+isnothing(p.seed) || Random.seed!(p.seed)
 
 #--- set up correlation matrix ---#
 ci_numExcSyn = p.Lexc;
@@ -67,3 +69,6 @@ for ii = 1:9
     ylim([-2,2])
 end
 tight_layout()
+
+save(joinpath(data_dir,"wpWeightIn-trained.jld"), "wpWeightIn", Array(wpWeightIn))
+save(joinpath(data_dir,"wpWeightOut-trained.jld"), "wpWeightOut", Array(wpWeightOut))
