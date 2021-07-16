@@ -1,84 +1,16 @@
 using Distributions
 
-function runtest(p,w0Index,w0Weights,nc0,wpIndexOut,wpWeightOut,ncpOut,stim)
+function runtest(stim_on, stim_off, dt, Nsteps, Ncells, refrac, vre,
+    invtauedecay, invtauidecay, invtaudecay_plastic, mu, thresh, invtau,
+    maxTimes, times, ns, forwardInputsE, forwardInputsI, forwardInputsP,
+    forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev, xedecay,
+    xidecay, xpdecay, synInputBalanced, v, lastSpike, bias, example_neurons,
+    w0Index, w0Weights, nc0, wpIndexOut, wpWeightOut, ncpOut, stim)
 
-# copy param
-nloop = copy(p.nloop) # train param
-penlambda = copy(p.penlambda)
-penmu = copy(p.penmu)
-frac = copy(p.frac)
-learn_every = copy(p.learn_every)
-stim_on = copy(p.stim_on)
-stim_off = copy(p.stim_off)
-train_time = copy(p.train_time)
-dt = copy(p.dt) # time param
-Nsteps = copy(p.Nsteps) 
-Ncells = copy(p.Ncells) # network param
-Ne = copy(p.Ne)
-Ni = copy(p.Ni)
-taue = copy(p.taue) # neuron param
-taui = copy(p.taui)
-sqrtK = copy(p.sqrtK)
-threshe = copy(p.threshe)
-threshi = copy(p.threshi)
-refrac = copy(p.refrac)
-vre = copy(p.vre)
-muemin = copy(p.muemin) # external input
-muemax = copy(p.muemax)
-muimin = copy(p.muimin)
-muimax = copy(p.muimax)
-tauedecay = copy(p.tauedecay) # synaptic time
-tauidecay = copy(p.tauidecay)
-taudecay_plastic = copy(p.taudecay_plastic)
-maxrate = copy(p.maxrate)
-
-invtauedecay = 1/tauedecay
-invtauidecay = 1/tauidecay
-invtaudecay_plastic = 1/taudecay_plastic
-
-# set up variables
-mu = zeros(Ncells)
-mu[1:Ne] = (muemax-muemin)*rand(Ne) .+ muemin
-mu[(Ne+1):Ncells] = (muimax-muimin)*rand(Ni) .+ muimin
-
-thresh = zeros(Ncells)
-thresh[1:Ne] .= threshe
-thresh[(1+Ne):Ncells] .= threshi
-
-invtau = zeros(Ncells)
-invtau[1:Ne] .= 1/taue
-invtau[(1+Ne):Ncells] .= 1/taui
-
-maxTimes = round(Int,maxrate*train_time/1000)
-times = zeros(Ncells,maxTimes)
-ns = zeros(Int,Ncells)
-
-forwardInputsE = zeros(Ncells) #summed weight of incoming E spikes
-forwardInputsI = zeros(Ncells)
-forwardInputsP = zeros(Ncells)
-forwardInputsEPrev = zeros(Ncells) #as above, for previous timestep
-forwardInputsIPrev = zeros(Ncells)
-forwardInputsPPrev = zeros(Ncells)
-forwardSpike = zeros(Ncells)
-forwardSpikePrev = zeros(Ncells)
-
-xedecay = zeros(Ncells)
-xidecay = zeros(Ncells)
-xpdecay = zeros(Ncells)
-synInputBalanced = zeros(Ncells)
-
-v = zeros(Ncells) #membrane voltage 
-
-lastSpike = -100.0*ones(Ncells) #time of last spike
-  
-t = 0.0
-bias = zeros(Ncells)
-
-learn_nsteps = Int((p.train_time - p.stim_off)/p.learn_every)
-learn_seq = 1
-example_neurons = 25
-wid = 50
-widInc = Int(2*wid/p.learn_every - 1)
+#learn_nsteps = Int((p.train_time - p.stim_off)/p.learn_every)
+#learn_seq = 1
+#wid = 50
+#widInc = Int(2*wid/p.learn_every - 1)
 
 vtotal_exccell = zeros(Nsteps,example_neurons)
 vtotal_inhcell = zeros(Nsteps,example_neurons)
@@ -106,7 +38,6 @@ for ti=1:Nsteps
     forwardInputsE .= 0.0;
     forwardInputsI .= 0.0;
     forwardInputsP .= 0.0;
-    forwardSpike .= 0.0;
     
     for ci = 1:Ncells
         xedecay[ci] += -dt*xedecay[ci]*invtauedecay + forwardInputsEPrev[ci]*invtauedecay
@@ -137,8 +68,8 @@ for ti=1:Nsteps
         # end
         
         # external input
-        if t > Int(stim_on) && t < Int(stim_off)
-            bias[ci] = mu[ci] + stim[ti-Int(stim_on/dt),ci]
+        if t > stim_on && t < stim_off
+            bias[ci] = mu[ci] + stim[ti-round(Int,stim_on/dt),ci]
         else
             bias[ci] = mu[ci]
         end
@@ -148,7 +79,6 @@ for ti=1:Nsteps
             v[ci] += dt*(invtau[ci]*(bias[ci]-v[ci] + synInput))
             if v[ci] > thresh[ci]  #spike occurred
                 v[ci] = vre
-                forwardSpike[ci] = 1.
                 lastSpike[ci] = t
                 ns[ci] = ns[ci]+1
                 if ns[ci] <= maxTimes
@@ -174,7 +104,6 @@ for ti=1:Nsteps
     forwardInputsEPrev = copy(forwardInputsE)
     forwardInputsIPrev = copy(forwardInputsI)
     forwardInputsPPrev = copy(forwardInputsP)
-    forwardSpikePrev = copy(forwardSpike) # if training, compute spike trains
 
 end #end loop over time
 print("\r")
@@ -186,7 +115,6 @@ print("\r")
 #     xplastic[k,:] = xplastic[k,:]/xplasticcnt[k]
 # end
 
-return times, ns, vtotal_exccell, vtotal_inhcell, vebal_exccell, vibal_exccell, vebal_inhcell, vibal_inhcell, vplastic_exccell, vplastic_inhcell
-
+return vtotal_exccell, vtotal_inhcell, vebal_exccell, vibal_exccell, vebal_inhcell, vibal_inhcell, vplastic_exccell, vplastic_inhcell
 
 end

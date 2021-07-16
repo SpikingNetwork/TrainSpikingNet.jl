@@ -1,79 +1,10 @@
-function runtrain(p,w0Index,w0Weights,nc0,stim,xtarg,wpIndexIn,wpIndexOut,wpIndexConvert,wpWeightIn,wpWeightOut,ncpIn,ncpOut)
-
-# copy simulation param
-nloop = copy(p.nloop)                       # number of training iterations
-penlambda = copy(p.penlambda)               # L2-penalty
-penlamEE = copy(p.penlamEE)                 # not used
-penlamIE = copy(p.penlamIE)                 # not used
-penlamEI = copy(p.penlamEI)                 # not used
-penlamII = copy(p.penlamII)                 # not used
-penmu = copy(p.penmu)                       # Rowsum-penalty
-frac = copy(p.frac)                         # not used
-learn_every = copy(p.learn_every)           # recursive least squares algorithm updates the plastic weights every learn_every (=10ms)
-stim_on = copy(p.stim_on)                   # time at which the stimulus triggering the learned response is turned on (800ms) 
-stim_off = copy(p.stim_off)                 # time at which the stimulus triggering the learned response is turned off (1000ms)
-train_time = copy(p.train_time)             # total training time (2000ms)
-dt = copy(p.dt)                             # simulation time step (0.1ms)
-Nsteps = copy(p.Nsteps)                     # number of simulation time steps
-Ncells = copy(p.Ncells)                     # number of cells
-Ne = copy(p.Ne)                             # number of excitatory cells
-Ni = copy(p.Ni)                             # number of inhibitory cells
-taue = copy(p.taue)                         # membrane time constant of excitatory cells (10ms)
-taui = copy(p.taui)                         # membrane time constant of inhibitory cells (10ms)
-sqrtK = copy(p.sqrtK)                       # sqrt(K) where K is the average number of exc/inh synaptic connections to a neuron
-threshe = copy(p.threshe)                   # spike threshold of excitatory cells (1)
-threshi = copy(p.threshi)                   # spike threshold of inhibitory cells (1)
-refrac = copy(p.refrac)                     # refractory period (0, no refractory period)
-vre = copy(p.vre)                           # voltage reset after spike (0)
-muemin = copy(p.muemin)                     # external input to excitatory neurons (min)
-muemax = copy(p.muemax)                     # external input to excitatory neurons (max)
-muimin = copy(p.muimin)                     # external input to inhibitory neurons (min)
-muimax = copy(p.muimax)                     # external input to inhibitory neurons (max)
-tauedecay = copy(p.tauedecay)               # excitatory synaptic decay time constant (3ms) - for balanced connectivity (static)
-tauidecay = copy(p.tauidecay)               # inhibitory synaptic decay time constant (3ms) - for balanced connectivity (static)
-taudecay_plastic = copy(p.taudecay_plastic) # synaptic decay time constant (150ms) - for plastic connectivity 
-maxrate = copy(p.maxrate)                   # maximum firing rate allowed (500Hz)
-
-invtauedecay = 1/tauedecay
-invtauidecay = 1/tauidecay
-invtaudecay_plastic = 1/taudecay_plastic
-
-# set up variables
-mu = zeros(Ncells)
-mu[1:Ne] = (muemax-muemin)*rand(Ne) .+ muemin
-mu[(Ne+1):Ncells] = (muimax-muimin)*rand(Ni) .+ muimin
-
-thresh = zeros(Ncells)
-thresh[1:Ne] .= threshe
-thresh[(1+Ne):Ncells] .= threshi
-
-invtau = zeros(Ncells)
-invtau[1:Ne] .= 1/taue
-invtau[(1+Ne):Ncells] .= 1/taui
-
-maxTimes = round(Int,maxrate*train_time/1000)
-times = zeros(Ncells,maxTimes)
-ns = zeros(Int,Ncells)
-
-forwardInputsE = zeros(Ncells)              # excitatory synaptic currents to neurons via balanced connections at one time step
-forwardInputsI = zeros(Ncells)              # inhibitory synaptic currents to neurons via balanced connections at one time step
-forwardInputsP = zeros(Ncells)              # synaptic currents to neurons via plastic connections at one time step
-forwardInputsEPrev = zeros(Ncells)          # copy of forwardInputsE from previous time step
-forwardInputsIPrev = zeros(Ncells)          # copy of forwardInputsI from previous time step
-forwardInputsPPrev = zeros(Ncells)          # copy of forwardInputsP from previous time step
-forwardSpike = zeros(Ncells)                # spikes emitted by each neuron at one time step
-forwardSpikePrev = zeros(Ncells)            # copy of forwardSpike from previous time step
-
-xedecay = zeros(Ncells)                     # synapse-filtered excitatory current (i.e. filtered version of forwardInputsE)
-xidecay = zeros(Ncells)                     # synapse-filtered inhibitory current (i.e. filtered version of forwardInputsI)
-xpdecay = zeros(Ncells)                     # synapse-filtered plastic current (i.e. filtered version of forwardInputsP)
-synInputBalanced = zeros(Ncells)            # sum of xedecay and xidecay (i.e. synaptic current from the balanced connections)
-r = zeros(Ncells)                           # synapse-filtered spikes (i.e. filtered version of forwardSpike)
-
-bias = zeros(Ncells)                        # total external input to neurons
-lastSpike = -100.0*ones(Ncells)             # last time a neuron spiked
-
-k = Vector{Float64}(undef, 2*L)
+function runtrain(nloop, learn_every, stim_on, stim_off, train_time, dt,
+    Nsteps, Ncells, refrac, vre, invtauedecay, invtauidecay, invtaudecay_plastic,
+    mu, thresh, invtau, ns, forwardInputsE, forwardInputsI, forwardInputsP,
+    forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev, forwardSpike,
+    forwardSpikePrev, xedecay, xidecay, xpdecay, synInputBalanced, r, bias,
+    lastSpike, plusone, minusone, k, v, P, Px, w0Index, w0Weights, nc0, stim, xtarg,
+    wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, ncpIn, ncpOut)
 
 # start training loops
 for iloop =1:nloop
@@ -86,7 +17,7 @@ for iloop =1:nloop
     xidecay .= 0
     xpdecay .= 0
     r .= 0
-    v = rand(Ncells) # membrane potentials have random initial values
+    v .= rand(Ncells) # membrane potentials have random initial values
     learn_seq = 1
 
     start_time = time()
@@ -131,8 +62,8 @@ for iloop =1:nloop
         #                  - Indices of postsynaptic neurons that neuron i connect to
         #                  - Fixed throughout the simulation. Used to compute forwardInputsP (see line 221)
 
-        if t > Int(stim_off) && t <= Int(train_time) && mod(t, learn_every) == 0
-            wpWeightIn, wpWeightOut, learn_seq = rls(k, p, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut)
+        if t > stim_off && t <= train_time && mod(t, learn_every) == 0
+            wpWeightIn, wpWeightOut, learn_seq = rls(k, p, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, minusone)
         end
 
         # update network activities:
@@ -156,7 +87,7 @@ for iloop =1:nloop
             #   - mu: default inputs to maintain the balanced state
             #   - stim: inputs that trigger the learned responses
             #         : applied within the time interval [stim_on, stim_off]
-            if t > Int(stim_on) && t < Int(stim_off)
+            if t > stim_on && t < stim_off
                 bias[ci] = mu[ci] + stim[ti-round(Int,stim_on/dt),ci]
             else
                 bias[ci] = mu[ci]

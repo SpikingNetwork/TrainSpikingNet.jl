@@ -1,63 +1,4 @@
-function runinitial(p,w0Index,w0Weights,nc0,stim)
-
-# copy param
-train_time = copy(p.train_time)
-dt = copy(p.dt)
-Nsteps = copy(p.Nsteps) # network param
-Ncells = copy(p.Ncells)
-Ne = copy(p.Ne)
-Ni = copy(p.Ni)
-taue = copy(p.taue) # neuron param
-taui = copy(p.taui)
-threshe = copy(p.threshe)
-threshi = copy(p.threshi)
-refrac = copy(p.refrac)
-vre = copy(p.vre)
-muemin = copy(p.muemin) # external input
-muemax = copy(p.muemax)
-muimin = copy(p.muimin)
-muimax = copy(p.muimax)
-tauedecay = copy(p.tauedecay) # synaptic time
-tauidecay = copy(p.tauidecay)
-maxrate = copy(p.maxrate)
-
-invtauedecay = 1/tauedecay
-invtauidecay = 1/tauidecay
-
-# set up variables
-mu = zeros(Ncells)
-mu[1:Ne] = (muemax-muemin)*rand(Ne) .+ muemin
-mu[(Ne+1):Ncells] = (muimax-muimin)*rand(Ni) .+ muimin
-
-thresh = zeros(Ncells)
-thresh[1:Ne] .= threshe
-thresh[(1+Ne):Ncells] .= threshi
-
-invtau = zeros(Ncells)
-invtau[1:Ne] .= 1/taue
-invtau[(1+Ne):Ncells] .= 1/taui
-
-maxTimes = round(Int,maxrate*train_time/1000)
-times = zeros(Ncells,maxTimes)
-ns = zeros(Int,Ncells)
-
-forwardInputsE = zeros(Ncells) #summed weight of incoming E spikes
-forwardInputsI = zeros(Ncells)
-forwardInputsEPrev = zeros(Ncells) #as above, for previous timestep
-forwardInputsIPrev = zeros(Ncells)
-
-xedecay = zeros(Ncells)
-xidecay = zeros(Ncells)
-
-v = threshe*rand(Ncells) #membrane voltage 
-
-lastSpike = -100.0*ones(Ncells) #time of last spike
-  
-uavg = zeros(Ncells)
-utmp = zeros(Nsteps - Int(1000/p.dt),1000)
-t = 0.0
-r = zeros(Ncells)
-bias = zeros(Ncells)
+function runinitial(train_time,dt,Nsteps,Ncells,Ne,refrac,vre,invtauedecay,invtauidecay,mu,thresh,invtau,maxTimes,times,ns,forwardInputsE,forwardInputsI,forwardInputsEPrev,forwardInputsIPrev,xedecay,xidecay,v,lastSpike,uavg,utmp,bias,w0Index,w0Weights,nc0)
 
 for ti=1:Nsteps
     if mod(ti,Nsteps/100) == 1  #print percent complete
@@ -71,23 +12,15 @@ for ti=1:Nsteps
         xidecay[ci] += -dt*xidecay[ci]*invtauidecay + forwardInputsIPrev[ci]*invtauidecay
         synInput = xedecay[ci] + xidecay[ci]
 
-        if ti > Int(1000/p.dt) # 1000 ms
-            uavg[ci] += synInput / (Nsteps - Int(1000/p.dt)) # save synInput
+        if ti > Int(1000/dt) # 1000 ms
+            uavg[ci] += synInput / (Nsteps - round(Int,1000/dt)) # save synInput
         end
 
-        if ti > Int(1000/p.dt) && ci <=1000
-            utmp[ti - Int(1000/p.dt), ci] = synInput
+        if ti > Int(1000/dt) && ci <=1000
+            utmp[ti - round(Int,1000/dt), ci] = synInput
         end
 
-        if !isempty(stim)
-            if t > Int(stim_on) && t < Int(stim_off)
-                bias[ci] = mu[ci] + stim[ti,ci]
-            else
-                bias[ci] = mu[ci]
-            end
-        else
-            bias[ci] = mu[ci]
-        end
+        bias[ci] = mu[ci]
 
         #not in refractory period
         if t > (lastSpike[ci] + refrac)  

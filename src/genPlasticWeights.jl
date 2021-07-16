@@ -79,7 +79,7 @@ function genPlasticWeights(p, w0Index, nc0, ns0)
     for preCell = 1:p.Ncells
         wpIndexOut[1:ncpOut[preCell],preCell] = wpIndexOutD[preCell]
     end
-    wpWeightOut = convertWgtIn2Out(p,ncpIn,wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
+    wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
     
     return wpWeightIn, wpWeightOut, wpIndexIn, wpIndexOut, wpIndexConvert, ncpIn, ncpOut
     
