@@ -1,6 +1,4 @@
 using Distributions
-using PyCall
-using PyPlot
 using LinearAlgebra
 using Random
 using JLD
@@ -29,7 +27,6 @@ isnothing(p.seed) || Random.seed!(p.seed)
 
 include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
 include(joinpath(@__DIR__,"runtrain.jl"))
-include(joinpath(@__DIR__,"runtest.jl"))
 include(joinpath(@__DIR__,"rls.jl"))
 
 #--- set up correlation matrix ---#
@@ -64,8 +61,6 @@ invtau = CUDA.zeros(p.FloatPrecision, p.Ncells)
 invtau[1:p.Ne] .= 1/p.taue
 invtau[(1+p.Ne):p.Ncells] .= 1/p.taui
 
-maxTimes = round(Int,p.maxrate*p.train_time/1000)
-times = zeros(p.Ncells,maxTimes)   ### never used?
 ns = CUDA.zeros(p.IntPrecision, p.Ncells)
 
 forwardInputsE = CUDA.zeros(p.FloatPrecision, p.Ncells+1)  # excitatory synaptic currents to neurons via balanced connections at one time step
@@ -109,7 +104,6 @@ wpIndexConvert = CuArray{p.IntPrecision}(wpIndexConvert)
 wpIndexOut = CuArray{p.IntPrecision}(wpIndexOut)
 wpWeightIn = CuArray{p.FloatPrecision}(wpWeightIn);
 wpWeightOut = CuArray{p.FloatPrecision}(wpWeightOut)
-times = CuArray{p.FloatPrecision}(times)
 
 k = CuArray{p.FloatPrecision}(undef, 2*p.L, 1, p.Ncells)
 den = CuArray{p.FloatPrecision}(undef, 1, 1, p.Ncells)
@@ -127,31 +121,6 @@ wpWeightIn, wpWeightOut = runtrain(p.nloop, p.learn_every, p.stim_on,
     bnotrefrac, bspike, plusone, minusone, k, den, e, v, P, Px, w0Index,
     w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut, wpIndexConvert,
     wpWeightIn, wpWeightOut, ncpOut, cukernelEI, cukernelP)
-
-#----------- test the network --------------#
-example_neurons = 25
-
-vtotal_exc, vtotal_inh, vebal_exc, vibal_exc, vebal_inh, vibal_inh,
-    vplastic_exc, vplastic_inh = runtest(p.stim_on, p.stim_off, dt,
-    p.Nsteps, p.Ncells, refrac, vre, invtauedecay, invtauidecay,
-    invtaudecay_plastic, mu, thresh, invtau, maxTimes,
-    times, ns, forwardInputsE, forwardInputsI, forwardInputsP,
-    forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
-    xedecay, xidecay, xpdecay, synInputBalanced, v, lastSpike, bias,
-    example_neurons, w0Index, w0Weights, nc0, wpIndexOut, wpWeightOut,
-    ncpOut, stim)
-
-#----------- plot trained activities --------------#
-timev = p.dt * collect(1:p.Nsteps)
-timev_slice = collect(p.stim_off + p.learn_every: p.learn_every : p.train_time)
-figure(figsize=(12,12))
-for ii = 1:9
-    subplot(3,3,ii)
-    plot(timev, vtotal_exc[:,ii] .+ p.muemax, linewidth=0.5)
-    plot(timev_slice, xtarg[:,ii] .+ p.muemax, linewidth=2)
-    ylim([-2,2])
-end
-tight_layout()
 
 save(joinpath(data_dir,"wpWeightIn-trained.jld"), "wpWeightIn", Array(wpWeightIn))
 save(joinpath(data_dir,"wpWeightOut-trained.jld"), "wpWeightOut", Array(wpWeightOut))

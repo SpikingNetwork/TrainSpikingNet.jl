@@ -61,10 +61,10 @@ for ti=1:Nsteps
 
         # # save rolling average for analysis
         # if t > Int(stim_off) && t <= Int(train_time) && mod(t,1.0) == 0
-        #     xtotal[:,ci], xtotalcnt = funRollingAvg(p,t,wid,widInc,learn_nsteps,xtotal[:,ci],xtotalcnt,synInput,ci)
-        #     xebal[:,ci], xebalcnt = funRollingAvg(p,t,wid,widInc,learn_nsteps,xebal[:,ci],xebalcnt,xedecay[ci],ci)
-        #     xibal[:,ci], xibalcnt = funRollingAvg(p,t,wid,widInc,learn_nsteps,xibal[:,ci],xibalcnt,xidecay[ci],ci)
-        #     xplastic[:,ci], xplasticcnt = funRollingAvg(p,t,wid,widInc,learn_nsteps,xplastic[:,ci],xplasticcnt,xpdecay[ci],ci)
+        #     xtotal[:,ci], xtotalcnt = funRollingAvg(stim_off,learn_every,t,wid,widInc,learn_nsteps,xtotal[:,ci],xtotalcnt,synInput,ci)
+        #     xebal[:,ci], xebalcnt = funRollingAvg(stim_off,learn_every,t,wid,widInc,learn_nsteps,xebal[:,ci],xebalcnt,xedecay[ci],ci)
+        #     xibal[:,ci], xibalcnt = funRollingAvg(stim_off,learn_every,t,wid,widInc,learn_nsteps,xibal[:,ci],xibalcnt,xidecay[ci],ci)
+        #     xplastic[:,ci], xplasticcnt = funRollingAvg(stim_off,learn_every,t,wid,widInc,learn_nsteps,xplastic[:,ci],xplasticcnt,xpdecay[ci],ci)
         # end
         
         # external input

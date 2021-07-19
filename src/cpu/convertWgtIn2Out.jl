@@ -1,6 +1,6 @@
-function convertWgtIn2Out(p,ncpIn,wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
+function convertWgtIn2Out(Ncells,wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
 
-    for postCell = 1:p.Ncells
+    for postCell = 1:Ncells
         for i = 1:ncpIn[postCell]
             preCell = Int(wpIndexIn[postCell,i])
             postCellConvert = Int(wpIndexConvert[postCell,i])

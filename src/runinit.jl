@@ -1,4 +1,4 @@
-function runinitial(train_time,dt,Nsteps,Ncells,Ne,refrac,vre,invtauedecay,invtauidecay,mu,thresh,invtau,maxTimes,times,ns,forwardInputsE,forwardInputsI,forwardInputsEPrev,forwardInputsIPrev,xedecay,xidecay,v,lastSpike,uavg,utmp,bias,w0Index,w0Weights,nc0)
+function runinit(train_time,dt,Nsteps,Ncells,Ne,refrac,vre,invtauedecay,invtauidecay,mu,thresh,invtau,maxTimes,times,ns,forwardInputsE,forwardInputsI,forwardInputsEPrev,forwardInputsIPrev,xedecay,xidecay,v,lastSpike,uavg,utmp,bias,w0Index,w0Weights,nc0)
 
 for ti=1:Nsteps
     if mod(ti,Nsteps/100) == 1  #print percent complete

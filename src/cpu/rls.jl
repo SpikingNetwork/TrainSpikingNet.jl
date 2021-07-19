@@ -1,6 +1,6 @@
-function rls(k, p, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, minusone)
+function rls(k, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, minusone)
 
-    for ci = 1:p.Ncells
+    for ci = 1:Ncells
         rtrim = r[Px[ci]] 
         mul!(k, P[ci], rtrim)
         vPv = rtrim'*k
@@ -11,7 +11,7 @@ function rls(k, p, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexI
         wpWeightIn[ci,:] .-= e*k*den
     end
     learn_seq += 1
-    wpWeightOut = convertWgtIn2Out(p,ncpIn,wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
+    wpWeightOut = convertWgtIn2Out(Ncells,ncpIn,wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
 
     return wpWeightIn, wpWeightOut, learn_seq
 end

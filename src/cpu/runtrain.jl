@@ -63,7 +63,7 @@ for iloop =1:nloop
         #                  - Fixed throughout the simulation. Used to compute forwardInputsP (see line 221)
 
         if t > stim_off && t <= train_time && mod(t, learn_every) == 0
-            wpWeightIn, wpWeightOut, learn_seq = rls(k, p, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, minusone)
+            wpWeightIn, wpWeightOut, learn_seq = rls(k, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, minusone)
         end
 
         # update network activities:
@@ -104,9 +104,6 @@ for iloop =1:nloop
                     forwardSpike[ci] = 1.       # record that neuron ci spiked. Used for computing r[ci]
                     lastSpike[ci] = t           # record neuron ci's last spike time. Used for checking ci is not in refractory period
                     ns[ci] = ns[ci]+1           # number of spikes neuron ci emitted
-                    if ns[ci] <= maxTimes       # maxTimes is the maximum number of spikes we will track (500Hz)
-                        times[ci,ns[ci]] = t    # record spike times
-                    end
 
                     # Accumulate the contribution of spikes to postsynaptic currents
                     # Network connectivity is divided into two parts:
@@ -151,7 +148,6 @@ println("elapsed time: ",elapsed_time)
 println(mean(ns)/(dt/1000*Nsteps), " Hz")
 
 end # end loop over trainings
-
 
 return wpWeightIn, wpWeightOut
 

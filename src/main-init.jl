@@ -1,20 +1,18 @@
 using Distributions
-using PyCall
-using PyPlot
 using LinearAlgebra
 using Random
 using JLD
 
 data_dir = length(ARGS)>0 ? ARGS[1] : "."
 
-include("struct.jl")
+include(joinpath(@__DIR__,"struct.jl"))
 include(joinpath(data_dir,"param.jl"))
 include(joinpath(@__DIR__,"genInitialWeights.jl"))
 include(joinpath(@__DIR__,"genPlasticWeights.jl"))
 include(joinpath(@__DIR__,"gpu","convertWgtIn2Out.jl"))
 include(joinpath(@__DIR__,"genTarget.jl"))
 include(joinpath(@__DIR__,"genStim.jl"))
-include(joinpath(@__DIR__,"runinitial.jl"))
+include(joinpath(@__DIR__,"runinit.jl"))
 include(joinpath(@__DIR__,"funSample.jl"))
 
 # set up variables
@@ -56,7 +54,7 @@ bias = zeros(p.Ncells)
 #----------- initialization --------------#
 w0Index, w0Weights, nc0 = genInitialWeights(p)
 
-uavg, ns0, ustd = runinitial(train_time, dt, Nsteps, Ncells, Ne, refrac, vre,
+uavg, ns0, ustd = runinit(train_time, dt, Nsteps, Ncells, Ne, refrac, vre,
     invtauedecay, invtauidecay, mu, thresh, invtau, maxTimes, times, ns, forwardInputsE,
     forwardInputsI, forwardInputsEPrev, forwardInputsIPrev, xedecay, xidecay,
     v, lastSpike, uavg, utmp, bias, w0Index, w0Weights, nc0)
