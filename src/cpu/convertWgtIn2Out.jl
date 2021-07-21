@@ -1,4 +1,4 @@
-function convertWgtIn2Out(Ncells,wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
+function convertWgtIn2Out(Ncells,ncpIn,wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
 
     for postCell = 1:Ncells
         for i = 1:ncpIn[postCell]

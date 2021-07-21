@@ -5,59 +5,34 @@ using JLD
 
 data_dir = length(ARGS)>0 ? ARGS[1] : "."
 
-include(joinpath(@__DIR__,"struct.jl"))
-include(joinpath(data_dir,"param.jl"))
+Random.seed!(1)
+
+# --- load code --- #
+kind=:init
 include(joinpath(@__DIR__,"genInitialWeights.jl"))
 include(joinpath(@__DIR__,"genPlasticWeights.jl"))
 include(joinpath(@__DIR__,"gpu","convertWgtIn2Out.jl"))
 include(joinpath(@__DIR__,"genTarget.jl"))
 include(joinpath(@__DIR__,"genStim.jl"))
-include(joinpath(@__DIR__,"runinit.jl"))
+include(joinpath(@__DIR__,"cpu","loop.jl"))
 include(joinpath(@__DIR__,"funSample.jl"))
 
-# set up variables
-invtauedecay = 1/p.tauedecay
-invtauidecay = 1/p.tauidecay
-
-mu = zeros(p.Ncells)
-mu[1:p.Ne] = (p.muemax-p.muemin)*rand(p.Ne) .+ p.muemin
-mu[(p.Ne+1):p.Ncells] = (p.muimax-p.muimin)*rand(p.Ni) .+ p.muimin
-
-thresh = zeros(p.Ncells)
-thresh[1:p.Ne] .= p.threshe
-thresh[(1+p.Ne):p.Ncells] .= p.threshi
-
-invtau = zeros(p.Ncells)
-invtau[1:p.Ne] .= 1/p.taue
-invtau[(1+p.Ne):p.Ncells] .= 1/p.taui
-
-maxTimes = round(Int,p.maxrate*p.train_time/1000)
-times = zeros(p.Ncells,maxTimes)
-ns = zeros(Int,p.Ncells)
-
-forwardInputsE = zeros(p.Ncells) #summed weight of incoming E spikes
-forwardInputsI = zeros(p.Ncells)
-forwardInputsEPrev = zeros(p.Ncells) #as above, for previous timestep
-forwardInputsIPrev = zeros(p.Ncells)
-
-xedecay = zeros(p.Ncells)
-xidecay = zeros(p.Ncells)
-
-v = p.threshe*rand(p.Ncells) #membrane voltage 
-
-lastSpike = -100.0*ones(p.Ncells) #time of last spike
-  
-uavg = zeros(p.Ncells)
-utmp = zeros(p.Nsteps - Int(1000/p.dt),1000)
-bias = zeros(p.Ncells)
+# --- set up variables --- #
+include(joinpath(@__DIR__,"struct.jl"))
+include(joinpath(data_dir,"param.jl"))
+include(joinpath(@__DIR__,"cpu","variables.jl"))
 
 #----------- initialization --------------#
 w0Index, w0Weights, nc0 = genInitialWeights(p)
 
-uavg, ns0, ustd = runinit(train_time, dt, Nsteps, Ncells, Ne, refrac, vre,
-    invtauedecay, invtauidecay, mu, thresh, invtau, maxTimes, times, ns, forwardInputsE,
-    forwardInputsI, forwardInputsEPrev, forwardInputsIPrev, xedecay, xidecay,
-    v, lastSpike, uavg, utmp, bias, w0Index, w0Weights, nc0)
+uavg, ns0, ustd = loop_init(nothing, nothing, nothing, p.train_time, dt,
+    p.Nsteps, p.Ncells, p.Ne, refrac, vre, invtauedecay, invtauidecay,
+    nothing, mu, thresh, invtau, ns, forwardInputsE, forwardInputsI,
+    nothing, forwardInputsEPrev, forwardInputsIPrev, nothing, nothing,
+    nothing, xedecay, xidecay, nothing, nothing, nothing, bias, nothing,
+    lastSpike, nothing, nothing, nothing, v, nothing, nothing, w0Index,
+    w0Weights, nc0, nothing, nothing, nothing, nothing, nothing, nothing,
+    nothing, nothing, nothing, uavg, utmp)
 
 wpWeightIn, wpWeightOut, wpIndexIn, wpIndexOut, wpIndexConvert, ncpIn, ncpOut =
     genPlasticWeights(p, w0Index, nc0, ns0)

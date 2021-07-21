@@ -1,12 +1,6 @@
-#=
-using ProfileSVG
-foo = @profview ...
-ProfileSVG.save("profile.svg", foo.g)
-=#
-
 using Distributions
-#using PyCall
-#using PyPlot
+using PyCall
+using PyPlot
 using LinearAlgebra
 using Random
 using JLD

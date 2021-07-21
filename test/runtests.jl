@@ -3,7 +3,7 @@ using Test, JLD
 mkdir(joinpath(@__DIR__,"cpu-data"))
 cp(joinpath(@__DIR__,"param.jl"), joinpath(@__DIR__,"cpu-data","param.jl"))
 init_out = readlines(pipeline(`$(Base.julia_cmd())
-                               $(joinpath(@__DIR__,"..","src","main-initialization.jl"))
+                               $(joinpath(@__DIR__,"..","src","init.jl"))
                                $(joinpath(@__DIR__,"cpu-data"))`))
 for iHz in findall(contains("Hz"), init_out)
   @test 0 < parse(Float64, match(r"([.0-9]+) Hz", init_out[iHz]).captures[1]) < 10
@@ -11,10 +11,10 @@ end
 
 cp(joinpath(@__DIR__,"cpu-data"), joinpath(@__DIR__,"gpu-data"))
 cpu_out = readlines(pipeline(`$(Base.julia_cmd())
-                              $(joinpath(@__DIR__,"..","src","cpu","main-train.jl"))
+                              $(joinpath(@__DIR__,"..","src","cpu","train.jl"))
                               $(joinpath(@__DIR__,"cpu-data"))`))
 gpu_out = readlines(pipeline(`$(Base.julia_cmd())
-                              $(joinpath(@__DIR__,"..","src","gpu","main-train.jl"))
+                              $(joinpath(@__DIR__,"..","src","gpu","train.jl"))
                               $(joinpath(@__DIR__,"gpu-data"))`))
 
 iHz = findlast(contains("Hz"), cpu_out)

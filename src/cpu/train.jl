@@ -1,0 +1,104 @@
+using Distributions
+using LinearAlgebra
+using Random
+using JLD
+
+data_dir = length(ARGS)>0 ? ARGS[1] : "."
+
+# --- load code --- #
+kind=:train
+include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
+include(joinpath(@__DIR__,"loop.jl"))
+include(joinpath(@__DIR__,"rls.jl"))
+
+#----------- load initialization --------------#
+include(joinpath(dirname(@__DIR__),"struct.jl"))
+p = load(joinpath(data_dir,"p.jld"))["p"]
+w0Index = load(joinpath(data_dir,"w0Index.jld"))["w0Index"]
+w0Weights = load(joinpath(data_dir,"w0Weights.jld"))["w0Weights"]
+nc0 = load(joinpath(data_dir,"nc0.jld"))["nc0"]
+stim = load(joinpath(data_dir,"stim.jld"))["stim"]
+xtarg = load(joinpath(data_dir,"xtarg.jld"))["xtarg"]
+wpIndexIn = load(joinpath(data_dir,"wpIndexIn.jld"))["wpIndexIn"]
+wpIndexOut = load(joinpath(data_dir,"wpIndexOut.jld"))["wpIndexOut"]
+wpIndexConvert = load(joinpath(data_dir,"wpIndexConvert.jld"))["wpIndexConvert"]
+wpWeightIn = load(joinpath(data_dir,"wpWeightIn.jld"))["wpWeightIn"]
+wpWeightOut = load(joinpath(data_dir,"wpWeightOut.jld"))["wpWeightOut"]
+ncpIn = load(joinpath(data_dir,"ncpIn.jld"))["ncpIn"]
+ncpOut = load(joinpath(data_dir,"ncpOut.jld"))["ncpOut"]
+
+wpWeightIn = transpose(dropdims(wpWeightIn, dims=2))
+
+isnothing(p.seed) || Random.seed!(p.seed)
+
+# --- set up correlation matrix --- #
+P = Vector{Array{Float64,2}}(); 
+Px = Vector{Array{Int64,1}}();
+
+ci_numExcSyn = p.Lexc;
+ci_numInhSyn = p.Linh;
+ci_numSyn = ci_numExcSyn + ci_numInhSyn
+
+# L2-penalty
+Pinv_L2 = p.penlambda*one(zeros(ci_numSyn,ci_numSyn))
+# row sum penalty
+vec10 = [ones(ci_numExcSyn); zeros(ci_numInhSyn)];
+vec01 = [zeros(ci_numExcSyn); ones(ci_numInhSyn)];
+Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01')
+# sum of penalties
+Pinv = Pinv_L2 + Pinv_rowsum;
+Pinv_norm = Pinv \ one(zeros(ci_numSyn,ci_numSyn))
+
+for ci=1:Int(p.Ncells)
+    # neurons presynaptic to ci
+    push!(Px, wpIndexIn[ci,:]) 
+
+    push!(P, copy(Pinv_norm));
+end
+
+# --- set up variables --- #
+include(joinpath(@__DIR__,"variables.jl"))
+Px = Vector{Vector{p.IntPrecision}}(Px);
+P = Vector{Matrix{p.FloatPrecision}}(P);
+stim = Array{p.FloatPrecision}(stim);
+xtarg = Array{p.FloatPrecision}(xtarg);
+ncpIn = Array{p.IntPrecision}(ncpIn)
+w0Index = Array{p.IntPrecision}(w0Index)
+w0Weights = Array{p.FloatPrecision}(w0Weights)
+wpIndexIn = Array{p.IntPrecision}(wpIndexIn)
+wpIndexConvert = Array{p.IntPrecision}(wpIndexConvert)
+wpIndexOut = Array{p.IntPrecision}(wpIndexOut)
+wpWeightIn = Array{p.FloatPrecision}(wpWeightIn);
+wpWeightOut = Array{p.FloatPrecision}(wpWeightOut)
+
+#----------- train the network --------------#
+for iloop =1:p.nloop
+    println("Loop no. ",iloop) 
+
+    # initialize variables
+    lastSpike .= -100.0
+    ns .= 0
+    xedecay .= xidecay .= xpdecay .= 0
+    r .= 0
+    v .= rand(p.Ncells) # membrane potentials have random initial values
+
+    start_time = time()
+
+    loop_train(p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
+        p.Nsteps, p.Ncells, nothing, refrac, vre, invtauedecay, invtauidecay,
+        invtaudecay_plastic, mu, thresh, invtau, ns, forwardInputsE,
+        forwardInputsI, forwardInputsP, forwardInputsEPrev,
+        forwardInputsIPrev, forwardInputsPPrev, forwardSpike,
+        forwardSpikePrev, xedecay, xidecay, xpdecay, synInputBalanced, r,
+        bias, nothing, lastSpike, plusone, minusone, k, v, P, Px, w0Index,
+        w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut, wpIndexConvert,
+        wpWeightIn, wpWeightOut, ncpIn, ncpOut, nothing, nothing)
+
+    elapsed_time = time()-start_time
+    println("elapsed time: ",elapsed_time)
+    println(mean(ns)/(dt/1000*p.Nsteps), " Hz")
+
+end # end loop over trainings
+
+save(joinpath(data_dir,"wpWeightIn-trained.jld"), "wpWeightIn", collect(wpWeightIn))
+save(joinpath(data_dir,"wpWeightOut-trained.jld"), "wpWeightOut", wpWeightOut)

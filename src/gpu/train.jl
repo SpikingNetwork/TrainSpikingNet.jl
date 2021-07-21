@@ -1,0 +1,102 @@
+using Distributions
+using LinearAlgebra
+using Random
+using JLD
+using CUDA, NNlib, NNlibCUDA
+
+data_dir = length(ARGS)>0 ? ARGS[1] : "."
+
+CUDA.allowscalar(false)
+
+#----------- load initialization --------------#
+include(joinpath(dirname(@__DIR__),"struct.jl"))
+p = load(joinpath(data_dir,"p.jld"))["p"]
+w0Index = load(joinpath(data_dir,"w0Index.jld"))["w0Index"]
+w0Weights = load(joinpath(data_dir,"w0Weights.jld"))["w0Weights"]
+nc0 = load(joinpath(data_dir,"nc0.jld"))["nc0"]
+stim = load(joinpath(data_dir,"stim.jld"))["stim"]
+xtarg = load(joinpath(data_dir,"xtarg.jld"))["xtarg"]
+wpIndexIn = load(joinpath(data_dir,"wpIndexIn.jld"))["wpIndexIn"]
+wpIndexOut = load(joinpath(data_dir,"wpIndexOut.jld"))["wpIndexOut"]
+wpIndexConvert = load(joinpath(data_dir,"wpIndexConvert.jld"))["wpIndexConvert"]
+wpWeightIn = load(joinpath(data_dir,"wpWeightIn.jld"))["wpWeightIn"]
+wpWeightOut = load(joinpath(data_dir,"wpWeightOut.jld"))["wpWeightOut"]
+ncpOut = load(joinpath(data_dir,"ncpOut.jld"))["ncpOut"]
+
+isnothing(p.seed) || Random.seed!(p.seed)
+
+# --- load code --- #
+kind=:train
+include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
+include(joinpath(@__DIR__,"loop.jl"))
+include(joinpath(@__DIR__,"rls.jl"))
+
+#--- set up correlation matrix ---#
+ci_numExcSyn = p.Lexc;
+ci_numInhSyn = p.Linh;
+ci_numSyn = ci_numExcSyn + ci_numInhSyn
+
+# neurons presynaptic to ci
+Px = wpIndexIn'
+
+# L2-penalty
+Pinv_L2 = p.penlambda*one(zeros(ci_numSyn,ci_numSyn))
+# row sum penalty
+vec10 = [ones(ci_numExcSyn); zeros(ci_numInhSyn)];
+vec01 = [zeros(ci_numExcSyn); ones(ci_numInhSyn)];
+Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01')
+# sum of penalties
+Pinv = Pinv_L2 + Pinv_rowsum;
+P = Array{Float64}(undef, (p.Lexc+p.Linh, p.Lexc+p.Linh, p.Ncells)); 
+P .= Pinv \ one(zeros(ci_numSyn,ci_numSyn));
+
+# --- set up variables --- #
+include(joinpath(@__DIR__,"variables.jl"))
+Px = CuArray{p.IntPrecision}(Px);
+P = CuArray{p.FloatPrecision}(P);
+stim = CuArray{p.FloatPrecision}(stim);
+xtarg = CuArray{p.FloatPrecision}(xtarg);
+invtauedecay = p.FloatPrecision(1/p.tauedecay)
+invtauidecay = p.FloatPrecision(1/p.tauidecay)
+invtaudecay_plastic = p.FloatPrecision(1/p.taudecay_plastic)
+dt = p.FloatPrecision(p.dt)
+w0Index = CuArray{p.IntPrecision}(w0Index)
+w0Weights = CuArray{p.FloatPrecision}(w0Weights)
+wpIndexIn = CuArray{p.IntPrecision}(wpIndexIn)
+wpIndexConvert = CuArray{p.IntPrecision}(wpIndexConvert)
+wpIndexOut = CuArray{p.IntPrecision}(wpIndexOut)
+wpWeightIn = CuArray{p.FloatPrecision}(wpWeightIn);
+wpWeightOut = CuArray{p.FloatPrecision}(wpWeightOut)
+
+#----------- train the network --------------#
+for iloop =1:p.nloop
+    println("Loop no. ",iloop) 
+
+    lastSpike .= -100.0
+    ns .= 0
+    xedecay .= xidecay .= xpdecay .= 0
+    r .= 0
+    v .= CuArray(rand(p.Ncells))
+    learn_seq = 1
+
+    start_time = time()
+
+    loop_train(p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
+        p.Nsteps, p.Ncells, p.L, nothing, refrac, vre, invtauedecay, invtauidecay,
+        invtaudecay_plastic, mu, thresh, invtau, ns, forwardInputsE,
+        forwardInputsI, forwardInputsP, forwardInputsEPrev,
+        forwardInputsIPrev, forwardInputsPPrev, forwardSpike,
+        forwardSpikePrev, xedecay, xidecay, xpdecay, synInputBalanced, r,
+        bias, nothing, lastSpike, bnotrefrac, bspike, plusone, minusone, k,
+        den, e, v, P, Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn,
+        wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, ncpOut,
+        nothing, nothing)
+
+    elapsed_time = time()-start_time
+    println("elapsed time: ",elapsed_time)
+    println(mean(ns)/(dt/1000*p.Nsteps), " Hz")
+
+end
+
+save(joinpath(data_dir,"wpWeightIn-trained.jld"), "wpWeightIn", Array(wpWeightIn))
+save(joinpath(data_dir,"wpWeightOut-trained.jld"), "wpWeightOut", Array(wpWeightOut))
