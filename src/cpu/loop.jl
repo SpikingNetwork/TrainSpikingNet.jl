@@ -3,10 +3,10 @@
     invtauidecay, invtaudecay_plastic, mu, thresh, invtau, ns, forwardInputsE,
     forwardInputsI, forwardInputsP, forwardInputsEPrev, forwardInputsIPrev,
     forwardInputsPPrev, forwardSpike, forwardSpikePrev, xedecay, xidecay,
-    xpdecay, synInputBalanced, r, bias, wid, example_neurons, lastSpike,
-    plusone, minusone, k, v, P, Px, w0Index, w0Weights, nc0, stim, xtarg,
-    wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, ncpIn,
-    ncpOut, uavg, utmp)
+    xpdecay, synInputBalanced, synInput, r, bias, wid, example_neurons,
+    lastSpike, plusone, k, v, P, Px, w0Index, w0Weights, nc0, stim,
+    xtarg, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
+    ncpIn, ncpOut, uavg, utmp)
 
 @static if kind == :test
     learn_nsteps = Int((train_time - stim_off)/learn_every)
@@ -74,7 +74,8 @@ for ti=1:Nsteps
     #                  - Fixed throughout the simulation. Used to compute forwardInputsP (see line 221)
 
     @static kind==:train && if t > stim_off && t <= train_time && mod(t, learn_every) == 0
-        wpWeightIn, wpWeightOut, learn_seq = rls(k, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, minusone)
+        wpWeightIn, wpWeightOut = rls(k, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone)
+        learn_seq += 1
     end
 
     @static if kind == :test
@@ -96,37 +97,37 @@ for ti=1:Nsteps
     #   - activity variables used for training
     #       * spikes emitted by each neuron (forwardSpike)
     #       * synapse-filtered spikes emitted by each neuron (r)        
-    for ci = 1:Ncells
+    Threads.@threads for ci = 1:Ncells
         xedecay[ci] += -dt*xedecay[ci]*invtauedecay + forwardInputsEPrev[ci]*invtauedecay
         xidecay[ci] += -dt*xidecay[ci]*invtauidecay + forwardInputsIPrev[ci]*invtauidecay
         @static if kind in [:train, :test]
             xpdecay[ci] += -dt*xpdecay[ci]*invtaudecay_plastic + forwardInputsPPrev[ci]*invtaudecay_plastic
             synInputBalanced[ci] = xedecay[ci] + xidecay[ci]
-            synInput = synInputBalanced[ci] + xpdecay[ci]
+            synInput[ci] = synInputBalanced[ci] + xpdecay[ci]
         end
         @static if kind == :init
-            synInput = xedecay[ci] + xidecay[ci]
+            synInput[ci] = xedecay[ci] + xidecay[ci]
         end
 
         @static if kind == :init
             if ti > Int(1000/dt) # 1000 ms
-                uavg[ci] += synInput / (Nsteps - round(Int,1000/dt)) # save synInput
+                uavg[ci] += synInput[ci] / (Nsteps - round(Int,1000/dt)) # save synInput
             end
 
             if ti > Int(1000/dt) && ci <=1000
-                utmp[ti - round(Int,1000/dt), ci] = synInput
+                utmp[ti - round(Int,1000/dt), ci] = synInput[ci]
             end
         end
 
         @static if kind == :test
             # saved for visualization
             if ci <= example_neurons
-                vtotal_exccell[ti,ci] = synInput
+                vtotal_exccell[ti,ci] = synInput[ci]
                 vebal_exccell[ti,ci] = xedecay[ci]
                 vibal_exccell[ti,ci] = xidecay[ci]
                 vplastic_exccell[ti,ci] = xpdecay[ci]
             elseif ci >= Ncells - example_neurons + 1
-                vtotal_inhcell[ti,ci-Ncells+example_neurons] = synInput
+                vtotal_inhcell[ti,ci-Ncells+example_neurons] = synInput[ci]
                 vebal_inhcell[ti,ci-Ncells+example_neurons] = xedecay[ci]
                 vibal_inhcell[ti,ci-Ncells+example_neurons] = xidecay[ci]
                 vplastic_inhcell[ti,ci-Ncells+example_neurons] = xpdecay[ci]
@@ -143,7 +144,7 @@ for ti=1:Nsteps
 
         # if training, compute synapse-filtered spike trains
         @static if kind == :train
-            r[ci] += -dt*r[ci]*invtaudecay_plastic + forwardSpikePrev[ci]*invtaudecay_plastic
+            r[ci] += (-dt*r[ci] + forwardSpikePrev[ci])*invtaudecay_plastic
         end
 
         # external inputs
@@ -164,7 +165,7 @@ for ti=1:Nsteps
         # neuron ci not in refractory period
         if t > (lastSpike[ci] + refrac)  
             # update membrane potential
-            v[ci] += dt*(invtau[ci]*(bias[ci]-v[ci] + synInput))
+            v[ci] += dt*(invtau[ci]*(bias[ci]-v[ci] + synInput[ci]))
 
             #spike occurred
             if v[ci] > thresh[ci]                      
@@ -172,43 +173,47 @@ for ti=1:Nsteps
                 @static kind==:train && (forwardSpike[ci] = 1.)   # record that neuron ci spiked. Used for computing r[ci]
                 lastSpike[ci] = t           # record neuron ci's last spike time. Used for checking ci is not in refractory period
                 ns[ci] = ns[ci]+1           # number of spikes neuron ci emitted
-
-                # Accumulate the contribution of spikes to postsynaptic currents
-                # Network connectivity is divided into two parts:
-                #   - balanced connections (static) 
-                #   - plastic connections
-
-                # (1) balanced connections (static)
-                # loop over neurons (indexed by j) postsynaptic to neuron ci.                     
-                # nc0[ci] is the number neurons postsynaptic neuron ci
-                for j = 1:nc0[ci]                       
-                    post_ci = w0Index[j,ci]                 # cell index of j_th postsynaptic neuron
-                    wgt = w0Weights[j,ci]                   # synaptic weight of the connection, ci -> post_ci
-                    if wgt > 0                              # excitatory synapse
-                        forwardInputsE[post_ci] += wgt      #   - neuron ci spike's excitatory contribution to post_ci's synaptic current
-                    elseif wgt < 0                          # inhibitory synapse
-                        forwardInputsI[post_ci] += wgt      #   - neuron ci spike's inhibitory contribution to post_ci's synaptic current
-                    end
-                end #end loop over synaptic projections
-
-                # (2) plastic connections
-                # loop over neurons (indexed by j) postsynaptic to neuron ci. 
-                # ncpOut[ci] is the number neurons postsynaptic neuron ci
-                @static kind in [:train,:test] && for j = 1:ncpOut[ci]
-                    post_ci = Int(wpIndexOut[j,ci])                 # cell index of j_th postsynaptic neuron
-                    forwardInputsP[post_ci] += wpWeightOut[j,ci]    # neuron ci spike's contribution to post_ci's synaptic current
-                end
             end #end if(spike occurred)
         end #end not in refractory period
+    end #end loop over neurons
+
+    for ci = 1:Ncells
+        if lastSpike[ci] == t
+            # Accumulate the contribution of spikes to postsynaptic currents
+            # Network connectivity is divided into two parts:
+            #   - balanced connections (static) 
+            #   - plastic connections
+
+            # (1) balanced connections (static)
+            # loop over neurons (indexed by j) postsynaptic to neuron ci.                     
+            # nc0[ci] is the number neurons postsynaptic neuron ci
+            for j = 1:nc0[ci]                       
+                post_ci = w0Index[j,ci]                 # cell index of j_th postsynaptic neuron
+                wgt = w0Weights[j,ci]                   # synaptic weight of the connection, ci -> post_ci
+                if wgt > 0                              # excitatory synapse
+                    forwardInputsE[post_ci] += wgt      #   - neuron ci spike's excitatory contribution to post_ci's synaptic current
+                elseif wgt < 0                          # inhibitory synapse
+                    forwardInputsI[post_ci] += wgt      #   - neuron ci spike's inhibitory contribution to post_ci's synaptic current
+                end
+            end #end loop over synaptic projections
+
+            # (2) plastic connections
+            # loop over neurons (indexed by j) postsynaptic to neuron ci. 
+            # ncpOut[ci] is the number neurons postsynaptic neuron ci
+            @static kind in [:train,:test] && for j = 1:ncpOut[ci]
+                post_ci = wpIndexOut[j,ci]                 # cell index of j_th postsynaptic neuron
+                forwardInputsP[post_ci] += wpWeightOut[j,ci]    # neuron ci spike's contribution to post_ci's synaptic current
+            end
+        end
     end #end loop over neurons
 
     # save spiking activities produced at the current time step
     #   - forwardInputsPrev's will be used in the next time step to compute synaptic currents (xedecay, xidecay, xpdecay)
     #   - forwardSpikePrev will be used in the next time step to compute synapse-filter spikes (r)
-    forwardInputsEPrev = copy(forwardInputsE)
-    forwardInputsIPrev = copy(forwardInputsI)
-    @static kind in [:train,:test] && (forwardInputsPPrev = copy(forwardInputsP))
-    @static kind==:train && (forwardSpikePrev = copy(forwardSpike)) # if training, save spike trains
+    forwardInputsEPrev .= forwardInputsE
+    forwardInputsIPrev .= forwardInputsI
+    @static kind in [:train,:test] && (forwardInputsPPrev .= forwardInputsP)
+    @static kind==:train && (forwardSpikePrev .= forwardSpike) # if training, save spike trains
 
 end #end loop over time
 

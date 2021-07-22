@@ -30,7 +30,7 @@ uavg, ns0, ustd = loop_init(nothing, nothing, nothing, p.train_time, dt,
     nothing, mu, thresh, invtau, ns, forwardInputsE, forwardInputsI,
     nothing, forwardInputsEPrev, forwardInputsIPrev, nothing, nothing,
     nothing, xedecay, xidecay, nothing, nothing, nothing, bias, nothing,
-    lastSpike, nothing, nothing, nothing, v, nothing, nothing, w0Index,
+    lastSpike, nothing, nothing, v, nothing, nothing, w0Index,
     w0Weights, nc0, nothing, nothing, nothing, nothing, nothing, nothing,
     nothing, nothing, nothing, uavg, utmp)
 

@@ -79,7 +79,8 @@ for ti=1:Nsteps
     forwardInputsP .= 0.0;
 
     @static kind==:train && if t > stim_off && t <= train_time && mod(t, learn_every) == 0
-        wpWeightIn, wpWeightOut, learn_seq = rls(k, den, e, L, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, minusone)
+        wpWeightIn, wpWeightOut = rls(k, den, e, L, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, minusone)
+        learn_seq += 1
     end
 
     xedecay .+= (-dt.*xedecay .+ forwardInputsEPrev[2:end]).*invtauedecay
@@ -141,10 +142,10 @@ for ti=1:Nsteps
         @cuda name="update_forwardInputsP" threads=configP.threads blocks=configP.blocks kernelP(ispike, wpIndexOut, wpWeightOut, forwardInputsP)
     end
 
-    forwardInputsEPrev = copy(forwardInputsE)
-    forwardInputsIPrev = copy(forwardInputsI)
-    forwardInputsPPrev = copy(forwardInputsP)
-    @static kind==:train && (forwardSpikePrev = copy(forwardSpike))
+    forwardInputsEPrev .= forwardInputsE
+    forwardInputsIPrev .= forwardInputsI
+    forwardInputsPPrev .= forwardInputsP
+    @static kind==:train && (forwardSpikePrev .= forwardSpike)
 end
 
 @static if kind == :test

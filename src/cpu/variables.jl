@@ -29,6 +29,7 @@ xedecay = zeros(p.FloatPrecision, p.Ncells)          # synapse-filtered excitato
 xidecay = zeros(p.FloatPrecision, p.Ncells)          # synapse-filtered inhibitory current (i.e. filtered version of forwardInputsI)
 xpdecay = zeros(p.FloatPrecision, p.Ncells)          # synapse-filtered plastic current (i.e. filtered version of forwardInputsP)
 synInputBalanced = zeros(p.FloatPrecision, p.Ncells) # sum of xedecay and xidecay (i.e. synaptic current from the balanced connections)
+synInput = zeros(p.FloatPrecision, p.Ncells)         # sum of xedecay and xidecay (i.e. synaptic current from the balanced connections)
 r = zeros(p.FloatPrecision, p.Ncells)                # synapse-filtered spikes (i.e. filtered version of forwardSpike)
 
 bias = zeros(p.FloatPrecision, p.Ncells)             # total external input to neurons
@@ -36,7 +37,6 @@ bias = zeros(p.FloatPrecision, p.Ncells)             # total external input to n
 lastSpike = Array{p.FloatPrecision}(undef, p.Ncells)  # last time a neuron spiked
 
 plusone = p.FloatPrecision(1.0)
-minusone = p.FloatPrecision(-1.0)
 
 refrac = p.FloatPrecision(p.refrac)
 vre = p.FloatPrecision(p.vre)
@@ -44,7 +44,7 @@ vre = p.FloatPrecision(p.vre)
 uavg = zeros(p.Ncells)
 utmp = zeros(p.Nsteps - Int(1000/p.dt),1000)
 
-k = Vector{p.FloatPrecision}(undef, 2*p.L)
+k = Matrix{p.FloatPrecision}(undef, 2*p.L, p.Ncells)
 v = Vector{p.FloatPrecision}(undef, p.Ncells)
 
 dt = p.FloatPrecision(p.dt)

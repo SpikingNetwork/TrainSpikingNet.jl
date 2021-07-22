@@ -82,7 +82,6 @@ for iloop =1:p.nloop
     xedecay .= xidecay .= xpdecay .= 0
     r .= 0
     v .= CuArray(rand(p.Ncells))
-    learn_seq = 1
 
     start_time = time()
 

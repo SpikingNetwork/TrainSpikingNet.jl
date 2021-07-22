@@ -5,6 +5,8 @@ using JLD
 
 data_dir = length(ARGS)>0 ? ARGS[1] : "."
 
+BLAS.set_num_threads(1)
+
 #----------- load initialization --------------#
 include(joinpath(dirname(@__DIR__),"struct.jl"))
 include(joinpath(data_dir,"param.jl"))
@@ -94,10 +96,10 @@ for iloop =1:p.nloop
         forwardInputsE, forwardInputsI, forwardInputsP, forwardInputsEPrev,
         forwardInputsIPrev, forwardInputsPPrev, forwardSpike,
         forwardSpikePrev, xedecay, xidecay, xpdecay, synInputBalanced,
-        r, bias, nothing, nothing, lastSpike, plusone, minusone, k, v, P,
-        Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut,
-        wpIndexConvert, wpWeightIn, wpWeightOut, ncpIn, ncpOut, nothing,
-        nothing)
+        synInput, r, bias, nothing, nothing, lastSpike, plusone,
+        k, v, P, Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn,
+        wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, ncpIn, ncpOut,
+        nothing, nothing)
 
     elapsed_time = time()-start_time
     println("elapsed time: ",elapsed_time)
@@ -112,9 +114,9 @@ for iloop =1:p.nloop
             invtaudecay_plastic, mu, thresh, invtau, ns, forwardInputsE,
             forwardInputsI, forwardInputsP, forwardInputsEPrev,
             forwardInputsIPrev, forwardInputsPPrev, nothing, nothing,
-            xedecay, xidecay, xpdecay, synInputBalanced, r, bias, p.wid,
-            p.example_neurons, lastSpike, nothing, nothing, nothing, v,
-            nothing, nothing, w0Index, w0Weights, nc0, stim, nothing,
+            xedecay, xidecay, xpdecay, synInputBalanced, synInput, r, bias,
+            p.wid, p.example_neurons, lastSpike, nothing, nothing,
+            v, nothing, nothing, w0Index, w0Weights, nc0, stim, nothing,
             nothing, wpIndexOut, nothing, nothing, wpWeightOut, nothing,
             ncpOut, nothing, nothing)
 

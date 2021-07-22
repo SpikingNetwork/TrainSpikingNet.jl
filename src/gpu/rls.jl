@@ -7,7 +7,6 @@ function rls(k, den, e, L, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq,
     NNlib.batched_mul!(e, batched_transpose(wpWeightIn), rtrim)
     e .+= reshape(synInputBalanced .- xtarg[learn_seq,:], 1,1,Ncells)
     wpWeightIn .-= batched_mul(batched_mul(k, e), den)
-    learn_seq += 1
     wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
-    return wpWeightIn, wpWeightOut, learn_seq
+    return wpWeightIn, wpWeightOut
 end

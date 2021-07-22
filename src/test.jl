@@ -42,7 +42,7 @@ vtotal_exccell, vtotal_inhcell, vebal_exccell, vibal_exccell, vebal_inhcell,
     thresh, invtau, ns, forwardInputsE, forwardInputsI, forwardInputsP,
     forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev, nothing,
     nothing, xedecay, xidecay, xpdecay, synInputBalanced, r, bias,
-    example_neurons, lastSpike, nothing, nothing, nothing, v, nothing,
+    example_neurons, lastSpike, nothing, nothing, v, nothing,
     nothing, w0Index, w0Weights, nc0, stim, nothing, nothing, wpIndexOut,
     nothing, nothing, wpWeightOut, nothing, ncpOut, nothing, nothing)
 
