@@ -41,7 +41,6 @@ xtarg = genTarget(p,uavg,"zero")
 stim = genStim(p)
 
 #----------- save initialization --------------#
-save(joinpath(data_dir,"p.jld"), "p", p)
 save(joinpath(data_dir,"w0Index.jld"), "w0Index", w0Index)
 save(joinpath(data_dir,"w0Weights.jld"), "w0Weights", w0Weights)
 save(joinpath(data_dir,"nc0.jld"), "nc0", nc0)

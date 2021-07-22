@@ -41,14 +41,13 @@ cukernelP = cufunction(kernelP, Tuple{CuDeviceArray{UInt64,1,AS.Global}, CuDevic
     invtauidecay, invtaudecay_plastic, mu, thresh, invtau, ns, forwardInputsE,
     forwardInputsI, forwardInputsP, forwardInputsEPrev, forwardInputsIPrev,
     forwardInputsPPrev, forwardSpike, forwardSpikePrev, xedecay, xidecay,
-    xpdecay, synInputBalanced, synInput, r, bias, example_neurons, lastSpike,
-    bnotrefrac, bspike, plusone, minusone, k, den, e, v, P, Px, w0Index,
-    w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut, wpIndexConvert,
-    wpWeightIn, wpWeightOut, ncpOut, uavg, utmp)
+    xpdecay, synInputBalanced, synInput, r, bias, wid, example_neurons,
+    lastSpike, bnotrefrac, bspike, plusone, minusone, k, den, e, v, P,
+    Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut,
+    wpIndexConvert, wpWeightIn, wpWeightOut, ncpOut, uavg, utmp)
 
 @static if kind == :test
     learn_nsteps = Int((train_time - stim_off)/learn_every)
-    wid = 50
     widInc = Int(2*wid/learn_every - 1)
 
     vtotal_exccell = CUDA.zeros(Nsteps,example_neurons)

@@ -2,6 +2,10 @@ FloatPrecision = Float64
 IntPrecision = UInt64
 seed=1
 
+performance_interval = 0  # set to N to measure every N loops
+example_neurons = 25
+wid = 50   
+
 dt = 0.1 #simulation timestep (ms)
 
 # training variables
@@ -87,5 +91,5 @@ wpii = -ji * sqrtK / wpscale
 maxrate = 500 #(Hz) maximum average firing rate.  if the average firing rate across the simulation for any neuron exceeds this value, some of that neuron's spikes will not be saved
 
 
-p = paramType(FloatPrecision,IntPrecision,seed,train_duration,nloop,penlambda,penlamEE,penlamEI,penlamIE,penlamII,penmu,frac,learn_every,learn_step,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
+p = paramType(FloatPrecision,IntPrecision,seed,performance_interval,example_neurons,wid,train_duration,nloop,penlambda,penlamEE,penlamEI,penlamIE,penlamII,penmu,frac,learn_every,learn_step,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
 je,ji,jx,jee,jei,jie,jii,wpee,wpei,wpie,wpii,muemin,muemax,muimin,muimax,vre,threshe,threshi,refrac,tauedecay,tauidecay,taudecay_plastic,maxrate);

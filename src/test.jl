@@ -16,7 +16,7 @@ include(joinpath(@__DIR__,"cpu","funRollingAvg.jl"))
 
 #----------- load initialization --------------#
 include(joinpath(@__DIR__,"struct.jl"))
-p = load(joinpath(data_dir,"p.jld"))["p"]
+include(joinpath(data_dir,"param.jl"))
 w0Index = load(joinpath(data_dir,"w0Index.jld"))["w0Index"]
 w0Weights = load(joinpath(data_dir,"w0Weights.jld"))["w0Weights"]
 nc0 = load(joinpath(data_dir,"nc0.jld"))["nc0"]
