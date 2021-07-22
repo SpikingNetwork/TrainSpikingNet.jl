@@ -12,7 +12,7 @@ BLAS.set_num_threads(8)
 # --- load code --- #
 kind=:test
 include(joinpath(@__DIR__,"cpu","loop.jl"))
-include(joinpath(@__DIR__,"funRollingAvg.jl"))
+include(joinpath(@__DIR__,"cpu","funRollingAvg.jl"))
 
 #----------- load initialization --------------#
 include(joinpath(@__DIR__,"struct.jl"))

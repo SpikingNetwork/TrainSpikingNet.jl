@@ -25,6 +25,7 @@ xedecay = CUDA.zeros(p.FloatPrecision, p.Ncells)  # synapse-filtered excitatory 
 xidecay = CUDA.zeros(p.FloatPrecision, p.Ncells)  # synapse-filtered inhibitory current (i.e. filtered version of forwardInputsI)
 xpdecay = CUDA.zeros(p.FloatPrecision, p.Ncells)  # synapse-filtered plastic current (i.e. filtered version of forwardInputsP)
 synInputBalanced = CUDA.zeros(p.FloatPrecision, p.Ncells) # sum of xedecay and xidecay (i.e. synaptic current from the balanced connections)
+synInput = CUDA.zeros(p.FloatPrecision, p.Ncells) # sum of xedecay and xidecay (i.e. synaptic current from the balanced connections)
 r = CUDA.zeros(p.FloatPrecision, p.Ncells)      # synapse-filtered spikes (i.e. filtered version of forwardSpike)
 
 bias = CUDA.zeros(p.FloatPrecision, p.Ncells)   # total external input to neurons

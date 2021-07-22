@@ -78,6 +78,18 @@ for ti=1:Nsteps
         wpWeightIn, wpWeightOut, learn_seq = rls(k, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, minusone)
     end
 
+    @static if kind == :test
+        if t > stim_off && t <= train_time && mod(t,1.0) == 0
+            startInd = floor(Int, (t - stim_off - wid)/learn_every + 1)
+            endInd = min(startInd + widInc, learn_nsteps)
+            startInd = max(startInd, 1)
+            xtotalcnt[startInd:endInd] .+= 1
+            xebalcnt[startInd:endInd] .+= 1
+            xibalcnt[startInd:endInd] .+= 1
+            xplasticcnt[startInd:endInd] .+= 1
+        end
+    end
+
     # update network activities:
     #   - synaptic currents (xedecay, xidecay, xpdecay)
     #   - membrane potential (v) 
@@ -122,14 +134,13 @@ for ti=1:Nsteps
             end
 
             # save rolling average for analysis
-            if t > Int(stim_off) && t <= Int(train_time) && mod(t,1.0) == 0
-                xtotal[:,ci], xtotalcnt = funRollingAvg(stim_off,learn_every,t,wid,widInc,learn_nsteps,xtotal[:,ci],xtotalcnt,synInput,ci)
-                xebal[:,ci], xebalcnt = funRollingAvg(stim_off,learn_every,t,wid,widInc,learn_nsteps,xebal[:,ci],xebalcnt,xedecay[ci],ci)
-                xibal[:,ci], xibalcnt = funRollingAvg(stim_off,learn_every,t,wid,widInc,learn_nsteps,xibal[:,ci],xibalcnt,xidecay[ci],ci)
-                xplastic[:,ci], xplasticcnt = funRollingAvg(stim_off,learn_every,t,wid,widInc,learn_nsteps,xplastic[:,ci],xplasticcnt,xpdecay[ci],ci)
+            if t > stim_off && t <= train_time && mod(t,1.0) == 0
+                xtotal[startInd:endInd,ci] .+= synInput[ci]
+                xebal[startInd:endInd,ci] .+= xedecay[ci]
+                xibal[startInd:endInd,ci] .+= xidecay[ci]
+                xplastic[startInd:endInd,ci] .+= xpdecay[ci]
             end
         end
-
 
         # if training, compute synapse-filtered spike trains
         @static if kind == :train
@@ -211,13 +222,11 @@ end #end loop over time
 end
 
 @static if kind == :test
-    for i = 1:learn_nsteps
-        xtotal[i,:] = xtotal[i,:]/xtotalcnt[i]
-        xebal[i,:] = xebal[i,:]/xebalcnt[i]
-        xibal[i,:] = xibal[i,:]/xibalcnt[i]
-        xplastic[i,:] = xplastic[i,:]/xplasticcnt[i]
-    end
-
+    xtotal ./ xtotalcnt
+    xebal ./ xebalcnt
+    xibal ./ xibalcnt
+    xplastic ./ xplasticcnt
+ 
     return xtotal, xebal, xibal, xplastic, ns, vtotal_exccell, vtotal_inhcell, vebal_exccell, vibal_exccell, vebal_inhcell, vibal_inhcell, vplastic_exccell, vplastic_inhcell
 end
 

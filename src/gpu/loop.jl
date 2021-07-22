@@ -41,10 +41,34 @@ cukernelP = cufunction(kernelP, Tuple{CuDeviceArray{UInt64,1,AS.Global}, CuDevic
     invtauidecay, invtaudecay_plastic, mu, thresh, invtau, ns, forwardInputsE,
     forwardInputsI, forwardInputsP, forwardInputsEPrev, forwardInputsIPrev,
     forwardInputsPPrev, forwardSpike, forwardSpikePrev, xedecay, xidecay,
-    xpdecay, synInputBalanced, r, bias, example_neurons, lastSpike,
+    xpdecay, synInputBalanced, synInput, r, bias, example_neurons, lastSpike,
     bnotrefrac, bspike, plusone, minusone, k, den, e, v, P, Px, w0Index,
     w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut, wpIndexConvert,
     wpWeightIn, wpWeightOut, ncpOut, uavg, utmp)
+
+@static if kind == :test
+    learn_nsteps = Int((train_time - stim_off)/learn_every)
+    wid = 50
+    widInc = Int(2*wid/learn_every - 1)
+
+    vtotal_exccell = CUDA.zeros(Nsteps,example_neurons)
+    vtotal_inhcell = CUDA.zeros(Nsteps,example_neurons)
+    vebal_exccell = CUDA.zeros(Nsteps,example_neurons)
+    vibal_exccell = CUDA.zeros(Nsteps,example_neurons)
+    vebal_inhcell = CUDA.zeros(Nsteps,example_neurons)
+    vibal_inhcell = CUDA.zeros(Nsteps,example_neurons)
+    vplastic_exccell = CUDA.zeros(Nsteps,example_neurons)
+    vplastic_inhcell = CUDA.zeros(Nsteps,example_neurons)
+
+    xtotal = CUDA.zeros(learn_nsteps,Ncells)
+    xebal = CUDA.zeros(learn_nsteps,Ncells)
+    xibal = CUDA.zeros(learn_nsteps,Ncells)
+    xplastic = CUDA.zeros(learn_nsteps,Ncells)
+    xtotalcnt = CUDA.zeros(learn_nsteps)
+    xebalcnt = CUDA.zeros(learn_nsteps)
+    xibalcnt = CUDA.zeros(learn_nsteps)
+    xplasticcnt = CUDA.zeros(learn_nsteps)
+end
 
 @static kind == :train && (learn_seq = 1)
 
@@ -55,7 +79,7 @@ for ti=1:Nsteps
     forwardInputsI .= 0.0;
     forwardInputsP .= 0.0;
 
-    if t > stim_off && t <= train_time && mod(t, learn_every) == 0
+    @static kind==:train && if t > stim_off && t <= train_time && mod(t, learn_every) == 0
         wpWeightIn, wpWeightOut, learn_seq = rls(k, den, e, L, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, minusone)
     end
 
@@ -63,8 +87,34 @@ for ti=1:Nsteps
     xidecay .+= (-dt.*xidecay .+ forwardInputsIPrev[2:end]).*invtauidecay
     xpdecay .+= (-dt.*xpdecay .+ forwardInputsPPrev[2:end]).*invtaudecay_plastic
     synInputBalanced .= xedecay .+ xidecay
+    synInput .= synInputBalanced .+ xpdecay
 
-    r .+= (-dt.*r .+ forwardSpikePrev).*invtaudecay_plastic
+    @static if kind == :test
+        # saved for visualization
+        vtotal_exccell[ti,1:example_neurons] .= synInput[1:example_neurons]
+        vebal_exccell[ti,1:example_neurons] .= xedecay[1:example_neurons]
+        vibal_exccell[ti,1:example_neurons] .= xidecay[1:example_neurons]
+        vplastic_exccell[ti,1:example_neurons] .= xpdecay[1:example_neurons]
+        vtotal_inhcell[ti,1:example_neurons] .= synInput[1:example_neurons]
+        vebal_inhcell[ti,1:example_neurons] .= xedecay[end-example_neurons+1:end]
+        vibal_inhcell[ti,1:example_neurons] .= xidecay[end-example_neurons+1:end]
+        vplastic_inhcell[ti,1:example_neurons] .= xpdecay[end-example_neurons+1:end]
+
+        # save rolling average for analysis
+        if t > stim_off && t <= train_time && mod(t,1.0) == 0
+            startInd = floor(Int, (t - stim_off - wid)/learn_every + 1)
+            endInd = min(startInd + widInc, learn_nsteps)
+            startInd = max(startInd, 1)
+            funRollingAvg(startInd, endInd, xtotal, xtotalcnt, synInput)
+            funRollingAvg(startInd, endInd, xebal, xebalcnt, xedecay)
+            funRollingAvg(startInd, endInd, xibal, xibalcnt, xidecay)
+            funRollingAvg(startInd, endInd, xplastic, xplasticcnt, xpdecay)
+        end
+    end
+
+    @static if kind == :train
+        r .+= (-dt.*r .+ forwardSpikePrev).*invtaudecay_plastic
+    end
 
     if t > stim_on && t < stim_off
         bias .= mu .+ stim[ti-round(Int,stim_on/dt),:]
@@ -73,10 +123,10 @@ for ti=1:Nsteps
     end
 
     bnotrefrac .= t .> (lastSpike .+ refrac)
-    v .+= bnotrefrac.*dt.*(invtau.*(bias .- v .+ synInputBalanced .+ xpdecay))
+    v .+= bnotrefrac.*dt.*(invtau.*(bias .- v .+ synInput))
 
     bspike .= bnotrefrac .& (v .> thresh)
-    forwardSpike .= bspike
+    @static kind==:train && (forwardSpike .= bspike)
     ns .+= bspike
     v .= ifelse.(bspike, vre, v)
     lastSpike .= ifelse.(bspike, t, lastSpike)
@@ -95,7 +145,16 @@ for ti=1:Nsteps
     forwardInputsEPrev = copy(forwardInputsE)
     forwardInputsIPrev = copy(forwardInputsI)
     forwardInputsPPrev = copy(forwardInputsP)
-    forwardSpikePrev = copy(forwardSpike)
+    @static kind==:train && (forwardSpikePrev = copy(forwardSpike))
+end
+
+@static if kind == :test
+    xtotal = xtotal ./ xtotalcnt
+    xebal = xebal ./ xebalcnt
+    xibal = xibal ./ xibalcnt
+    xplastic = xplastic ./ xplasticcnt
+
+    return xtotal, xebal, xibal, xplastic, ns, vtotal_exccell, vtotal_inhcell, vebal_exccell, vibal_exccell, vebal_inhcell, vibal_inhcell, vplastic_exccell, vplastic_inhcell
 end
 
 end

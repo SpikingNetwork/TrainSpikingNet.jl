@@ -4,6 +4,9 @@ using Random
 using JLD
 using CUDA, NNlib, NNlibCUDA
 
+performance_interval = 2  # set to 0 to not measure
+example_neurons = 25
+
 data_dir = length(ARGS)>0 ? ARGS[1] : "."
 
 CUDA.allowscalar(false)
@@ -30,6 +33,11 @@ kind=:train
 include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
 include(joinpath(@__DIR__,"loop.jl"))
 include(joinpath(@__DIR__,"rls.jl"))
+if performance_interval>0
+    kind=:test
+    include(joinpath(@__DIR__,"loop.jl"))
+    include(joinpath(@__DIR__,"funRollingAvg.jl"))
+end
 
 #--- set up correlation matrix ---#
 ci_numExcSyn = p.Lexc;
@@ -82,19 +90,44 @@ for iloop =1:p.nloop
     start_time = time()
 
     loop_train(p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
-        p.Nsteps, p.Ncells, p.L, nothing, refrac, vre, invtauedecay, invtauidecay,
-        invtaudecay_plastic, mu, thresh, invtau, ns, forwardInputsE,
-        forwardInputsI, forwardInputsP, forwardInputsEPrev,
+        p.Nsteps, p.Ncells, p.L, nothing, refrac, vre, invtauedecay,
+        invtauidecay, invtaudecay_plastic, mu, thresh, invtau, ns,
+        forwardInputsE, forwardInputsI, forwardInputsP, forwardInputsEPrev,
         forwardInputsIPrev, forwardInputsPPrev, forwardSpike,
-        forwardSpikePrev, xedecay, xidecay, xpdecay, synInputBalanced, r,
-        bias, nothing, lastSpike, bnotrefrac, bspike, plusone, minusone, k,
-        den, e, v, P, Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn,
-        wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, ncpOut,
-        nothing, nothing)
+        forwardSpikePrev, xedecay, xidecay, xpdecay, synInputBalanced,
+        synInput, r, bias, nothing, lastSpike, bnotrefrac, bspike, plusone,
+        minusone, k, den, e, v, P, Px, w0Index, w0Weights, nc0, stim, xtarg,
+        wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
+        ncpOut, nothing, nothing)
 
     elapsed_time = time()-start_time
     println("elapsed time: ",elapsed_time)
     println(mean(ns)/(dt/1000*p.Nsteps), " Hz")
+
+    # test performance
+    if (performance_interval>0) && mod(iloop,performance_interval) == 0
+
+        xtotal, _ = loop_test(
+            p.learn_every, p.stim_on, p.stim_off, p.train_time, dt, p.Nsteps,
+            p.Ncells, p.L, nothing, refrac, vre, invtauedecay, invtauidecay,
+            invtaudecay_plastic, mu, thresh, invtau, ns, forwardInputsE,
+            forwardInputsI, forwardInputsP, forwardInputsEPrev,
+            forwardInputsIPrev, forwardInputsPPrev, nothing, nothing,
+            xedecay, xidecay, xpdecay, synInputBalanced, synInput, r,
+            bias, example_neurons, lastSpike, bnotrefrac, bspike, nothing,
+            nothing, nothing, nothing, nothing, v, nothing, nothing, w0Index,
+            w0Weights, nc0, stim, nothing, nothing, wpIndexOut, nothing,
+            nothing, wpWeightOut, ncpOut, nothing, nothing)
+
+        pcor = zeros(p.Ncells)
+        for (index, ci) in enumerate(1:p.Ncells)
+            xtarg_slice = Array(xtarg[:,ci])
+            xtotal_slice = Array(xtotal[:,ci])
+            pcor[index] = cor(xtarg_slice,xtotal_slice)
+        end
+
+        println("cor = ",mean(pcor))
+    end
 
 end
 

@@ -3,6 +3,9 @@ using LinearAlgebra
 using Random
 using JLD
 
+performance_interval = 2  # set to 0 to not measure
+example_neurons = 25
+
 data_dir = length(ARGS)>0 ? ARGS[1] : "."
 
 # --- load code --- #
@@ -10,6 +13,10 @@ kind=:train
 include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
 include(joinpath(@__DIR__,"loop.jl"))
 include(joinpath(@__DIR__,"rls.jl"))
+if performance_interval>0
+    kind=:test
+    include(joinpath(@__DIR__,"loop.jl"))
+end
 
 #----------- load initialization --------------#
 include(joinpath(dirname(@__DIR__),"struct.jl"))
@@ -97,6 +104,31 @@ for iloop =1:p.nloop
     elapsed_time = time()-start_time
     println("elapsed time: ",elapsed_time)
     println(mean(ns)/(dt/1000*p.Nsteps), " Hz")
+
+    # test performance
+    if (performance_interval>0) && mod(iloop,performance_interval) == 0
+
+        xtotal, _ = loop_test(
+            p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
+            p.Nsteps, p.Ncells, nothing, refrac, vre, invtauedecay,
+            invtauidecay, invtaudecay_plastic, mu, thresh, invtau,
+            ns, forwardInputsE, forwardInputsI, forwardInputsP,
+            forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
+            nothing, nothing, xedecay, xidecay, xpdecay, synInputBalanced,
+            r, bias, example_neurons, lastSpike, nothing, nothing, nothing,
+            v, nothing, nothing, w0Index, w0Weights, nc0, stim, nothing,
+            nothing, wpIndexOut, nothing, nothing, wpWeightOut, nothing,
+            ncpOut, nothing, nothing)
+
+        pcor = zeros(p.Ncells)
+        for (index, ci) in enumerate(1:p.Ncells)
+            xtarg_slice = @view xtarg[:,ci]
+            xtotal_slice = @view xtotal[:,ci]
+            pcor[index] = cor(xtarg_slice,xtotal_slice)
+        end
+
+        println("cor = ",mean(pcor))
+    end
 
 end # end loop over trainings
 
