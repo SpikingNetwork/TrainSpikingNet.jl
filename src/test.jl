@@ -35,16 +35,17 @@ include(joinpath(@__DIR__,"cpu","variables.jl"))
 #----------- test the network --------------#
 example_neurons = 25
 
-vtotal_exccell, vtotal_inhcell, vebal_exccell, vibal_exccell, vebal_inhcell,
-    vibal_inhcell, vplastic_exccell, vplastic_inhcell = loop_test(p.learn_every,
-    p.stim_on, p.stim_off, p.train_time, dt, p.Nsteps, p.Ncells, nothing,
-    refrac, vre, invtauedecay, invtauidecay, invtaudecay_plastic, mu,
-    thresh, invtau, ns, forwardInputsE, forwardInputsI, forwardInputsP,
-    forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev, nothing,
-    nothing, xedecay, xidecay, xpdecay, synInputBalanced, r, bias,
-    example_neurons, lastSpike, nothing, nothing, v, nothing,
-    nothing, w0Index, w0Weights, nc0, stim, nothing, nothing, wpIndexOut,
-    nothing, nothing, wpWeightOut, nothing, ncpOut, nothing, nothing)
+times, ns, vtotal_exccell, vtotal_inhcell, vebal_exccell, vibal_exccell,
+    vebal_inhcell, vibal_inhcell, vplastic_exccell, vplastic_inhcell =
+    loop_test(p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
+    p.Nsteps, p.Ncells, nothing, refrac, vre, invtauedecay, invtauidecay,
+    invtaudecay_plastic, mu, thresh, invtau, maxTimes, times, ns,
+    forwardInputsE, forwardInputsI, forwardInputsP, forwardInputsEPrev,
+    forwardInputsIPrev, forwardInputsPPrev, nothing, nothing, xedecay,
+    xidecay, xpdecay, synInputBalanced, r, bias, example_neurons, lastSpike,
+    nothing, nothing, v, nothing, nothing, w0Index, w0Weights, nc0, stim,
+    nothing, nothing, wpIndexOut, nothing, nothing, wpWeightOut, nothing,
+    ncpOut, nothing, nothing)
 
 #----------- plot trained activities --------------#
 timev = p.dt * collect(1:p.Nsteps)

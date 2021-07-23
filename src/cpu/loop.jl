@@ -1,12 +1,12 @@
 @eval function $(Symbol("loop_",kind))(learn_every, stim_on, stim_off,
     train_time, dt, Nsteps, Ncells, Ne, refrac, vre, invtauedecay,
-    invtauidecay, invtaudecay_plastic, mu, thresh, invtau, ns, forwardInputsE,
-    forwardInputsI, forwardInputsP, forwardInputsEPrev, forwardInputsIPrev,
-    forwardInputsPPrev, forwardSpike, forwardSpikePrev, xedecay, xidecay,
-    xpdecay, synInputBalanced, synInput, r, bias, wid, example_neurons,
-    lastSpike, plusone, k, v, P, Px, w0Index, w0Weights, nc0, stim,
-    xtarg, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
-    ncpIn, ncpOut, uavg, utmp)
+    invtauidecay, invtaudecay_plastic, mu, thresh, invtau, maxTimes, times,
+    ns, forwardInputsE, forwardInputsI, forwardInputsP, forwardInputsEPrev,
+    forwardInputsIPrev, forwardInputsPPrev, forwardSpike, forwardSpikePrev,
+    xedecay, xidecay, xpdecay, synInputBalanced, synInput, r, bias, wid,
+    example_neurons, lastSpike, plusone, k, v, P, Px, w0Index, w0Weights,
+    nc0, stim, xtarg, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn,
+    wpWeightOut, ncpIn, ncpOut, uavg, utmp)
 
 @static if kind == :test
     learn_nsteps = Int((train_time - stim_off)/learn_every)
@@ -173,6 +173,11 @@ for ti=1:Nsteps
                 @static kind==:train && (forwardSpike[ci] = 1.)   # record that neuron ci spiked. Used for computing r[ci]
                 lastSpike[ci] = t           # record neuron ci's last spike time. Used for checking ci is not in refractory period
                 ns[ci] = ns[ci]+1           # number of spikes neuron ci emitted
+                @static if kind == :test
+                    if ns[ci] <= maxTimes
+                        times[ci,ns[ci]] = t
+                    end
+                end
             end #end if(spike occurred)
         end #end not in refractory period
     end #end loop over neurons
@@ -231,7 +236,7 @@ end
     xibal ./ xibalcnt
     xplastic ./ xplasticcnt
  
-    return xtotal, xebal, xibal, xplastic, ns, vtotal_exccell, vtotal_inhcell, vebal_exccell, vibal_exccell, vebal_inhcell, vibal_inhcell, vplastic_exccell, vplastic_inhcell
+    return times, ns, xtotal, xebal, xibal, xplastic, ns, vtotal_exccell, vtotal_inhcell, vebal_exccell, vibal_exccell, vebal_inhcell, vibal_inhcell, vplastic_exccell, vplastic_inhcell
 end
 
 end #end function

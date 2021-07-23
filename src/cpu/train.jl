@@ -92,33 +92,33 @@ for iloop =1:p.nloop
 
     loop_train(p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
         p.Nsteps, p.Ncells, nothing, refrac, vre, invtauedecay,
-        invtauidecay, invtaudecay_plastic, mu, thresh, invtau, ns,
-        forwardInputsE, forwardInputsI, forwardInputsP, forwardInputsEPrev,
-        forwardInputsIPrev, forwardInputsPPrev, forwardSpike,
-        forwardSpikePrev, xedecay, xidecay, xpdecay, synInputBalanced,
-        synInput, r, bias, nothing, nothing, lastSpike, plusone,
-        k, v, P, Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn,
+        invtauidecay, invtaudecay_plastic, mu, thresh, invtau, nothing,
+        nothing, ns, forwardInputsE, forwardInputsI, forwardInputsP,
+        forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
+        forwardSpike, forwardSpikePrev, xedecay, xidecay, xpdecay,
+        synInputBalanced, synInput, r, bias, nothing, nothing, lastSpike,
+        plusone, k, v, P, Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn,
         wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, ncpIn, ncpOut,
         nothing, nothing)
 
     elapsed_time = time()-start_time
-    println("elapsed time: ",elapsed_time)
-    println(mean(ns)/(dt/1000*p.Nsteps), " Hz")
+    println("elapsed time: ",elapsed_time, " sec")
+    println("firing rate: ",mean(ns)/(dt/1000*p.Nsteps), " Hz")
 
     # test performance
     if (p.performance_interval>0) && mod(iloop,p.performance_interval) == 0
 
         xtotal, _ = loop_test(
-            p.learn_every, p.stim_on, p.stim_off, p.train_time, dt, p.Nsteps,
-            p.Ncells, nothing, refrac, vre, invtauedecay, invtauidecay,
-            invtaudecay_plastic, mu, thresh, invtau, ns, forwardInputsE,
-            forwardInputsI, forwardInputsP, forwardInputsEPrev,
-            forwardInputsIPrev, forwardInputsPPrev, nothing, nothing,
-            xedecay, xidecay, xpdecay, synInputBalanced, synInput, r, bias,
-            p.wid, p.example_neurons, lastSpike, nothing, nothing,
-            v, nothing, nothing, w0Index, w0Weights, nc0, stim, nothing,
-            nothing, wpIndexOut, nothing, nothing, wpWeightOut, nothing,
-            ncpOut, nothing, nothing)
+            p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
+            p.Nsteps, p.Ncells, nothing, refrac, vre, invtauedecay,
+            invtauidecay, invtaudecay_plastic, mu, thresh, invtau, maxTimes,
+            times, ns, forwardInputsE, forwardInputsI, forwardInputsP,
+            forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
+            nothing, nothing, xedecay, xidecay, xpdecay, synInputBalanced,
+            synInput, r, bias, p.wid, p.example_neurons, lastSpike, nothing,
+            nothing, v, nothing, nothing, w0Index, w0Weights, nc0, stim,
+            nothing, nothing, wpIndexOut, nothing, nothing, wpWeightOut,
+            nothing, ncpOut, nothing, nothing)
 
         pcor = zeros(p.Ncells)
         for (index, ci) in enumerate(1:p.Ncells)

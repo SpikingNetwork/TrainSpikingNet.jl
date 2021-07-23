@@ -97,8 +97,8 @@ for iloop =1:p.nloop
         wpWeightOut, ncpOut, nothing, nothing)
 
     elapsed_time = time()-start_time
-    println("elapsed time: ",elapsed_time)
-    println(mean(ns)/(dt/1000*p.Nsteps), " Hz")
+    println("elapsed time: ",elapsed_time, " sec")
+    println("firing rate: ",mean(ns)/(dt/1000*p.Nsteps), " Hz")
 
     # test performance
     if (p.performance_interval>0) && mod(iloop,p.performance_interval) == 0

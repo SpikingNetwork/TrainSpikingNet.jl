@@ -27,10 +27,10 @@ w0Index, w0Weights, nc0 = genInitialWeights(p)
 
 uavg, ns0, ustd = loop_init(nothing, nothing, nothing, p.train_time, dt,
     p.Nsteps, p.Ncells, p.Ne, refrac, vre, invtauedecay, invtauidecay,
-    nothing, mu, thresh, invtau, ns, forwardInputsE, forwardInputsI,
-    nothing, forwardInputsEPrev, forwardInputsIPrev, nothing, nothing,
-    nothing, xedecay, xidecay, nothing, nothing, nothing, bias, nothing,
-    lastSpike, nothing, nothing, v, nothing, nothing, w0Index,
+    nothing, mu, thresh, invtau, nothing, nothing, ns, forwardInputsE,
+    forwardInputsI, nothing, forwardInputsEPrev, forwardInputsIPrev, nothing,
+    nothing, nothing, xedecay, xidecay, nothing, nothing, nothing, bias,
+    nothing, lastSpike, nothing, nothing, v, nothing, nothing, w0Index,
     w0Weights, nc0, nothing, nothing, nothing, nothing, nothing, nothing,
     nothing, nothing, nothing, uavg, utmp)
 
