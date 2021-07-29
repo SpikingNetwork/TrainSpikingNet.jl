@@ -236,7 +236,7 @@ end
     xibal ./ xibalcnt
     xplastic ./ xplasticcnt
  
-    return times, ns, xtotal, xebal, xibal, xplastic, ns, vtotal_exccell, vtotal_inhcell, vebal_exccell, vibal_exccell, vebal_inhcell, vibal_inhcell, vplastic_exccell, vplastic_inhcell
+    return xtotal, xebal, xibal, xplastic, vtotal_exccell, vtotal_inhcell, vebal_exccell, vibal_exccell, vebal_inhcell, vibal_inhcell, vplastic_exccell, vplastic_inhcell, times, ns
 end
 
 end #end function

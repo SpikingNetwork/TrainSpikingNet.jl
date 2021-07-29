@@ -42,10 +42,10 @@ times, ns, vtotal_exccell, vtotal_inhcell, vebal_exccell, vibal_exccell,
     invtaudecay_plastic, mu, thresh, invtau, maxTimes, times, ns,
     forwardInputsE, forwardInputsI, forwardInputsP, forwardInputsEPrev,
     forwardInputsIPrev, forwardInputsPPrev, nothing, nothing, xedecay,
-    xidecay, xpdecay, synInputBalanced, r, bias, example_neurons, lastSpike,
-    nothing, nothing, v, nothing, nothing, w0Index, w0Weights, nc0, stim,
-    nothing, nothing, wpIndexOut, nothing, nothing, wpWeightOut, nothing,
-    ncpOut, nothing, nothing)
+    xidecay, xpdecay, synInputBalanced, nothing, bias, example_neurons,
+    lastSpike, nothing, nothing, v, nothing, nothing, w0Index, w0Weights,
+    nc0, stim, nothing, nothing, wpIndexOut, nothing, nothing, wpWeightOut,
+    nothing, ncpOut, nothing, nothing)
 
 #----------- plot trained activities --------------#
 timev = p.dt * collect(1:p.Nsteps)

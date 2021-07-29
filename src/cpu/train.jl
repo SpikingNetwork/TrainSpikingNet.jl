@@ -115,10 +115,10 @@ for iloop =1:p.nloop
             times, ns, forwardInputsE, forwardInputsI, forwardInputsP,
             forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
             nothing, nothing, xedecay, xidecay, xpdecay, synInputBalanced,
-            synInput, r, bias, p.wid, p.example_neurons, lastSpike, nothing,
-            nothing, v, nothing, nothing, w0Index, w0Weights, nc0, stim,
-            nothing, nothing, wpIndexOut, nothing, nothing, wpWeightOut,
-            nothing, ncpOut, nothing, nothing)
+            synInput, nothing, bias, p.wid, p.example_neurons, lastSpike,
+            nothing, nothing, v, nothing, nothing, w0Index, w0Weights,
+            nc0, stim, nothing, nothing, wpIndexOut, nothing, nothing,
+            wpWeightOut, nothing, ncpOut, nothing, nothing)
 
         pcor = zeros(p.Ncells)
         for (index, ci) in enumerate(1:p.Ncells)
