@@ -69,7 +69,16 @@ cukernelP = cufunction(kernelP, Tuple{CuDeviceArray{UInt64,1,AS.Global}, CuDevic
     xplasticcnt = CUDA.zeros(learn_nsteps)
 end
 
-@static kind == :train && (learn_seq = 1)
+@static if kind == :train
+    learn_seq = 1
+    r .= 0
+end
+
+ns .= 0
+lastSpike .= -100.0
+v .= CuArray(rand(p.Ncells))
+xedecay .= xidecay .= xpdecay .= 0
+forwardInputsEPrev .= forwardInputsIPrev .= forwardInputsPPrev .= 0.0
 
 for ti=1:Nsteps
     t = dt*ti;

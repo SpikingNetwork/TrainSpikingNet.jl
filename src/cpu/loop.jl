@@ -31,7 +31,21 @@
     xplasticcnt = zeros(learn_nsteps)
 end
 
-@static kind == :train && (learn_seq = 1)
+@static if kind == :train
+    learn_seq = 1
+    r .= 0
+end
+
+ns .= 0
+lastSpike .= -100.0
+v .= rand(p.Ncells)
+xedecay .= xidecay .= 0
+forwardInputsEPrev .= forwardInputsIPrev .= 0.0
+@static if kind in [:train, :test]
+    xpdecay .= 0
+    forwardInputsPPrev .= 0.0
+end
+
 
 # start the actual training
 for ti=1:Nsteps
@@ -235,7 +249,7 @@ end
     xebal ./ xebalcnt
     xibal ./ xibalcnt
     xplastic ./ xplasticcnt
- 
+
     return xtotal, xebal, xibal, xplastic, vtotal_exccell, vtotal_inhcell, vebal_exccell, vibal_exccell, vebal_inhcell, vibal_inhcell, vplastic_exccell, vplastic_inhcell, times, ns
 end
 

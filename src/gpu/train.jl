@@ -77,12 +77,6 @@ wpWeightOut = CuArray{p.FloatPrecision}(wpWeightOut)
 for iloop =1:p.nloop
     println("Loop no. ",iloop) 
 
-    lastSpike .= -100.0
-    ns .= 0
-    xedecay .= xidecay .= xpdecay .= 0
-    r .= 0
-    v .= CuArray(rand(p.Ncells))
-
     start_time = time()
 
     loop_train(p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,

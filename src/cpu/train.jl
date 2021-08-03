@@ -81,13 +81,6 @@ wpWeightOut = Array{p.FloatPrecision}(wpWeightOut)
 for iloop =1:p.nloop
     println("Loop no. ",iloop) 
 
-    # initialize variables
-    lastSpike .= -100.0
-    ns .= 0
-    xedecay .= xidecay .= xpdecay .= 0
-    r .= 0
-    v .= rand(p.Ncells) # membrane potentials have random initial values
-
     start_time = time()
 
     loop_train(p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
