@@ -15,7 +15,6 @@ mutable struct paramType
     penmu::Float64
     frac::Float64
     learn_every::Float64
-    learn_step::Int64
     stim_on::Float64
     stim_off::Float64
     train_time::Float64

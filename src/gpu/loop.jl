@@ -42,36 +42,37 @@ cukernelP = cufunction(kernelP, Tuple{CuDeviceArray{UInt64,1,AS.Global}, CuDevic
     forwardInputsI, forwardInputsP, forwardInputsEPrev, forwardInputsIPrev,
     forwardInputsPPrev, forwardSpike, forwardSpikePrev, xedecay, xidecay,
     xpdecay, synInputBalanced, synInput, r, bias, wid, example_neurons,
-    lastSpike, bnotrefrac, bspike, plusone, minusone, k, den, e, v, P,
+    lastSpike, bnotrefrac, bspike, plusone, minusone, k, den, e, delta, v, P,
     Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut,
     wpIndexConvert, wpWeightIn, wpWeightOut, ncpOut, uavg, utmp)
 
 @static if kind == :test
-    learn_nsteps = Int((train_time - stim_off)/learn_every)
-    widInc = Int(2*wid/learn_every - 1)
+    learn_nsteps = round(Int, (train_time - stim_off)/learn_every)
+    widInc = round(Int, 2*wid/learn_every - 1)
 
-    vtotal_exccell = CUDA.zeros(Nsteps,example_neurons)
-    vtotal_inhcell = CUDA.zeros(Nsteps,example_neurons)
-    vebal_exccell = CUDA.zeros(Nsteps,example_neurons)
-    vibal_exccell = CUDA.zeros(Nsteps,example_neurons)
-    vebal_inhcell = CUDA.zeros(Nsteps,example_neurons)
-    vibal_inhcell = CUDA.zeros(Nsteps,example_neurons)
-    vplastic_exccell = CUDA.zeros(Nsteps,example_neurons)
-    vplastic_inhcell = CUDA.zeros(Nsteps,example_neurons)
+    vtotal_exccell = CUDA.zeros(eltype(synInput), Nsteps,example_neurons)
+    vtotal_inhcell = CUDA.zeros(eltype(synInput), Nsteps,example_neurons)
+    vebal_exccell = CUDA.zeros(eltype(synInput), Nsteps,example_neurons)
+    vibal_exccell = CUDA.zeros(eltype(synInput), Nsteps,example_neurons)
+    vebal_inhcell = CUDA.zeros(eltype(synInput), Nsteps,example_neurons)
+    vibal_inhcell = CUDA.zeros(eltype(synInput), Nsteps,example_neurons)
+    vplastic_exccell = CUDA.zeros(eltype(synInput), Nsteps,example_neurons)
+    vplastic_inhcell = CUDA.zeros(eltype(synInput), Nsteps,example_neurons)
 
-    xtotal = CUDA.zeros(learn_nsteps,Ncells)
-    xebal = CUDA.zeros(learn_nsteps,Ncells)
-    xibal = CUDA.zeros(learn_nsteps,Ncells)
-    xplastic = CUDA.zeros(learn_nsteps,Ncells)
-    xtotalcnt = CUDA.zeros(learn_nsteps)
-    xebalcnt = CUDA.zeros(learn_nsteps)
-    xibalcnt = CUDA.zeros(learn_nsteps)
-    xplasticcnt = CUDA.zeros(learn_nsteps)
+    xtotal = CUDA.zeros(Float64, learn_nsteps,Ncells)
+    xebal = CUDA.zeros(Float64, learn_nsteps,Ncells)
+    xibal = CUDA.zeros(Float64, learn_nsteps,Ncells)
+    xplastic = CUDA.zeros(Float64, learn_nsteps,Ncells)
+    xtotalcnt = CUDA.zeros(Int, learn_nsteps)
+    xebalcnt = CUDA.zeros(Int, learn_nsteps)
+    xibalcnt = CUDA.zeros(Int, learn_nsteps)
+    xplasticcnt = CUDA.zeros(Int, learn_nsteps)
 end
 
 @static if kind == :train
     learn_seq = 1
     r .= 0
+    learn_step = round(Int, learn_every/dt)
 end
 
 ns .= 0
@@ -87,8 +88,8 @@ for ti=1:Nsteps
     forwardInputsI .= 0.0;
     forwardInputsP .= 0.0;
 
-    @static kind==:train && if t > stim_off && t <= train_time && mod(t, learn_every) == 0
-        wpWeightIn, wpWeightOut = rls(k, den, e, L, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, minusone)
+    @static kind==:train && if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
+        wpWeightIn, wpWeightOut = rls(k, den, e, delta, L, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, minusone)
         learn_seq += 1
     end
 

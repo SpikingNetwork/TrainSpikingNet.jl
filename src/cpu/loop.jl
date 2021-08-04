@@ -44,6 +44,7 @@ forwardInputsEPrev .= forwardInputsIPrev .= 0.0
 @static if kind in [:train, :test]
     xpdecay .= 0
     forwardInputsPPrev .= 0.0
+    learn_step = round(Int, learn_every/dt)
 end
 
 
@@ -87,7 +88,7 @@ for ti=1:Nsteps
     #                  - Indices of postsynaptic neurons that neuron i connect to
     #                  - Fixed throughout the simulation. Used to compute forwardInputsP (see line 221)
 
-    @static kind==:train && if t > stim_off && t <= train_time && mod(t, learn_every) == 0
+    @static kind==:train && if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
         wpWeightIn, wpWeightOut = rls(k, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone)
         learn_seq += 1
     end

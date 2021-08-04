@@ -1,7 +1,4 @@
-using Distributions
-using LinearAlgebra
-using Random
-using JLD
+using LinearAlgebra, Random, JLD, Statistics
 
 data_dir = length(ARGS)>0 ? ARGS[1] : "."
 

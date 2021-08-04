@@ -4,7 +4,7 @@ seed=nothing
 
 performance_interval = 0  # set to N to measure every N loops
 example_neurons = 25
-wid = 50   
+wid = 50
 
 dt = 0.1 #simulation timestep (ms)
 
@@ -17,16 +17,15 @@ penlamIE       = 3.0; # 2.0
 penlamII       = 3.0; # 0.08
 penmu          = 8.0; # 2.0
 frac           = 1.0;
-learn_every    = 10.0
-learn_step     = Int(learn_every/dt)
+learn_every    = 10.0 # (ms)
 
-# innate, train, test time
+# innate, train, test time (ms)
 train_duration = 1000.;
 stim_on        = 800.;
 stim_off       = 1000.;
 train_time     = stim_off + train_duration;
 
-Nsteps = Int(train_time/dt;)
+Nsteps = round(Int, train_time/dt)
 
 # neuron param      
 taue = 10; #membrane time constant for exc. neurons (ms)
@@ -43,8 +42,8 @@ taudecay_plastic = 150
 
 # network size      
 Ncells = 5000;
-Ne = Int(Ncells*0.5);
-Ni = Int(Ncells*0.5);
+Ne = round(Int, Ncells*0.5);
+Ni = round(Int, Ncells*0.5);
 
 if Ncells == typemax(IntPrecision)
   @warn "IntPrecision is too small for GPU (but fine for CPU)"
@@ -91,5 +90,5 @@ wpii = -ji * sqrtK / wpscale
 maxrate = 500 #(Hz) maximum average firing rate.  if the average firing rate across the simulation for any neuron exceeds this value, some of that neuron's spikes will not be saved
 
 
-p = paramType(FloatPrecision,IntPrecision,seed,performance_interval,example_neurons,wid,train_duration,nloop,penlambda,penlamEE,penlamEI,penlamIE,penlamII,penmu,frac,learn_every,learn_step,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
+p = paramType(FloatPrecision,IntPrecision,seed,performance_interval,example_neurons,wid,train_duration,nloop,penlambda,penlamEE,penlamEI,penlamIE,penlamII,penmu,frac,learn_every,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
 je,ji,jx,jee,jei,jie,jii,wpee,wpei,wpie,wpii,muemin,muemax,muimin,muimax,vre,threshe,threshi,refrac,tauedecay,tauidecay,taudecay_plastic,maxrate);

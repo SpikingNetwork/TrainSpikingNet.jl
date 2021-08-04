@@ -1,7 +1,4 @@
-using Distributions
-using LinearAlgebra
-using Random
-using JLD
+using LinearAlgebra, Random, JLD, Statistics
 
 data_dir = length(ARGS)>0 ? ARGS[1] : "."
 
@@ -21,6 +18,8 @@ include(joinpath(@__DIR__,"funSample.jl"))
 include(joinpath(@__DIR__,"struct.jl"))
 include(joinpath(data_dir,"param.jl"))
 include(joinpath(@__DIR__,"cpu","variables.jl"))
+
+learn_step = round(Int, p.learn_every/dt)
 
 #----------- initialization --------------#
 w0Index, w0Weights, nc0 = genInitialWeights(p)

@@ -3,3 +3,8 @@ CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 JLD = "4138dd39-2aa7-5051-a626-17a0bb65d9c8"
 NNlib = "872c559c-99b0-510c-b3b7-b6c96a88d5cd"
 NNlibCUDA = "a00861dc-f156-4864-bf3c-e6376f28a68d"
+
+[compat]
+CUDA = "3.4"
+NNlib = "0.7.28"
+julia = "1.6"

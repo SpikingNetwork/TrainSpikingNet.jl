@@ -1,8 +1,4 @@
-using Distributions
-using LinearAlgebra
-using Random
-using JLD
-using CUDA, NNlib, NNlibCUDA
+using LinearAlgebra, Random, JLD, Statistics, CUDA, NNlib, NNlibCUDA
 
 data_dir = length(ARGS)>0 ? ARGS[1] : "."
 
@@ -86,7 +82,7 @@ for iloop =1:p.nloop
         forwardInputsIPrev, forwardInputsPPrev, forwardSpike,
         forwardSpikePrev, xedecay, xidecay, xpdecay, synInputBalanced,
         synInput, r, bias, nothing, nothing, lastSpike, bnotrefrac, bspike,
-        plusone, minusone, k, den, e, v, P, Px, w0Index, w0Weights, nc0,
+        plusone, minusone, k, den, e, delta, v, P, Px, w0Index, w0Weights, nc0,
         stim, xtarg, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn,
         wpWeightOut, ncpOut, nothing, nothing)
 
@@ -105,13 +101,13 @@ for iloop =1:p.nloop
             forwardInputsIPrev, forwardInputsPPrev, nothing, nothing,
             xedecay, xidecay, xpdecay, synInputBalanced, synInput, r, bias,
             p.wid, p.example_neurons, lastSpike, bnotrefrac, bspike, nothing,
-            nothing, nothing, nothing, nothing, v, nothing, nothing, w0Index,
+            nothing, nothing, nothing, nothing, nothing, v, nothing, nothing, w0Index,
             w0Weights, nc0, stim, nothing, nothing, wpIndexOut, nothing,
             nothing, wpWeightOut, ncpOut, nothing, nothing)
 
         pcor = zeros(p.Ncells)
         for (index, ci) in enumerate(1:p.Ncells)
-            xtarg_slice = Array(xtarg[:,ci])
+            xtarg_slice = convert(Array{Float64}, xtarg[:,ci])
             xtotal_slice = Array(xtotal[:,ci])
             pcor[index] = cor(xtarg_slice,xtotal_slice)
         end
