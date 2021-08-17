@@ -74,6 +74,28 @@ wpIndexOut = Array{p.IntPrecision}(wpIndexOut)
 wpWeightIn = Array{p.FloatPrecision}(wpWeightIn);
 wpWeightOut = Array{p.FloatPrecision}(wpWeightOut)
 
+# --- monitor resources used ---#
+function monitor_resources(c::Channel)
+  while true
+    isopen(c) || break
+    ipmitool = readlines(pipeline(`sudo ipmitool sensor`,
+                                  `grep "PW Consumption"`,
+                                  `cut -d'|' -f2`))
+    top = readlines(pipeline(`top -b -n 2 -p $(getpid())`,
+                             `tail -1`,
+                             `awk '{print $9; print $10}'`))
+    println("total power used: ", strip(ipmitool[1]), " Watts\n",
+            "CPU cores used by this process: ", strip(top[1]), "%\n",
+            "CPU memory used by this process: ", strip(top[2]), '%')
+    sleep(p.monitor_resources_used)
+  end
+end
+
+if p.monitor_resources_used>0
+  chnl = Channel(monitor_resources)
+  sleep(60)
+end
+
 #----------- train the network --------------#
 for iloop =1:p.nloop
     println("Loop no. ",iloop) 
@@ -124,3 +146,8 @@ end # end loop over trainings
 
 save(joinpath(data_dir,"wpWeightIn-trained.jld"), "wpWeightIn", collect(wpWeightIn))
 save(joinpath(data_dir,"wpWeightOut-trained.jld"), "wpWeightOut", wpWeightOut)
+
+if p.monitor_resources_used>0
+  sleep(60)
+  close(chnl)
+end

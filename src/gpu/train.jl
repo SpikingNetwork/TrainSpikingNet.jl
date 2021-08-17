@@ -69,6 +69,34 @@ wpIndexOut = CuArray{p.IntPrecision}(wpIndexOut)
 wpWeightIn = CuArray{p.FloatPrecision}(wpWeightIn);
 wpWeightOut = CuArray{p.FloatPrecision}(wpWeightOut)
 
+# --- monitor resources used ---#
+function monitor_resources(c::Channel)
+  while true
+    isopen(c) || break
+    ipmitool = readlines(pipeline(`sudo ipmitool sensor`,
+                                  `grep "PW Consumption"`,
+                                  `cut -d'|' -f2`))
+    top = readlines(pipeline(`top -b -n 2 -p $(getpid())`,
+                             `tail -1`,
+                             `awk '{print $9; print $10}'`))
+    nvidiasmi = readlines(pipeline(`nvidia-smi --query-gpu=power.draw,utilization.gpu,utilization.memory --format=csv,noheader,nounits`))
+    data = dropdims(sum(hcat([parse.(Float64, split(strip(x), ',')) for x in nvidiasmi]...),
+                        dims=2), dims=2)
+    println("total power used: ", strip(ipmitool[1]), " Watts\n",
+            "CPU cores used by this process: ", strip(top[1]), "%\n",
+            "CPU memory used by this process: ", strip(top[2]), "%\n",
+            "GPU power used: ", data[1], " Watts\n",
+            "GPU cores used: ", data[2], "%\n",
+            "GPU memory used: ", data[3], "%")
+    sleep(p.monitor_resources_used)
+  end
+end
+
+if p.monitor_resources_used>0
+  chnl = Channel(monitor_resources)
+  sleep(60)
+end
+
 #----------- train the network --------------#
 for iloop =1:p.nloop
     println("Loop no. ",iloop) 
@@ -119,3 +147,8 @@ end
 
 save(joinpath(data_dir,"wpWeightIn-trained.jld"), "wpWeightIn", Array(wpWeightIn))
 save(joinpath(data_dir,"wpWeightOut-trained.jld"), "wpWeightOut", Array(wpWeightOut))
+
+if p.monitor_resources_used>0
+  sleep(60)
+  close(chnl)
+end
