@@ -2,8 +2,6 @@ using LinearAlgebra, Random, JLD, Statistics, CUDA, NNlib, NNlibCUDA
 
 data_dir = length(ARGS)>0 ? ARGS[1] : "."
 
-CUDA.allowscalar(false)
-
 #----------- load initialization --------------#
 include(joinpath(dirname(@__DIR__),"struct.jl"))
 include(joinpath(data_dir,"param.jl"))
@@ -19,7 +17,7 @@ wpWeightIn = load(joinpath(data_dir,"wpWeightIn.jld"))["wpWeightIn"]
 wpWeightOut = load(joinpath(data_dir,"wpWeightOut.jld"))["wpWeightOut"]
 ncpOut = load(joinpath(data_dir,"ncpOut.jld"))["ncpOut"]
 
-isnothing(p.seed) || Random.seed!(p.seed)
+isnothing(p.seed) || Random.seed!(p.rng, p.seed)
 
 # --- load code --- #
 kind=:train
@@ -49,7 +47,7 @@ Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01')
 # sum of penalties
 Pinv = Pinv_L2 + Pinv_rowsum;
 P = Array{Float64}(undef, (p.Lexc+p.Linh, p.Lexc+p.Linh, p.Ncells)); 
-P .= Pinv \ one(zeros(ci_numSyn,ci_numSyn));
+P .= Pinv \ I;
 
 # --- set up variables --- #
 include(joinpath(@__DIR__,"variables.jl"))
@@ -109,10 +107,10 @@ for iloop =1:p.nloop
         forwardInputsE, forwardInputsI, forwardInputsP, forwardInputsEPrev,
         forwardInputsIPrev, forwardInputsPPrev, forwardSpike,
         forwardSpikePrev, xedecay, xidecay, xpdecay, synInputBalanced,
-        synInput, r, bias, nothing, nothing, lastSpike, bnotrefrac, bspike,
-        plusone, minusone, k, den, e, delta, v, P, Px, w0Index, w0Weights, nc0,
-        stim, xtarg, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn,
-        wpWeightOut, ncpOut, nothing, nothing)
+        synInput, r, bias, nothing, nothing, lastSpike, bnotrefrac,
+        bspike, plusone, minusone, k, den, e, delta, v, p.rng, noise, sig,
+        P, Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut,
+        wpIndexConvert, wpWeightIn, wpWeightOut, ncpOut, nothing, nothing)
 
     elapsed_time = time()-start_time
     println("elapsed time: ",elapsed_time, " sec")
@@ -127,11 +125,12 @@ for iloop =1:p.nloop
             invtaudecay_plastic, mu, thresh, invtau, ns, forwardInputsE,
             forwardInputsI, forwardInputsP, forwardInputsEPrev,
             forwardInputsIPrev, forwardInputsPPrev, nothing, nothing,
-            xedecay, xidecay, xpdecay, synInputBalanced, synInput, r, bias,
-            p.wid, p.example_neurons, lastSpike, bnotrefrac, bspike, nothing,
-            nothing, nothing, nothing, nothing, nothing, v, nothing, nothing, w0Index,
-            w0Weights, nc0, stim, nothing, nothing, wpIndexOut, nothing,
-            nothing, wpWeightOut, ncpOut, nothing, nothing)
+            xedecay, xidecay, xpdecay, synInputBalanced, synInput, r,
+            bias, p.wid, p.example_neurons, lastSpike, bnotrefrac, bspike,
+            nothing, nothing, nothing, nothing, nothing, nothing, v, p.rng,
+            noise, sig, nothing, nothing, w0Index, w0Weights, nc0, stim,
+            nothing, nothing, wpIndexOut, nothing, nothing, wpWeightOut,
+            ncpOut, nothing, nothing)
 
         pcor = zeros(p.Ncells)
         for (index, ci) in enumerate(1:p.Ncells)

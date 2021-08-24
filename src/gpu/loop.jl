@@ -42,9 +42,10 @@ cukernelP = cufunction(kernelP, Tuple{CuDeviceArray{UInt64,1,AS.Global}, CuDevic
     forwardInputsI, forwardInputsP, forwardInputsEPrev, forwardInputsIPrev,
     forwardInputsPPrev, forwardSpike, forwardSpikePrev, xedecay, xidecay,
     xpdecay, synInputBalanced, synInput, r, bias, wid, example_neurons,
-    lastSpike, bnotrefrac, bspike, plusone, minusone, k, den, e, delta, v, P,
-    Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut,
-    wpIndexConvert, wpWeightIn, wpWeightOut, ncpOut, uavg, utmp)
+    lastSpike, bnotrefrac, bspike, plusone, minusone, k, den, e, delta, v,
+    rng, noise, sig, P, Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn,
+    wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, ncpOut, uavg,
+    utmp)
 
 @static if kind == :test
     learn_nsteps = round(Int, (train_time - stim_off)/learn_every)
@@ -72,32 +73,42 @@ end
 @static if kind == :train
     learn_seq = 1
     r .= 0
-    learn_step = round(Int, learn_every/dt)
 end
 
 ns .= 0
 lastSpike .= -100.0
-v .= CuArray(rand(p.Ncells))
+randn!(rng, v)
 xedecay .= xidecay .= xpdecay .= 0
-forwardInputsEPrev .= forwardInputsIPrev .= forwardInputsPPrev .= 0.0
+@static if K>0
+    forwardInputsEPrev .= forwardInputsIPrev .= forwardInputsPPrev .= 0.0
+else
+    synInputBalanced .= 0.0
+end
+@static K==0 && (sqrtdt = sqrt(dt))
 
 for ti=1:Nsteps
     t = dt*ti;
 
-    forwardInputsE .= 0.0;
-    forwardInputsI .= 0.0;
-    forwardInputsP .= 0.0;
+    @static K>0 && (forwardInputsE .= forwardInputsI .= 0.0)
+    forwardInputsP .= 0.0
 
     @static kind==:train && if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
         wpWeightIn, wpWeightOut = rls(k, den, e, delta, L, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, minusone)
         learn_seq += 1
     end
 
-    xedecay .+= (-dt.*xedecay .+ forwardInputsEPrev[2:end]).*invtauedecay
-    xidecay .+= (-dt.*xidecay .+ forwardInputsIPrev[2:end]).*invtauidecay
-    xpdecay .+= (-dt.*xpdecay .+ forwardInputsPPrev[2:end]).*invtaudecay_plastic
-    synInputBalanced .= xedecay .+ xidecay
-    synInput .= synInputBalanced .+ xpdecay
+    @static if K>0
+        xedecay .+= (-dt.*xedecay .+ forwardInputsEPrev[2:end]) .* invtauedecay
+        xidecay .+= (-dt.*xidecay .+ forwardInputsIPrev[2:end]) .* invtauidecay
+    end
+    xpdecay .+= (-dt.*xpdecay .+ forwardInputsPPrev[2:end]) .* invtaudecay_plastic
+
+    @static if K>0
+        synInputBalanced .= xedecay .+ xidecay
+        synInput .= synInputBalanced .+ xpdecay
+    else
+        synInput .= xpdecay
+    end
 
     @static if kind == :test
         # saved for visualization
@@ -132,8 +143,13 @@ for ti=1:Nsteps
         bias .= mu
     end
 
+    @static if K==0
+        randn!(rng, noise)
+        v .+= sqrtdt.*sig.*noise
+    end
+
     bnotrefrac .= t .> (lastSpike .+ refrac)
-    v .+= bnotrefrac.*dt.*(invtau.*(bias .- v .+ synInput))
+    v .+= bnotrefrac.*dt.*invtau.*(bias .- v .+ synInput)
 
     bspike .= bnotrefrac .& (v .> thresh)
     @static kind==:train && (forwardSpike .= bspike)
@@ -143,17 +159,21 @@ for ti=1:Nsteps
 
     ispike = findall(bspike)
     if length(ispike)>0
-        configEI = configurator(CUDA.launch_configuration(cukernelEI.fun),
-                                (size(w0Weights,1),length(ispike)))
-        @cuda name="update_forwardInputsEI" threads=configEI.threads blocks=configEI.blocks kernelEI(ispike, w0Index, w0Weights, forwardInputsE, forwardInputsI)
+        @static if K>0
+            configEI = configurator(CUDA.launch_configuration(cukernelEI.fun),
+                                    (size(w0Weights,1),length(ispike)))
+            @cuda name="update_forwardInputsEI" threads=configEI.threads blocks=configEI.blocks kernelEI(ispike, w0Index, w0Weights, forwardInputsE, forwardInputsI)
+        end
 
         configP = configurator(CUDA.launch_configuration(cukernelP.fun),
                                (size(wpWeightOut,1),length(ispike)))
         @cuda name="update_forwardInputsP" threads=configP.threads blocks=configP.blocks kernelP(ispike, wpIndexOut, wpWeightOut, forwardInputsP)
     end
 
-    forwardInputsEPrev .= forwardInputsE
-    forwardInputsIPrev .= forwardInputsI
+    @static if K>0
+        forwardInputsEPrev .= forwardInputsE
+        forwardInputsIPrev .= forwardInputsI
+    end
     forwardInputsPPrev .= forwardInputsP
     @static kind==:train && (forwardSpikePrev .= forwardSpike)
 end

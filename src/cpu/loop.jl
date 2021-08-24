@@ -4,9 +4,9 @@
     ns, forwardInputsE, forwardInputsI, forwardInputsP, forwardInputsEPrev,
     forwardInputsIPrev, forwardInputsPPrev, forwardSpike, forwardSpikePrev,
     xedecay, xidecay, xpdecay, synInputBalanced, synInput, r, bias, wid,
-    example_neurons, lastSpike, plusone, k, v, P, Px, w0Index, w0Weights,
-    nc0, stim, xtarg, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn,
-    wpWeightOut, ncpIn, ncpOut, uavg, utmp)
+    example_neurons, lastSpike, plusone, k, v, rng, noise, sig, P, Px, w0Index,
+    w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut, wpIndexConvert,
+    wpWeightIn, wpWeightOut, ncpIn, ncpOut, uavg, utmp)
 
 @static if kind == :test
     learn_nsteps = Int((train_time - stim_off)/learn_every)
@@ -38,24 +38,27 @@ end
 
 ns .= 0
 lastSpike .= -100.0
-v .= rand(p.Ncells)
+randn!(rng, v)
 xedecay .= xidecay .= 0
-forwardInputsEPrev .= forwardInputsIPrev .= 0.0
+@static if K>0
+    forwardInputsEPrev .= forwardInputsIPrev .= 0.0
+elseif kind in [:train, :test]
+    synInputBalanced .= 0.0
+end
 @static if kind in [:train, :test]
     xpdecay .= 0
     forwardInputsPPrev .= 0.0
-    learn_step = round(Int, learn_every/dt)
 end
-
+@static kind == :init && K==0 && (synInput .= 0.0)
+@static K==0 && (sqrtdt = sqrt(dt))
 
 # start the actual training
 for ti=1:Nsteps
     t = dt*ti;
 
     # reset spiking activities from the previous time step
-    forwardInputsE .= 0.0;
-    forwardInputsI .= 0.0;
-    @static kind in [:train,:test] && (forwardInputsP .= 0.0;)
+    @static K>0 && (forwardInputsE .= forwardInputsI .= 0.0)
+    @static kind in [:train, :test] && (forwardInputsP .= 0.0;)
     @static kind==:train && (forwardSpike .= 0.0;)
 
     # start training the plastic weights when the stimulus is turned off 
@@ -93,17 +96,17 @@ for ti=1:Nsteps
         learn_seq += 1
     end
 
-    @static if kind == :test
-        if t > stim_off && t <= train_time && mod(t,1.0) == 0
-            startInd = floor(Int, (t - stim_off - wid)/learn_every + 1)
-            endInd = min(startInd + widInc, learn_nsteps)
-            startInd = max(startInd, 1)
-            xtotalcnt[startInd:endInd] .+= 1
-            xebalcnt[startInd:endInd] .+= 1
-            xibalcnt[startInd:endInd] .+= 1
-            xplasticcnt[startInd:endInd] .+= 1
-        end
+    @static kind == :test && if t > stim_off && t <= train_time && mod(t,1.0) == 0
+        startInd = floor(Int, (t - stim_off - wid)/learn_every + 1)
+        endInd = min(startInd + widInc, learn_nsteps)
+        startInd = max(startInd, 1)
+        xtotalcnt[startInd:endInd] .+= 1
+        xebalcnt[startInd:endInd] .+= 1
+        xibalcnt[startInd:endInd] .+= 1
+        xplasticcnt[startInd:endInd] .+= 1
     end
+
+    @static K==0 && randn!(rng, noise)
 
     # update network activities:
     #   - synaptic currents (xedecay, xidecay, xpdecay)
@@ -113,14 +116,23 @@ for ti=1:Nsteps
     #       * spikes emitted by each neuron (forwardSpike)
     #       * synapse-filtered spikes emitted by each neuron (r)        
     Threads.@threads for ci = 1:Ncells
-        xedecay[ci] += -dt*xedecay[ci]*invtauedecay + forwardInputsEPrev[ci]*invtauedecay
-        xidecay[ci] += -dt*xidecay[ci]*invtauidecay + forwardInputsIPrev[ci]*invtauidecay
-        @static if kind in [:train, :test]
-            xpdecay[ci] += -dt*xpdecay[ci]*invtaudecay_plastic + forwardInputsPPrev[ci]*invtaudecay_plastic
-            synInputBalanced[ci] = xedecay[ci] + xidecay[ci]
-            synInput[ci] = synInputBalanced[ci] + xpdecay[ci]
+        @static if K>0
+            xedecay[ci] += (-dt*xedecay[ci] + forwardInputsEPrev[ci]) * invtauedecay
+            xidecay[ci] += (-dt*xidecay[ci] + forwardInputsIPrev[ci]) * invtauidecay
         end
-        @static if kind == :init
+        @static if kind in [:train, :test]
+            xpdecay[ci] += (-dt*xpdecay[ci] + forwardInputsPPrev[ci]) * invtaudecay_plastic
+        end
+
+        @static if kind in [:train, :test]
+            @static if K>0
+                synInputBalanced[ci] = xedecay[ci] + xidecay[ci]
+                synInput[ci] = synInputBalanced[ci] + xpdecay[ci]
+            else
+                synInput[ci] = xpdecay[ci]
+            end
+        end
+        @static if kind == :init && K>0
             synInput[ci] = xedecay[ci] + xidecay[ci]
         end
 
@@ -177,10 +189,14 @@ for ti=1:Nsteps
             bias[ci] = mu[ci]
         end
 
+        @static if K==0
+            v[ci] += sqrtdt*sig[ci]*noise[ci]
+        end
+
         # neuron ci not in refractory period
         if t > (lastSpike[ci] + refrac)  
             # update membrane potential
-            v[ci] += dt*(invtau[ci]*(bias[ci]-v[ci] + synInput[ci]))
+            v[ci] += dt*invtau[ci]*(bias[ci]-v[ci] + synInput[ci])
 
             #spike occurred
             if v[ci] > thresh[ci]                      
@@ -207,7 +223,7 @@ for ti=1:Nsteps
             # (1) balanced connections (static)
             # loop over neurons (indexed by j) postsynaptic to neuron ci.                     
             # nc0[ci] is the number neurons postsynaptic neuron ci
-            for j = 1:nc0[ci]                       
+            @static K>0 && for j = 1:nc0[ci]                       
                 post_ci = w0Index[j,ci]                 # cell index of j_th postsynaptic neuron
                 wgt = w0Weights[j,ci]                   # synaptic weight of the connection, ci -> post_ci
                 if wgt > 0                              # excitatory synapse
@@ -230,9 +246,11 @@ for ti=1:Nsteps
     # save spiking activities produced at the current time step
     #   - forwardInputsPrev's will be used in the next time step to compute synaptic currents (xedecay, xidecay, xpdecay)
     #   - forwardSpikePrev will be used in the next time step to compute synapse-filter spikes (r)
-    forwardInputsEPrev .= forwardInputsE
-    forwardInputsIPrev .= forwardInputsI
-    @static kind in [:train,:test] && (forwardInputsPPrev .= forwardInputsP)
+    @static if K>0
+        forwardInputsEPrev .= forwardInputsE
+        forwardInputsIPrev .= forwardInputsI
+    end
+    @static kind in [:train, :test] && (forwardInputsPPrev .= forwardInputsP)
     @static kind==:train && (forwardSpikePrev .= forwardSpike) # if training, save spike trains
 
 end #end loop over time

@@ -3,8 +3,8 @@ invtauidecay = p.FloatPrecision(1/p.tauidecay)
 invtaudecay_plastic = p.FloatPrecision(1/p.taudecay_plastic)
 
 mu = Vector{p.FloatPrecision}(undef, p.Ncells)
-mu[1:p.Ne] = (p.muemax-p.muemin)*rand(p.Ne) .+ p.muemin
-mu[(p.Ne+1):p.Ncells] = (p.muimax-p.muimin)*rand(p.Ni) .+ p.muimin
+mu[1:p.Ne] = (p.muemax-p.muemin)*rand(p.rng, p.Ne) .+ p.muemin
+mu[(p.Ne+1):p.Ncells] = (p.muimax-p.muimin)*rand(p.rng, p.Ni) .+ p.muimin
 
 thresh = Vector{p.FloatPrecision}(undef, p.Ncells)
 thresh[1:p.Ne] .= p.threshe
@@ -48,5 +48,7 @@ utmp = Matrix{p.FloatPrecision}(undef, p.Nsteps - Int(1000/p.dt), 1000)
 
 k = Matrix{p.FloatPrecision}(undef, 2*p.L, p.Ncells)
 v = Vector{p.FloatPrecision}(undef, p.Ncells)
+noise = Vector{p.FloatPrecision}(undef, p.Ncells)
+sig = fill(p.FloatPrecision(sig0), p.Ncells)
 
 dt = p.FloatPrecision(p.dt)

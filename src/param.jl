@@ -8,6 +8,8 @@ wid = 50
 
 monitor_resources_used = 0  # set to N to measure every N seconds
 
+rng = (@isdefined CUDA) ? CUDA.RNG() : Random.default_rng()
+
 dt = 0.1 #simulation timestep (ms)
 
 # training variables
@@ -20,6 +22,7 @@ penlamII       = 3.0; # 0.08
 penmu          = 8.0; # 2.0
 frac           = 1.0;
 learn_every    = 10.0 # (ms)
+learn_step = round(Int, learn_every/dt)
 
 # innate, train, test time (ms)
 train_duration = 1000.;
@@ -44,8 +47,8 @@ taudecay_plastic = 150
 
 # network size      
 Ncells = 5000;
-Ne = round(Int, Ncells*0.5);
-Ni = round(Int, Ncells*0.5);
+Ne = floor(Int, Ncells*0.5);
+Ni = ceil(Int, Ncells*0.5);
 
 if Ncells == typemax(IntPrecision)
   @warn "IntPrecision is too small for GPU (but fine for CPU)"
@@ -83,14 +86,17 @@ Lexc = L # excitatory L
 Linh = L # inhibitory L
 wpscale = sqrt(L) * 2.0
 
-wpee = je * sqrtK / wpscale
-wpie = je * sqrtK / wpscale
-wpei = -ji * sqrtK / wpscale
-wpii = -ji * sqrtK / wpscale
+wpee = 2.0 * taue * g / wpscale
+wpie = 2.0 * taue * g / wpscale
+wpei = -2.0 * taue * g / wpscale
+wpii = -2.0 * taue * g / wpscale
+
+
+sig0 = 9.0*sqrt(dt)/(taue+taui)*2
 
 
 maxrate = 500 #(Hz) maximum average firing rate.  if the average firing rate across the simulation for any neuron exceeds this value, some of that neuron's spikes will not be saved
 
 
-p = paramType(FloatPrecision,IntPrecision,seed,performance_interval,example_neurons,wid,monitor_resources_used,train_duration,nloop,penlambda,penlamEE,penlamEI,penlamIE,penlamII,penmu,frac,learn_every,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
+p = paramType(FloatPrecision,IntPrecision,seed,rng,performance_interval,example_neurons,wid,monitor_resources_used,train_duration,nloop,penlambda,penlamEE,penlamEI,penlamIE,penlamII,penmu,frac,learn_every,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
 je,ji,jx,jee,jei,jie,jii,wpee,wpei,wpie,wpii,muemin,muemax,muimin,muimax,vre,threshe,threshi,refrac,tauedecay,tauidecay,taudecay_plastic,maxrate);

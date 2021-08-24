@@ -5,8 +5,7 @@ function rls(k, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpI
         k[:,ci] .= P[ci] * rtrim
         vPv = rtrim'*k[:,ci]
         den = plusone/(plusone + vPv)
-        BLAS.gemm!('N','T',-den,k[:,ci],k[:,ci],plusone,P[ci])
-
+        mul!(P[ci], k[:,ci], transpose(k[:,ci]), -den, plusone)
         e  = wpWeightIn[ci,:]'*rtrim + synInputBalanced[ci] - xtarg[learn_seq,ci]
         wpWeightIn[ci,:] .-= e*k[:,ci]*den
     end

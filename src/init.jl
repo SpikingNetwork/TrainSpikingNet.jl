@@ -1,8 +1,14 @@
-using LinearAlgebra, Random, JLD, Statistics
+using LinearAlgebra, Random, JLD, Statistics, StatsBase
 
-data_dir = length(ARGS)>0 ? ARGS[1] : "."
+data_dir = ARGS[1]
+xtarg_file = length(ARGS)>1 ? ARGS[2] : nothing
 
 Random.seed!(1)
+
+# --- set up variables --- #
+include(joinpath(@__DIR__,"struct.jl"))
+include(joinpath(data_dir,"param.jl"))
+include(joinpath(@__DIR__,"cpu","variables.jl"))
 
 # --- load code --- #
 kind=:init
@@ -14,13 +20,6 @@ include(joinpath(@__DIR__,"genStim.jl"))
 include(joinpath(@__DIR__,"cpu","loop.jl"))
 include(joinpath(@__DIR__,"funSample.jl"))
 
-# --- set up variables --- #
-include(joinpath(@__DIR__,"struct.jl"))
-include(joinpath(data_dir,"param.jl"))
-include(joinpath(@__DIR__,"cpu","variables.jl"))
-
-learn_step = round(Int, p.learn_every/dt)
-
 #----------- initialization --------------#
 w0Index, w0Weights, nc0 = genInitialWeights(p)
 
@@ -29,14 +28,19 @@ uavg, ns0, ustd = loop_init(nothing, nothing, nothing, p.train_time, dt,
     nothing, mu, thresh, invtau, nothing, nothing, ns, forwardInputsE,
     forwardInputsI, nothing, forwardInputsEPrev, forwardInputsIPrev, nothing,
     nothing, nothing, xedecay, xidecay, nothing, nothing, synInput, nothing,
-    bias, nothing, nothing, lastSpike, nothing, nothing, v, nothing,
-    nothing, w0Index, w0Weights, nc0, nothing, nothing, nothing, nothing,
-    nothing, nothing, nothing, nothing, nothing, uavg, utmp)
+    bias, nothing, nothing, lastSpike, nothing, nothing, v, rng, noise, sig,
+    nothing, nothing, w0Index, w0Weights, nc0, nothing, nothing, nothing,
+    nothing, nothing, nothing, nothing, nothing, nothing, uavg, utmp)
 
 wpWeightIn, wpWeightOut, wpIndexIn, wpIndexOut, wpIndexConvert, ncpIn, ncpOut =
     genPlasticWeights(p, w0Index, nc0, ns0)
 
-xtarg = genTarget(p,uavg,"zero")
+if isnothing(xtarg_file)
+  xtarg = genTarget(p,uavg,"zero")
+else
+  xtarg_dict = load(xtarg_file)
+  xtarg = xtarg_dict[first(keys(xtarg_dict))]
+end
 stim = genStim(p)
 
 #----------- save initialization --------------#

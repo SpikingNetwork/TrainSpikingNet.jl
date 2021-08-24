@@ -2,6 +2,7 @@ mutable struct paramType
     FloatPrecision::DataType
     IntPrecision::DataType
     seed::Union{Nothing,Int}
+    rng::AbstractRNG
     performance_interval::Int
     example_neurons::Int
     wid::Int

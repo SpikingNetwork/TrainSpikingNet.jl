@@ -11,8 +11,11 @@ Julia and executing `julia test/runtests.jl`.
 Edit `src/params.jl` to set your network size, connectivity, stimulus
 pattern, number of training loops, etc.
 
-Execute `julia src/init.jl <path-to-params.jl>` to randomly set the weights.
-These are stored in several `.jld` files.
+Execute `julia src/init.jl <path-to-params.jl> [<path-to-xtargs.jld>]`
+to randomly set the weights.  If the full path to a JLD file containing
+xtargs is not specified as an additional argument, artificial target
+functions will be generated consisting of sinusoids.  The results
+are stored in several `.jld` files.
 
 Execute `julia src/{cpu,gpu}/train.jl <path-to-params.jl` to iteratively
 update the weights with sequential presentations of the stimulus.

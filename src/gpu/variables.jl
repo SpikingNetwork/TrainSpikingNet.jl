@@ -1,6 +1,6 @@
 mu = CuVector{p.FloatPrecision}(undef, p.Ncells)
-mu[1:p.Ne] = (p.muemax-p.muemin)*rand(p.Ne) .+ p.muemin
-mu[(p.Ne+1):p.Ncells] = (p.muimax-p.muimin)*rand(p.Ni) .+ p.muimin
+mu[1:p.Ne] = (p.muemax-p.muemin)*rand(p.rng, p.Ne) .+ p.muemin
+mu[(p.Ne+1):p.Ncells] = (p.muimax-p.muimin)*rand(p.rng, p.Ni) .+ p.muimin
 
 thresh = CuVector{p.FloatPrecision}(undef, p.Ncells)
 thresh[1:p.Ne] .= p.threshe
@@ -44,3 +44,7 @@ den = CuArray{p.FloatPrecision}(undef, 1, 1, p.Ncells)
 e = CuArray{p.FloatPrecision}(undef, 1, 1, p.Ncells)
 delta = CuArray{p.FloatPrecision}(undef, 2*p.L, 1, p.Ncells)
 v = CuVector{p.FloatPrecision}(undef, p.Ncells)
+noise = CuArray{p.FloatPrecision}(undef, p.Ncells)
+sig = CUDA.fill(p.FloatPrecision(sig0), p.Ncells)
+
+dt = p.FloatPrecision(p.dt)

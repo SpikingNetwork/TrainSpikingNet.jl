@@ -22,7 +22,7 @@ ncpOut = load(joinpath(data_dir,"ncpOut.jld"))["ncpOut"]
 
 wpWeightIn = transpose(dropdims(wpWeightIn, dims=2))
 
-isnothing(p.seed) || Random.seed!(p.seed)
+isnothing(p.seed) || Random.seed!(p.rng, p.seed)
 
 # --- load code --- #
 kind=:train
@@ -50,7 +50,7 @@ vec01 = [zeros(ci_numExcSyn); ones(ci_numInhSyn)];
 Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01')
 # sum of penalties
 Pinv = Pinv_L2 + Pinv_rowsum;
-Pinv_norm = Pinv \ one(zeros(ci_numSyn,ci_numSyn))
+Pinv_norm = Pinv \ I
 
 for ci=1:Int(p.Ncells)
     # neurons presynaptic to ci
@@ -66,6 +66,7 @@ P = Vector{Matrix{p.FloatPrecision}}(P);
 stim = Array{p.FloatPrecision}(stim);
 xtarg = Array{p.FloatPrecision}(xtarg);
 ncpIn = Array{p.IntPrecision}(ncpIn)
+ncpOut = Array{p.IntPrecision}(ncpOut)
 w0Index = Array{p.IntPrecision}(w0Index)
 w0Weights = Array{p.FloatPrecision}(w0Weights)
 wpIndexIn = Array{p.IntPrecision}(wpIndexIn)
@@ -109,9 +110,9 @@ for iloop =1:p.nloop
         forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
         forwardSpike, forwardSpikePrev, xedecay, xidecay, xpdecay,
         synInputBalanced, synInput, r, bias, nothing, nothing, lastSpike,
-        plusone, k, v, P, Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn,
-        wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, ncpIn, ncpOut,
-        nothing, nothing)
+        plusone, k, v, p.rng, noise, sig, P, Px, w0Index, w0Weights, nc0, stim,
+        xtarg, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
+        ncpIn, ncpOut, nothing, nothing)
 
     elapsed_time = time()-start_time
     println("elapsed time: ",elapsed_time, " sec")
@@ -128,9 +129,9 @@ for iloop =1:p.nloop
             forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
             nothing, nothing, xedecay, xidecay, xpdecay, synInputBalanced,
             synInput, nothing, bias, p.wid, p.example_neurons, lastSpike,
-            nothing, nothing, v, nothing, nothing, w0Index, w0Weights,
-            nc0, stim, nothing, nothing, wpIndexOut, nothing, nothing,
-            wpWeightOut, nothing, ncpOut, nothing, nothing)
+            nothing, nothing, v, p.rng, noise, sig, nothing, nothing, w0Index,
+            w0Weights, nc0, stim, nothing, nothing, wpIndexOut, nothing,
+            nothing, wpWeightOut, nothing, ncpOut, nothing, nothing)
 
         pcor = zeros(p.Ncells)
         for (index, ci) in enumerate(1:p.Ncells)

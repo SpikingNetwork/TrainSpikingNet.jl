@@ -1,7 +1,7 @@
 function genStim(p)
 
 # stim = 0.5*(2*rand(p.Ncells) .- 1)
-timeSteps = Int((p.stim_off - p.stim_on)/p.dt)
+timeSteps = round(Int, (p.stim_off - p.stim_on)/p.dt)
 stim = zeros(timeSteps,p.Ncells)
 mu = 0.0;
 b = 1/20;
