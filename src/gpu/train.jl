@@ -15,7 +15,6 @@ wpIndexOut = load(joinpath(data_dir,"wpIndexOut.jld"))["wpIndexOut"]
 wpIndexConvert = load(joinpath(data_dir,"wpIndexConvert.jld"))["wpIndexConvert"]
 wpWeightIn = load(joinpath(data_dir,"wpWeightIn.jld"))["wpWeightIn"]
 wpWeightOut = load(joinpath(data_dir,"wpWeightOut.jld"))["wpWeightOut"]
-ncpOut = load(joinpath(data_dir,"ncpOut.jld"))["ncpOut"]
 
 isnothing(p.seed) || Random.seed!(p.rng, p.seed)
 
@@ -55,9 +54,6 @@ Px = CuArray{p.IntPrecision}(Px);
 P = CuArray{p.FloatPrecision}(P);
 stim = CuArray{p.FloatPrecision}(stim);
 xtarg = CuArray{p.FloatPrecision}(xtarg);
-invtauedecay = p.FloatPrecision(1/p.tauedecay)
-invtauidecay = p.FloatPrecision(1/p.tauidecay)
-invtaudecay_plastic = p.FloatPrecision(1/p.taudecay_plastic)
 dt = p.FloatPrecision(p.dt)
 w0Index = CuArray{p.IntPrecision}(w0Index)
 w0Weights = CuArray{p.FloatPrecision}(w0Weights)
@@ -110,7 +106,7 @@ for iloop =1:p.nloop
         synInput, r, bias, nothing, nothing, lastSpike, bnotrefrac,
         bspike, plusone, minusone, k, den, e, delta, v, p.rng, noise, sig,
         P, Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut,
-        wpIndexConvert, wpWeightIn, wpWeightOut, ncpOut, nothing, nothing)
+        wpIndexConvert, wpWeightIn, wpWeightOut, nothing, nothing)
 
     elapsed_time = time()-start_time
     println("elapsed time: ",elapsed_time, " sec")
@@ -125,12 +121,12 @@ for iloop =1:p.nloop
             invtaudecay_plastic, mu, thresh, invtau, ns, forwardInputsE,
             forwardInputsI, forwardInputsP, forwardInputsEPrev,
             forwardInputsIPrev, forwardInputsPPrev, nothing, nothing,
-            xedecay, xidecay, xpdecay, synInputBalanced, synInput, r,
+            xedecay, xidecay, xpdecay, synInputBalanced, synInput, nothing,
             bias, p.wid, p.example_neurons, lastSpike, bnotrefrac, bspike,
             nothing, nothing, nothing, nothing, nothing, nothing, v, p.rng,
             noise, sig, nothing, nothing, w0Index, w0Weights, nc0, stim,
             nothing, nothing, wpIndexOut, nothing, nothing, wpWeightOut,
-            ncpOut, nothing, nothing)
+            nothing, nothing)
 
         pcor = zeros(p.Ncells)
         for (index, ci) in enumerate(1:p.Ncells)
@@ -139,7 +135,9 @@ for iloop =1:p.nloop
             pcor[index] = cor(xtarg_slice,xtotal_slice)
         end
 
-        println("cor = ",mean(pcor))
+        bnotnan = .!isnan.(pcor)
+        println("cor = ", mean(pcor[bnotnan]),
+                all(bnotnan) ? "" : string(" (", length(pcor)-count(bnotnan)," are NaN)"))
     end
 
 end

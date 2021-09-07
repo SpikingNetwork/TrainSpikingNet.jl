@@ -9,8 +9,8 @@
     wpWeightIn, wpWeightOut, ncpIn, ncpOut, uavg, utmp)
 
 @static if kind == :test
-    learn_nsteps = Int((train_time - stim_off)/learn_every)
-    widInc = Int(2*wid/learn_every - 1)
+    learn_nsteps = round(Int, (train_time - stim_off)/learn_every)
+    widInc = round(Int, 2*wid/learn_every - 1)
             
     vtotal_exccell = zeros(Nsteps,example_neurons)
     vtotal_inhcell = zeros(Nsteps,example_neurons)
@@ -25,10 +25,10 @@
     xebal = zeros(learn_nsteps,Ncells)
     xibal = zeros(learn_nsteps,Ncells)
     xplastic = zeros(learn_nsteps,Ncells)
-    xtotalcnt = zeros(learn_nsteps)
-    xebalcnt = zeros(learn_nsteps)
-    xibalcnt = zeros(learn_nsteps)
-    xplasticcnt = zeros(learn_nsteps)
+    xtotalcnt = zeros(Int, learn_nsteps)
+    xebalcnt = zeros(Int, learn_nsteps)
+    xibalcnt = zeros(Int, learn_nsteps)
+    xplasticcnt = zeros(Int, learn_nsteps)
 end
 
 @static if kind == :train
@@ -137,11 +137,11 @@ for ti=1:Nsteps
         end
 
         @static if kind == :init
-            if ti > Int(1000/dt) # 1000 ms
+            if ti > 1000/dt # 1000 ms
                 uavg[ci] += synInput[ci] / (Nsteps - round(Int,1000/dt)) # save synInput
             end
 
-            if ti > Int(1000/dt) && ci <=1000
+            if ti > 1000/dt && ci <=1000
                 utmp[ti - round(Int,1000/dt), ci] = synInput[ci]
             end
         end
@@ -264,10 +264,10 @@ end #end loop over time
 end
 
 @static if kind == :test
-    xtotal ./ xtotalcnt
-    xebal ./ xebalcnt
-    xibal ./ xibalcnt
-    xplastic ./ xplasticcnt
+    xtotal ./= xtotalcnt
+    xebal ./= xebalcnt
+    xibal ./= xibalcnt
+    xplastic ./= xplasticcnt
 
     return xtotal, xebal, xibal, xplastic, vtotal_exccell, vtotal_inhcell, vebal_exccell, vibal_exccell, vebal_inhcell, vibal_inhcell, vplastic_exccell, vplastic_inhcell, times, ns
 end

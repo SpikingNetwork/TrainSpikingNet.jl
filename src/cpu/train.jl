@@ -52,10 +52,9 @@ Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01')
 Pinv = Pinv_L2 + Pinv_rowsum;
 Pinv_norm = Pinv \ I
 
-for ci=1:Int(p.Ncells)
+for ci=1:p.Ncells
     # neurons presynaptic to ci
     push!(Px, wpIndexIn[ci,:]) 
-
     push!(P, copy(Pinv_norm));
 end
 
@@ -140,7 +139,9 @@ for iloop =1:p.nloop
             pcor[index] = cor(xtarg_slice,xtotal_slice)
         end
 
-        println("cor = ",mean(pcor))
+        bnotnan = .!isnan.(pcor)
+        println("cor = ", mean(pcor[bnotnan]),
+                all(bnotnan) ? "" : string(" (", length(pcor)-count(bnotnan)," are NaN)"))
     end
 
 end # end loop over trainings

@@ -44,7 +44,7 @@ cukernelP = cufunction(kernelP, Tuple{CuDeviceArray{UInt64,1,AS.Global}, CuDevic
     xpdecay, synInputBalanced, synInput, r, bias, wid, example_neurons,
     lastSpike, bnotrefrac, bspike, plusone, minusone, k, den, e, delta, v,
     rng, noise, sig, P, Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn,
-    wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, ncpOut, uavg,
+    wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, uavg,
     utmp)
 
 @static if kind == :test
@@ -179,10 +179,10 @@ for ti=1:Nsteps
 end
 
 @static if kind == :test
-    xtotal = xtotal ./ xtotalcnt
-    xebal = xebal ./ xebalcnt
-    xibal = xibal ./ xibalcnt
-    xplastic = xplastic ./ xplasticcnt
+    xtotal ./= xtotalcnt
+    xebal ./= xebalcnt
+    xibal ./= xibalcnt
+    xplastic ./= xplasticcnt
 
     return xtotal, xebal, xibal, xplastic, vtotal_exccell, vtotal_inhcell, vebal_exccell, vibal_exccell, vebal_inhcell, vibal_inhcell, vplastic_exccell, vplastic_inhcell
 end

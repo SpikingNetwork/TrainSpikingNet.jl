@@ -1,3 +1,7 @@
+invtauedecay = p.FloatPrecision(1/p.tauedecay)
+invtauidecay = p.FloatPrecision(1/p.tauidecay)
+invtaudecay_plastic = p.FloatPrecision(1/p.taudecay_plastic)
+
 mu = CuVector{p.FloatPrecision}(undef, p.Ncells)
 mu[1:p.Ne] = (p.muemax-p.muemin)*rand(p.rng, p.Ne) .+ p.muemin
 mu[(p.Ne+1):p.Ncells] = (p.muimax-p.muimin)*rand(p.rng, p.Ni) .+ p.muimin
