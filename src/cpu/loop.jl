@@ -115,7 +115,7 @@ for ti=1:Nsteps
     #   - activity variables used for training
     #       * spikes emitted by each neuron (forwardSpike)
     #       * synapse-filtered spikes emitted by each neuron (r)        
-    Threads.@threads for ci = 1:Ncells
+    @maybethread for ci = 1:Ncells
         @static if K>0
             xedecay[ci] += (-dt*xedecay[ci] + forwardInputsEPrev[ci]) * invtauedecay
             xidecay[ci] += (-dt*xidecay[ci] + forwardInputsIPrev[ci]) * invtauidecay
@@ -141,7 +141,7 @@ for ti=1:Nsteps
                 uavg[ci] += synInput[ci] / (Nsteps - round(Int,1000/dt)) # save synInput
             end
 
-            if ti > 1000/dt && ci <=1000
+            if ti > 1000/dt && ci <= 1000
                 utmp[ti - round(Int,1000/dt), ci] = synInput[ci]
             end
         end

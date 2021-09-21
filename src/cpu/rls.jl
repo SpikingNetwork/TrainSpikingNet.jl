@@ -1,6 +1,6 @@
 function rls(k, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone)
 
-    Threads.@threads for ci = 1:Ncells
+    @maybethread for ci = 1:Ncells
         rtrim = r[Px[ci]] 
         k[:,ci] .= P[ci] * rtrim
         vPv = rtrim'*k[:,ci]
