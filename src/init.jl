@@ -3,8 +3,6 @@ using LinearAlgebra, Random, JLD, Statistics, StatsBase
 data_dir = ARGS[1]
 xtarg_file = length(ARGS)>1 ? ARGS[2] : nothing
 
-Random.seed!(1)
-
 # --- set up variables --- #
 include(joinpath(@__DIR__,"struct.jl"))
 include(joinpath(data_dir,"param.jl"))
@@ -55,6 +53,7 @@ end
 stim = genStim(p)
 
 #----------- save initialization --------------#
+save(joinpath(data_dir,"p.jld"), "p", p)
 save(joinpath(data_dir,"w0Index.jld"), "w0Index", w0Index)
 save(joinpath(data_dir,"w0Weights.jld"), "w0Weights", w0Weights)
 save(joinpath(data_dir,"nc0.jld"), "nc0", nc0)

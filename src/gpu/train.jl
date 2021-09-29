@@ -4,7 +4,7 @@ data_dir = length(ARGS)>0 ? ARGS[1] : "."
 
 #----------- load initialization --------------#
 include(joinpath(dirname(@__DIR__),"struct.jl"))
-include(joinpath(data_dir,"param.jl"))
+p = load(joinpath(data_dir,"p.jld"))["p"]
 w0Index = load(joinpath(data_dir,"w0Index.jld"))["w0Index"]
 w0Weights = load(joinpath(data_dir,"w0Weights.jld"))["w0Weights"]
 nc0 = load(joinpath(data_dir,"nc0.jld"))["nc0"]

@@ -9,6 +9,7 @@ wid = 50
 monitor_resources_used = 0  # set to N to measure every N seconds
 
 rng = Random.default_rng()
+isnothing(seed) || Random.seed!(rng, seed)
 
 dt = 0.1 #simulation timestep (ms)
 
@@ -22,7 +23,6 @@ penlamII       = 3.0; # 0.08
 penmu          = 8.0; # 2.0
 frac           = 1.0;
 learn_every    = 10.0 # (ms)
-learn_step = round(Int, learn_every/dt)
 
 # innate, train, test time (ms)
 train_duration = 1000.;
@@ -80,6 +80,10 @@ muemax = jx*1.5
 muimin = jx # inh external input
 muimax = jx
 
+mu = Vector{Float64}(undef, Ncells)
+mu[1:Ne] = (muemax-muemin)*rand(rng, Ne) .+ muemin
+mu[(Ne+1):Ncells] = (muimax-muimin)*rand(rng, Ni) .+ muimin
+
 # plastic weights
 L = round(Int,sqrt(K)*2.0) # number of exc/inh plastic weights per neuron
 Lexc = L # excitatory L
@@ -97,4 +101,4 @@ maxrate = 500 #(Hz) maximum average firing rate.  if the average firing rate acr
 
 
 p = paramType(FloatPrecision,IntPrecision,seed,rng,performance_interval,example_neurons,wid,monitor_resources_used,train_duration,nloop,penlambda,penlamEE,penlamEI,penlamIE,penlamII,penmu,frac,learn_every,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
-je,ji,jx,jee,jei,jie,jii,wpee,wpei,wpie,wpii,muemin,muemax,muimin,muimax,vre,threshe,threshi,refrac,tauedecay,tauidecay,taudecay_plastic,maxrate);
+je,ji,jx,jee,jei,jie,jii,wpee,wpei,wpie,wpii,mu,vre,threshe,threshi,refrac,tauedecay,tauidecay,taudecay_plastic,sig0,maxrate);

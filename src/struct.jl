@@ -48,10 +48,7 @@ mutable struct paramType
     wpei::Float64
     wpie::Float64
     wpii::Float64
-    muemin::Float64
-    muemax::Float64
-    muimin::Float64
-    muimax::Float64
+    mu::Vector{Float64}
     vre::Float64
     threshe::Float64
     threshi::Float64
@@ -59,5 +56,6 @@ mutable struct paramType
     tauedecay::Float64
     tauidecay::Float64
     taudecay_plastic::Float64    
+    sig0::Float64
     maxrate::Float64
 end

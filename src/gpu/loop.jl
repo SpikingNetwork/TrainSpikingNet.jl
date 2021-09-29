@@ -79,17 +79,17 @@ ns .= 0
 lastSpike .= -100.0
 randn!(rng, v)
 xedecay .= xidecay .= xpdecay .= 0
-@static if K>0
+@static if p.K>0
     forwardInputsEPrev .= forwardInputsIPrev .= forwardInputsPPrev .= 0.0
 else
     synInputBalanced .= 0.0
 end
-@static K==0 && (sqrtdt = sqrt(dt))
+@static p.K==0 && (sqrtdt = sqrt(dt))
 
 for ti=1:Nsteps
     t = dt*ti;
 
-    @static K>0 && (forwardInputsE .= forwardInputsI .= 0.0)
+    @static p.K>0 && (forwardInputsE .= forwardInputsI .= 0.0)
     forwardInputsP .= 0.0
 
     @static kind==:train && if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
@@ -97,13 +97,13 @@ for ti=1:Nsteps
         learn_seq += 1
     end
 
-    @static if K>0
+    @static if p.K>0
         xedecay .+= (-dt.*xedecay .+ forwardInputsEPrev[2:end]) .* invtauedecay
         xidecay .+= (-dt.*xidecay .+ forwardInputsIPrev[2:end]) .* invtauidecay
     end
     xpdecay .+= (-dt.*xpdecay .+ forwardInputsPPrev[2:end]) .* invtaudecay_plastic
 
-    @static if K>0
+    @static if p.K>0
         synInputBalanced .= xedecay .+ xidecay
         synInput .= synInputBalanced .+ xpdecay
     else
@@ -143,7 +143,7 @@ for ti=1:Nsteps
         bias .= mu
     end
 
-    @static if K==0
+    @static if p.K==0
         randn!(rng, noise)
         v .+= sqrtdt.*sig.*noise
     end
@@ -159,7 +159,7 @@ for ti=1:Nsteps
 
     ispike = findall(bspike)
     if length(ispike)>0
-        @static if K>0
+        @static if p.K>0
             configEI = configurator(CUDA.launch_configuration(cukernelEI.fun),
                                     (size(w0Weights,1),length(ispike)))
             @cuda name="update_forwardInputsEI" threads=configEI.threads blocks=configEI.blocks kernelEI(ispike, w0Index, w0Weights, forwardInputsE, forwardInputsI)
@@ -170,7 +170,7 @@ for ti=1:Nsteps
         @cuda name="update_forwardInputsP" threads=configP.threads blocks=configP.blocks kernelP(ispike, wpIndexOut, wpWeightOut, forwardInputsP)
     end
 
-    @static if K>0
+    @static if p.K>0
         forwardInputsEPrev .= forwardInputsE
         forwardInputsIPrev .= forwardInputsI
     end
