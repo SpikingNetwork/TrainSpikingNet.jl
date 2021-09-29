@@ -44,10 +44,9 @@ cukernelP = cufunction(kernelP, Tuple{CuDeviceArray{UInt64,1,AS.Global}, CuDevic
     xpdecay, synInputBalanced, synInput, r, bias, wid, example_neurons,
     lastSpike, bnotrefrac, bspike, plusone, minusone, k, den, e, delta, v,
     rng, noise, sig, P, Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn,
-    wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, uavg,
-    utmp)
+    wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, uavg, utmp)
 
-@static if kind == :test
+@static if kind in [:test, :train_test]
     learn_nsteps = round(Int, (train_time - stim_off)/learn_every)
     widInc = round(Int, 2*wid/learn_every - 1)
 
@@ -70,7 +69,7 @@ cukernelP = cufunction(kernelP, Tuple{CuDeviceArray{UInt64,1,AS.Global}, CuDevic
     xplasticcnt = CUDA.zeros(Int, learn_nsteps)
 end
 
-@static if kind == :train
+@static if kind in [:train, :train_test]
     learn_seq = 1
     r .= 0
 end
@@ -92,7 +91,7 @@ for ti=1:Nsteps
     @static p.K>0 && (forwardInputsE .= forwardInputsI .= 0.0)
     forwardInputsP .= 0.0
 
-    @static kind==:train && if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
+    @static kind in [:train, :train_test] && if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
         wpWeightIn, wpWeightOut = rls(k, den, e, delta, L, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, minusone)
         learn_seq += 1
     end
@@ -110,7 +109,7 @@ for ti=1:Nsteps
         synInput .= xpdecay
     end
 
-    @static if kind == :test
+    @static if kind in [:test, :train_test]
         # saved for visualization
         vtotal_exccell[ti,1:example_neurons] .= synInput[1:example_neurons]
         vebal_exccell[ti,1:example_neurons] .= xedecay[1:example_neurons]
@@ -133,7 +132,7 @@ for ti=1:Nsteps
         end
     end
 
-    @static if kind == :train
+    @static if kind in [:train, :train_test]
         r .+= (-dt.*r .+ forwardSpikePrev).*invtaudecay_plastic
     end
 
@@ -152,7 +151,7 @@ for ti=1:Nsteps
     v .+= bnotrefrac.*dt.*invtau.*(bias .- v .+ synInput)
 
     bspike .= bnotrefrac .& (v .> thresh)
-    @static kind==:train && (forwardSpike .= bspike)
+    @static kind in [:train, :train_test] && (forwardSpike .= bspike)
     ns .+= bspike
     v .= ifelse.(bspike, vre, v)
     lastSpike .= ifelse.(bspike, t, lastSpike)
@@ -175,10 +174,10 @@ for ti=1:Nsteps
         forwardInputsIPrev .= forwardInputsI
     end
     forwardInputsPPrev .= forwardInputsP
-    @static kind==:train && (forwardSpikePrev .= forwardSpike)
+    @static kind in [:train, :train_test] && (forwardSpikePrev .= forwardSpike)
 end
 
-@static if kind == :test
+@static if kind in [:test, :train_test]
     xtotal ./= xtotalcnt
     xebal ./= xebalcnt
     xibal ./= xibalcnt
