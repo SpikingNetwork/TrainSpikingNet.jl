@@ -1,24 +1,49 @@
-using LinearAlgebra, Random, JLD, Statistics
+using LinearAlgebra, Random, JLD, Statistics, ArgParse
 
-data_dir = length(ARGS)>0 ? ARGS[1] : "."
+s = ArgParseSettings()
+
+@add_arg_table! s begin
+    "--nloops", "-n"
+        help = "number of iterations to train"
+        arg_type = Int
+        default = 1
+        metavar = "N"
+    "--performance_interval", "-p"
+        help = "measure correlation every P training loops.  default is never"
+        arg_type = Int
+        default = nothing
+        range_tester = x->x>0
+        metavar = "P"
+    "--monitor_resources_used", "-r"
+        help = "measure power, cores, and memory usage every R seconds.  default is never"
+        arg_type = Int
+        default = nothing
+        range_tester = x->x>0
+        metavar = "R"
+    "data_dir"
+        help = "full path to the directory containing the parameters file"
+        required = true
+end
+
+parsed_args = parse_args(s)
 
 BLAS.set_num_threads(1)
 
 #----------- load initialization --------------#
 include(joinpath(dirname(@__DIR__),"struct.jl"))
-p = load(joinpath(data_dir,"p.jld"))["p"]
-w0Index = load(joinpath(data_dir,"w0Index.jld"))["w0Index"]
-w0Weights = load(joinpath(data_dir,"w0Weights.jld"))["w0Weights"]
-nc0 = load(joinpath(data_dir,"nc0.jld"))["nc0"]
-stim = load(joinpath(data_dir,"stim.jld"))["stim"]
-xtarg = load(joinpath(data_dir,"xtarg.jld"))["xtarg"]
-wpIndexIn = load(joinpath(data_dir,"wpIndexIn.jld"))["wpIndexIn"]
-wpIndexOut = load(joinpath(data_dir,"wpIndexOut.jld"))["wpIndexOut"]
-wpIndexConvert = load(joinpath(data_dir,"wpIndexConvert.jld"))["wpIndexConvert"]
-wpWeightIn = load(joinpath(data_dir,"wpWeightIn.jld"))["wpWeightIn"]
-wpWeightOut = load(joinpath(data_dir,"wpWeightOut.jld"))["wpWeightOut"]
-ncpIn = load(joinpath(data_dir,"ncpIn.jld"))["ncpIn"]
-ncpOut = load(joinpath(data_dir,"ncpOut.jld"))["ncpOut"]
+p = load(joinpath(parsed_args["data_dir"],"p.jld"))["p"]
+w0Index = load(joinpath(parsed_args["data_dir"],"w0Index.jld"))["w0Index"]
+w0Weights = load(joinpath(parsed_args["data_dir"],"w0Weights.jld"))["w0Weights"]
+nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld"))["nc0"]
+stim = load(joinpath(parsed_args["data_dir"],"stim.jld"))["stim"]
+xtarg = load(joinpath(parsed_args["data_dir"],"xtarg.jld"))["xtarg"]
+wpIndexIn = load(joinpath(parsed_args["data_dir"],"wpIndexIn.jld"))["wpIndexIn"]
+wpIndexOut = load(joinpath(parsed_args["data_dir"],"wpIndexOut.jld"))["wpIndexOut"]
+wpIndexConvert = load(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld"))["wpIndexConvert"]
+wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn.jld"))["wpWeightIn"]
+wpWeightOut = load(joinpath(parsed_args["data_dir"],"wpWeightOut.jld"))["wpWeightOut"]
+ncpIn = load(joinpath(parsed_args["data_dir"],"ncpIn.jld"))["ncpIn"]
+ncpOut = load(joinpath(parsed_args["data_dir"],"ncpOut.jld"))["ncpOut"]
 
 wpWeightIn = transpose(dropdims(wpWeightIn, dims=2))
 
@@ -40,7 +65,7 @@ kind=:train
 include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
 include(joinpath(@__DIR__,"loop.jl"))
 include(joinpath(@__DIR__,"rls.jl"))
-if p.performance_interval>0
+if !isnothing(parsed_args["performance_interval"])
     kind=:test
     include(joinpath(@__DIR__,"loop.jl"))
 end
@@ -98,22 +123,23 @@ function monitor_resources(c::Channel)
     println("total power used: ", strip(ipmitool[1]), " Watts\n",
             "CPU cores used by this process: ", strip(top[1]), "%\n",
             "CPU memory used by this process: ", strip(top[2]), '%')
-    sleep(p.monitor_resources_used)
+    sleep(parsed_args["monitor_resources_used"])
   end
 end
 
-if p.monitor_resources_used>0
+if !isnothing(parsed_args["monitor_resources_used"])
   chnl = Channel(monitor_resources)
   sleep(60)
 end
 
 #----------- train the network --------------#
-for iloop =1:p.nloop
+for iloop =1:parsed_args["nloops"]
     println("Loop no. ",iloop) 
 
     start_time = time()
 
-    loop_train(p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
+    loop_train(
+        p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
         p.Nsteps, p.Ncells, nothing, refrac, vre, invtauedecay,
         invtauidecay, invtaudecay_plastic, mu, thresh, invtau, nothing,
         nothing, ns, forwardInputsE, forwardInputsI, forwardInputsP,
@@ -129,7 +155,8 @@ for iloop =1:p.nloop
     println("firing rate: ",mean(ns)/(dt/1000*p.Nsteps), " Hz")
 
     # test performance
-    if (p.performance_interval>0) && mod(iloop,p.performance_interval) == 0
+    if !isnothing(parsed_args["performance_interval"]) &&
+       mod(iloop,parsed_args["performance_interval"]) == 0
 
         xtotal, _ = loop_test(
             p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
@@ -157,10 +184,10 @@ for iloop =1:p.nloop
 
 end # end loop over trainings
 
-save(joinpath(data_dir,"wpWeightIn-trained.jld"), "wpWeightIn", collect(wpWeightIn))
-save(joinpath(data_dir,"wpWeightOut-trained.jld"), "wpWeightOut", wpWeightOut)
+save(joinpath(parsed_args["data_dir"],"wpWeightIn-trained.jld"), "wpWeightIn", collect(wpWeightIn))
+save(joinpath(parsed_args["data_dir"],"wpWeightOut-trained.jld"), "wpWeightOut", wpWeightOut)
 
-if p.monitor_resources_used>0
+if !isnothing(parsed_args["monitor_resources_used"])
   sleep(60)
   close(chnl)
 end

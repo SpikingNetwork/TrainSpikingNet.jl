@@ -2,7 +2,6 @@ FloatPrecision = Float32
 IntPrecision = UInt32
 seed=nothing
 
-performance_interval = 0  # set to N to measure every N loops
 example_neurons = 25
 wid = 50
 
@@ -14,7 +13,6 @@ isnothing(seed) || Random.seed!(rng, seed)
 dt = 0.1 #simulation timestep (ms)
 
 # training variables
-nloop          = 150; #200
 penlambda      = 3.0; # 0.1 or 0.5 
 penlamEE       = 3.0; # 2.0
 penlamEI       = 3.0; # 0.08
@@ -102,5 +100,5 @@ sig0 = 9.0*sqrt(dt)/(taue+taui)*2
 maxrate = 500 #(Hz) maximum average firing rate.  if the average firing rate across the simulation for any neuron exceeds this value, some of that neuron's spikes will not be saved
 
 
-p = paramType(FloatPrecision,IntPrecision,seed,rng,performance_interval,example_neurons,wid,monitor_resources_used,train_duration,nloop,penlambda,penlamEE,penlamEI,penlamIE,penlamII,penmu,frac,learn_every,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
+p = paramType(FloatPrecision,IntPrecision,seed,rng,example_neurons,wid,train_duration,penlambda,penlamEE,penlamEI,penlamIE,penlamII,penmu,frac,learn_every,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
 je,ji,jx,jee,jei,jie,jii,wpee,wpei,wpie,wpii,mu,vre,threshe,threshi,refrac,tauedecay,tauidecay,taudecay_plastic,sig0,maxrate);

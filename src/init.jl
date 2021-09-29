@@ -1,11 +1,20 @@
-using LinearAlgebra, Random, JLD, Statistics, StatsBase
+using LinearAlgebra, Random, JLD, Statistics, StatsBase, ArgParse
 
-data_dir = ARGS[1]
-xtarg_file = length(ARGS)>1 ? ARGS[2] : nothing
+s = ArgParseSettings()
+
+@add_arg_table! s begin
+    "--xtarg_file", "-x"
+        help = "full path to the JLD file containing the synaptic targets.  default is sinusoids"
+    "data_dir"
+        help = "full path to the directory containing the parameters file"
+        required = true
+end
+
+parsed_args = parse_args(s)
 
 # --- set up variables --- #
 include(joinpath(@__DIR__,"struct.jl"))
-include(joinpath(data_dir,"param.jl"))
+include(joinpath(parsed_args["data_dir"],"param.jl"))
 include(joinpath(@__DIR__,"cpu","variables.jl"))
 
 # --- load code --- #
@@ -44,25 +53,25 @@ uavg, ns0, ustd = loop_init(nothing, nothing, nothing, p.train_time, dt,
 wpWeightIn, wpWeightOut, wpIndexIn, wpIndexOut, wpIndexConvert, ncpIn, ncpOut =
     genPlasticWeights(p, w0Index, nc0, ns0)
 
-if isnothing(xtarg_file)
+if isnothing(parsed_args["xtarg_file"])
   xtarg = genTarget(p,uavg,"zero")
 else
-  xtarg_dict = load(xtarg_file)
+  xtarg_dict = load(parsed_args["xtarg_file"])
   xtarg = xtarg_dict[first(keys(xtarg_dict))]
 end
 stim = genStim(p)
 
 #----------- save initialization --------------#
-save(joinpath(data_dir,"p.jld"), "p", p)
-save(joinpath(data_dir,"w0Index.jld"), "w0Index", w0Index)
-save(joinpath(data_dir,"w0Weights.jld"), "w0Weights", w0Weights)
-save(joinpath(data_dir,"nc0.jld"), "nc0", nc0)
-save(joinpath(data_dir,"stim.jld"), "stim", stim)
-save(joinpath(data_dir,"xtarg.jld"), "xtarg", xtarg)
-save(joinpath(data_dir,"wpIndexIn.jld"), "wpIndexIn", wpIndexIn)
-save(joinpath(data_dir,"wpIndexOut.jld"), "wpIndexOut", wpIndexOut)
-save(joinpath(data_dir,"wpIndexConvert.jld"), "wpIndexConvert", wpIndexConvert)
-save(joinpath(data_dir,"wpWeightIn.jld"), "wpWeightIn", wpWeightIn)
-save(joinpath(data_dir,"wpWeightOut.jld"), "wpWeightOut", wpWeightOut)
-save(joinpath(data_dir,"ncpIn.jld"), "ncpIn", ncpIn)
-save(joinpath(data_dir,"ncpOut.jld"), "ncpOut", ncpOut)
+save(joinpath(parsed_args["data_dir"],"p.jld"), "p", p)
+save(joinpath(parsed_args["data_dir"],"w0Index.jld"), "w0Index", w0Index)
+save(joinpath(parsed_args["data_dir"],"w0Weights.jld"), "w0Weights", w0Weights)
+save(joinpath(parsed_args["data_dir"],"nc0.jld"), "nc0", nc0)
+save(joinpath(parsed_args["data_dir"],"stim.jld"), "stim", stim)
+save(joinpath(parsed_args["data_dir"],"xtarg.jld"), "xtarg", xtarg)
+save(joinpath(parsed_args["data_dir"],"wpIndexIn.jld"), "wpIndexIn", wpIndexIn)
+save(joinpath(parsed_args["data_dir"],"wpIndexOut.jld"), "wpIndexOut", wpIndexOut)
+save(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld"), "wpIndexConvert", wpIndexConvert)
+save(joinpath(parsed_args["data_dir"],"wpWeightIn.jld"), "wpWeightIn", wpWeightIn)
+save(joinpath(parsed_args["data_dir"],"wpWeightOut.jld"), "wpWeightOut", wpWeightOut)
+save(joinpath(parsed_args["data_dir"],"ncpIn.jld"), "ncpIn", ncpIn)
+save(joinpath(parsed_args["data_dir"],"ncpOut.jld"), "ncpOut", ncpOut)

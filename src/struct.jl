@@ -3,12 +3,9 @@ mutable struct paramType
     IntPrecision::DataType
     seed::Union{Nothing,Int}
     rng::AbstractRNG
-    performance_interval::Int
     example_neurons::Int
     wid::Int
-    monitor_resources_used::Int
     train_duration::Float64
-    nloop::Int64
     penlambda::Float64
     penlamEE::Float64
     penlamEI::Float64
