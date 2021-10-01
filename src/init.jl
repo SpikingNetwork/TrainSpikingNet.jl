@@ -50,7 +50,7 @@ uavg, ns0, ustd = loop_init(nothing, nothing, nothing, p.train_time, dt,
     nothing, nothing, w0Index, w0Weights, nc0, nothing, nothing, nothing,
     nothing, nothing, nothing, nothing, nothing, nothing, uavg, utmp)
 
-wpWeightIn, wpWeightOut, wpIndexIn, wpIndexOut, wpIndexConvert, ncpIn, ncpOut =
+wpWeightIn, wpIndexIn, wpIndexOut, wpIndexConvert, ncpIn, ncpOut =
     genPlasticWeights(p, w0Index, nc0, ns0)
 
 if isnothing(parsed_args["xtarg_file"])
@@ -72,6 +72,5 @@ save(joinpath(parsed_args["data_dir"],"wpIndexIn.jld"), "wpIndexIn", wpIndexIn)
 save(joinpath(parsed_args["data_dir"],"wpIndexOut.jld"), "wpIndexOut", wpIndexOut)
 save(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld"), "wpIndexConvert", wpIndexConvert)
 save(joinpath(parsed_args["data_dir"],"wpWeightIn.jld"), "wpWeightIn", wpWeightIn)
-save(joinpath(parsed_args["data_dir"],"wpWeightOut.jld"), "wpWeightOut", wpWeightOut)
 save(joinpath(parsed_args["data_dir"],"ncpIn.jld"), "ncpIn", ncpIn)
 save(joinpath(parsed_args["data_dir"],"ncpOut.jld"), "ncpOut", ncpOut)

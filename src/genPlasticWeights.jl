@@ -73,14 +73,10 @@ function genPlasticWeights(p, w0Index, nc0, ns0)
     end
 
     # get weight, index of outgoing connections
-    ncpOutMax = round(Int, maximum(ncpOut))
-    wpIndexOut = zeros(Int, ncpOutMax,p.Ncells)
-    wpWeightOut = zeros(ncpOutMax,p.Ncells)
+    wpIndexOut = zeros(Int, maximum(ncpOut),p.Ncells)
     for preCell = 1:p.Ncells
         wpIndexOut[1:ncpOut[preCell],preCell] = wpIndexOutD[preCell]
     end
-    wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
-    
-    return wpWeightIn, wpWeightOut, wpIndexIn, wpIndexOut, wpIndexConvert, ncpIn, ncpOut
+    return wpWeightIn, wpIndexIn, wpIndexOut, wpIndexConvert, ncpIn, ncpOut
     
 end

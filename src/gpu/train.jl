@@ -39,9 +39,21 @@ end
 
 parsed_args = parse_args(s)
 
-#----------- load initialization --------------#
+# --- load code --- #
 include(joinpath(dirname(@__DIR__),"struct.jl"))
 p = load(joinpath(parsed_args["data_dir"],"p.jld"))["p"]
+
+kind=:train
+include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
+include(joinpath(@__DIR__,"loop.jl"))
+include(joinpath(@__DIR__,"rls.jl"))
+if !isnothing(parsed_args["performance_interval"])
+    kind=:train_test
+    include(joinpath(@__DIR__,"loop.jl"))
+    include(joinpath(@__DIR__,"funRollingAvg.jl"))
+end
+
+#----------- load initialization --------------#
 w0Index = load(joinpath(parsed_args["data_dir"],"w0Index.jld"))["w0Index"]
 w0Weights = load(joinpath(parsed_args["data_dir"],"w0Weights.jld"))["w0Weights"]
 nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld"))["nc0"]
@@ -53,25 +65,14 @@ wpIndexConvert = load(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld"))["w
 if isnothing(parsed_args["restore_from_checkpoint"])
     R=0
     wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn.jld"))["wpWeightIn"]
-    wpWeightOut = load(joinpath(parsed_args["data_dir"],"wpWeightOut.jld"))["wpWeightOut"]
 else
     R = parsed_args["restore_from_checkpoint"]
     wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld"))["wpWeightIn"]
-    wpWeightOut = load(joinpath(parsed_args["data_dir"],"wpWeightOut-ckpt$R.jld"))["wpWeightOut"]
 end
+wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells)
+wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
 
 isnothing(p.seed) || Random.seed!(p.rng, p.seed)
-
-# --- load code --- #
-kind=:train
-include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
-include(joinpath(@__DIR__,"loop.jl"))
-include(joinpath(@__DIR__,"rls.jl"))
-if !isnothing(parsed_args["performance_interval"])
-    kind=:train_test
-    include(joinpath(@__DIR__,"loop.jl"))
-    include(joinpath(@__DIR__,"funRollingAvg.jl"))
-end
 
 #--- set up correlation matrix ---#
 ci_numExcSyn = p.Lexc;
@@ -188,12 +189,9 @@ for iloop = R.+(1:parsed_args["nloops"])
 
     save(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$iloop.jld"),
          "wpWeightIn", Array(wpWeightIn))
-    save(joinpath(parsed_args["data_dir"],"wpWeightOut-ckpt$iloop.jld"),
-         "wpWeightOut", Array(wpWeightOut))
     if (isnothing(parsed_args["save_checkpoints"]) && iloop>1) ||
        (!isnothing(parsed_args["save_checkpoints"]) && iloop % parsed_args["save_checkpoints"] != 1)
         rm(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$(iloop-1).jld"))
-        rm(joinpath(parsed_args["data_dir"],"wpWeightOut-ckpt$(iloop-1).jld"))
     end
 end
 

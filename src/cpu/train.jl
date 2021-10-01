@@ -41,33 +41,10 @@ parsed_args = parse_args(s)
 
 BLAS.set_num_threads(1)
 
-#----------- load initialization --------------#
+# --- load code --- #
 include(joinpath(dirname(@__DIR__),"struct.jl"))
 p = load(joinpath(parsed_args["data_dir"],"p.jld"))["p"]
-w0Index = load(joinpath(parsed_args["data_dir"],"w0Index.jld"))["w0Index"]
-w0Weights = load(joinpath(parsed_args["data_dir"],"w0Weights.jld"))["w0Weights"]
-nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld"))["nc0"]
-stim = load(joinpath(parsed_args["data_dir"],"stim.jld"))["stim"]
-xtarg = load(joinpath(parsed_args["data_dir"],"xtarg.jld"))["xtarg"]
-wpIndexIn = load(joinpath(parsed_args["data_dir"],"wpIndexIn.jld"))["wpIndexIn"]
-wpIndexOut = load(joinpath(parsed_args["data_dir"],"wpIndexOut.jld"))["wpIndexOut"]
-wpIndexConvert = load(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld"))["wpIndexConvert"]
-if isnothing(parsed_args["restore_from_checkpoint"])
-    R=0
-    wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn.jld"))["wpWeightIn"]
-    wpWeightOut = load(joinpath(parsed_args["data_dir"],"wpWeightOut.jld"))["wpWeightOut"]
-    wpWeightIn = transpose(dropdims(wpWeightIn, dims=2))
-else
-    R = parsed_args["restore_from_checkpoint"]
-    wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld"))["wpWeightIn"]
-    wpWeightOut = load(joinpath(parsed_args["data_dir"],"wpWeightOut-ckpt$R.jld"))["wpWeightOut"]
-end
-ncpIn = load(joinpath(parsed_args["data_dir"],"ncpIn.jld"))["ncpIn"]
-ncpOut = load(joinpath(parsed_args["data_dir"],"ncpOut.jld"))["ncpOut"]
 
-isnothing(p.seed) || Random.seed!(p.rng, p.seed)
-
-# --- load code --- #
 macro maybethread(loop)
   if Threads.nthreads()>1
     quote Threads.@threads $(Expr(loop.head,
@@ -87,6 +64,30 @@ if !isnothing(parsed_args["performance_interval"])
     kind=:train_test
     include(joinpath(@__DIR__,"loop.jl"))
 end
+
+#----------- load initialization --------------#
+w0Index = load(joinpath(parsed_args["data_dir"],"w0Index.jld"))["w0Index"]
+w0Weights = load(joinpath(parsed_args["data_dir"],"w0Weights.jld"))["w0Weights"]
+nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld"))["nc0"]
+ncpIn = load(joinpath(parsed_args["data_dir"],"ncpIn.jld"))["ncpIn"]
+ncpOut = load(joinpath(parsed_args["data_dir"],"ncpOut.jld"))["ncpOut"]
+stim = load(joinpath(parsed_args["data_dir"],"stim.jld"))["stim"]
+xtarg = load(joinpath(parsed_args["data_dir"],"xtarg.jld"))["xtarg"]
+wpIndexIn = load(joinpath(parsed_args["data_dir"],"wpIndexIn.jld"))["wpIndexIn"]
+wpIndexOut = load(joinpath(parsed_args["data_dir"],"wpIndexOut.jld"))["wpIndexOut"]
+wpIndexConvert = load(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld"))["wpIndexConvert"]
+if isnothing(parsed_args["restore_from_checkpoint"])
+    R=0
+    wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn.jld"))["wpWeightIn"]
+    wpWeightIn = transpose(dropdims(wpWeightIn, dims=2))
+else
+    R = parsed_args["restore_from_checkpoint"]
+    wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld"))["wpWeightIn"]
+end
+wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells)
+wpWeightOut = convertWgtIn2Out(p.Ncells,ncpIn,wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
+
+isnothing(p.seed) || Random.seed!(p.rng, p.seed)
 
 # --- set up correlation matrix --- #
 P = Vector{Array{Float64,2}}(); 
@@ -202,12 +203,9 @@ for iloop = R.+(1:parsed_args["nloops"])
 
     save(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$iloop.jld"),
          "wpWeightIn", collect(wpWeightIn))
-    save(joinpath(parsed_args["data_dir"],"wpWeightOut-ckpt$iloop.jld"),
-         "wpWeightOut", wpWeightOut)
     if (isnothing(parsed_args["save_checkpoints"]) && iloop>1) ||
        (!isnothing(parsed_args["save_checkpoints"]) && iloop % parsed_args["save_checkpoints"] != 1)
         rm(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$(iloop-1).jld"))
-        rm(joinpath(parsed_args["data_dir"],"wpWeightOut-ckpt$(iloop-1).jld"))
     end
 end # end loop over trainings
 

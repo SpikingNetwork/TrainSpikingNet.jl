@@ -38,30 +38,35 @@ end
 
 parsed_args = parse_args(s)
 
-#----------- load initialization --------------#
+# --- load code --- #
 include(joinpath(dirname(@__DIR__),"struct.jl"))
 p = load(joinpath(parsed_args["data_dir"],"p.jld"))["p"]
-nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld"))["nc0"]
-stim = load(joinpath(parsed_args["data_dir"],"stim.jld"))["stim"]
-w0Index = load(joinpath(parsed_args["data_dir"],"w0Index.jld"))["w0Index"]
-w0Weights = load(joinpath(parsed_args["data_dir"],"w0Weights.jld"))["w0Weights"]
-wpIndexOut = load(joinpath(parsed_args["data_dir"],"wpIndexOut.jld"))["wpIndexOut"]
-if isnothing(parsed_args["restore_from_checkpoint"])
-    R = maximum([parse(Int, m.captures[1])
-                 for m in match.(r"ckpt([0-9]+)\.jld",
-                                 filter(startswith("wpWeightOut-ckpt"),
-                                        readdir(parsed_args["data_dir"])))])
-else
-    R = parsed_args["restore_from_checkpoint"]
-end
-wpWeightOut = load(joinpath(parsed_args["data_dir"],"wpWeightOut-ckpt$R.jld"))["wpWeightOut"]
 
-# --- load code --- #
 include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
 include(joinpath(@__DIR__,"rls.jl"))
 kind=:test
 include(joinpath(@__DIR__,"loop.jl"))
 include(joinpath(@__DIR__,"funRollingAvg.jl"))
+
+#----------- load initialization --------------#
+nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld"))["nc0"]
+stim = load(joinpath(parsed_args["data_dir"],"stim.jld"))["stim"]
+w0Index = load(joinpath(parsed_args["data_dir"],"w0Index.jld"))["w0Index"]
+w0Weights = load(joinpath(parsed_args["data_dir"],"w0Weights.jld"))["w0Weights"]
+wpIndexIn = load(joinpath(parsed_args["data_dir"],"wpIndexIn.jld"))["wpIndexIn"]
+wpIndexOut = load(joinpath(parsed_args["data_dir"],"wpIndexOut.jld"))["wpIndexOut"]
+wpIndexConvert = load(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld"))["wpIndexConvert"]
+if isnothing(parsed_args["restore_from_checkpoint"])
+    R = maximum([parse(Int, m.captures[1])
+                 for m in match.(r"ckpt([0-9]+)\.jld",
+                                 filter(startswith("wpWeightIn-ckpt"),
+                                        readdir(parsed_args["data_dir"])))])
+else
+    R = parsed_args["restore_from_checkpoint"]
+end
+wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld"))["wpWeightIn"]
+wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells)
+wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
 
 # --- set up variables --- #
 include(joinpath(@__DIR__,"variables.jl"))
