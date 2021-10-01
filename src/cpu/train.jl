@@ -14,12 +14,24 @@ s = ArgParseSettings()
         default = nothing
         range_tester = x->x>0
         metavar = "P"
-    "--monitor_resources_used", "-r"
-        help = "measure power, cores, and memory usage every R seconds.  default is never"
+    "--save_checkpoints", "-c"
+        help = "save learned weights every C training loops.  default is to only save the last loop"
+        arg_type = Int
+        default = nothing
+        range_tester = x->x>0
+        metavar = "C"
+    "--restore_from_checkpoint", "-r"
+        help = "continue training from checkpoint R.  default is to start from the beginning"
         arg_type = Int
         default = nothing
         range_tester = x->x>0
         metavar = "R"
+    "--monitor_resources_used", "-m"
+        help = "measure power, cores, and memory usage every R seconds.  default is never"
+        arg_type = Int
+        default = nothing
+        range_tester = x->x>0
+        metavar = "M"
     "data_dir"
         help = "full path to the directory containing the parameters file"
         required = true
@@ -40,12 +52,18 @@ xtarg = load(joinpath(parsed_args["data_dir"],"xtarg.jld"))["xtarg"]
 wpIndexIn = load(joinpath(parsed_args["data_dir"],"wpIndexIn.jld"))["wpIndexIn"]
 wpIndexOut = load(joinpath(parsed_args["data_dir"],"wpIndexOut.jld"))["wpIndexOut"]
 wpIndexConvert = load(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld"))["wpIndexConvert"]
-wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn.jld"))["wpWeightIn"]
-wpWeightOut = load(joinpath(parsed_args["data_dir"],"wpWeightOut.jld"))["wpWeightOut"]
+if isnothing(parsed_args["restore_from_checkpoint"])
+    R=0
+    wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn.jld"))["wpWeightIn"]
+    wpWeightOut = load(joinpath(parsed_args["data_dir"],"wpWeightOut.jld"))["wpWeightOut"]
+    wpWeightIn = transpose(dropdims(wpWeightIn, dims=2))
+else
+    R = parsed_args["restore_from_checkpoint"]
+    wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld"))["wpWeightIn"]
+    wpWeightOut = load(joinpath(parsed_args["data_dir"],"wpWeightOut-ckpt$R.jld"))["wpWeightOut"]
+end
 ncpIn = load(joinpath(parsed_args["data_dir"],"ncpIn.jld"))["ncpIn"]
 ncpOut = load(joinpath(parsed_args["data_dir"],"ncpOut.jld"))["ncpOut"]
-
-wpWeightIn = transpose(dropdims(wpWeightIn, dims=2))
 
 isnothing(p.seed) || Random.seed!(p.rng, p.seed)
 
@@ -134,7 +152,7 @@ if !isnothing(parsed_args["monitor_resources_used"])
 end
 
 #----------- train the network --------------#
-for iloop =1:parsed_args["nloops"]
+for iloop = R.+(1:parsed_args["nloops"])
     println("Loop no. ",iloop) 
 
     start_time = time()
@@ -182,10 +200,16 @@ for iloop =1:parsed_args["nloops"]
     println("elapsed time: ",elapsed_time, " sec")
     println("firing rate: ",mean(ns)/(dt/1000*p.Nsteps), " Hz")
 
+    save(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$iloop.jld"),
+         "wpWeightIn", collect(wpWeightIn))
+    save(joinpath(parsed_args["data_dir"],"wpWeightOut-ckpt$iloop.jld"),
+         "wpWeightOut", wpWeightOut)
+    if (isnothing(parsed_args["save_checkpoints"]) && iloop>1) ||
+       (!isnothing(parsed_args["save_checkpoints"]) && iloop % parsed_args["save_checkpoints"] != 1)
+        rm(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$(iloop-1).jld"))
+        rm(joinpath(parsed_args["data_dir"],"wpWeightOut-ckpt$(iloop-1).jld"))
+    end
 end # end loop over trainings
-
-save(joinpath(parsed_args["data_dir"],"wpWeightIn-trained.jld"), "wpWeightIn", collect(wpWeightIn))
-save(joinpath(parsed_args["data_dir"],"wpWeightOut-trained.jld"), "wpWeightOut", wpWeightOut)
 
 if !isnothing(parsed_args["monitor_resources_used"])
   sleep(60)

@@ -22,12 +22,9 @@ iHz = findlast(contains("Hz"), cpu_out)
 iHz = findlast(contains("Hz"), gpu_out)
 @test 0 < parse(Float64, match(r"([.0-9]+) Hz", cpu_out[iHz]).captures[1]) < 10
 
-cpu_wpWeightIn = load(joinpath(@__DIR__,"cpu-data","wpWeightIn-trained.jld"))["wpWeightIn"]
-cpu_wpWeightOut = load(joinpath(@__DIR__,"cpu-data","wpWeightOut-trained.jld"))["wpWeightOut"]
-gpu_wpWeightIn = load(joinpath(@__DIR__,"gpu-data","wpWeightIn-trained.jld"))["wpWeightIn"]
-gpu_wpWeightOut = load(joinpath(@__DIR__,"gpu-data","wpWeightOut-trained.jld"))["wpWeightOut"]
+cpu_wpWeightIn = load(joinpath(@__DIR__,"cpu-data","wpWeightIn-ckpt1.jld"))["wpWeightIn"]
+gpu_wpWeightIn = load(joinpath(@__DIR__,"gpu-data","wpWeightIn-ckpt1.jld"))["wpWeightIn"]
 @test isapprox(reshape(transpose(cpu_wpWeightIn), 40, 1, 2000), gpu_wpWeightIn)
-@test isapprox(cpu_wpWeightOut, gpu_wpWeightOut)
 
 readlines(pipeline(`$(Base.julia_cmd())
                     $(joinpath(@__DIR__,"..","src","cpu","test.jl"))

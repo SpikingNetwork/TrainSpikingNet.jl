@@ -25,6 +25,12 @@ s = ArgParseSettings()
         arg_type = Vector{Int}
         default = collect(1:16)
         range_tester = x->all(x.>0)
+    "--restore_from_checkpoint", "-r"
+        help = "use checkpoint R.  default is to use the last one"
+        arg_type = Int
+        default = nothing
+        range_tester = x->x>0
+        metavar = "R"
     "data_dir"
         help = "full path to the directory containing the parameters file"
         required = true
@@ -40,7 +46,15 @@ stim = load(joinpath(parsed_args["data_dir"],"stim.jld"))["stim"]
 w0Index = load(joinpath(parsed_args["data_dir"],"w0Index.jld"))["w0Index"]
 w0Weights = load(joinpath(parsed_args["data_dir"],"w0Weights.jld"))["w0Weights"]
 wpIndexOut = load(joinpath(parsed_args["data_dir"],"wpIndexOut.jld"))["wpIndexOut"]
-wpWeightOut = load(joinpath(parsed_args["data_dir"],"wpWeightOut-trained.jld"))["wpWeightOut"]
+if isnothing(parsed_args["restore_from_checkpoint"])
+    R = maximum([parse(Int, m.captures[1])
+                 for m in match.(r"ckpt([0-9]+)\.jld",
+                                 filter(startswith("wpWeightOut-ckpt"),
+                                        readdir(parsed_args["data_dir"])))])
+else
+    R = parsed_args["restore_from_checkpoint"]
+end
+wpWeightOut = load(joinpath(parsed_args["data_dir"],"wpWeightOut-ckpt$R.jld"))["wpWeightOut"]
 
 # --- load code --- #
 include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
