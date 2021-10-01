@@ -2,8 +2,8 @@ FloatPrecision = Float32
 IntPrecision = UInt32
 seed=nothing
 
-example_neurons = 25
-wid = 50
+example_neurons = 25  # no. of neurons to save for visualization 
+wid = 50  # width (ms) of the moving average window in time
 
 monitor_resources_used = 0  # set to N to measure every N seconds
 

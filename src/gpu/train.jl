@@ -77,9 +77,9 @@ P .= Pinv \ I;
 include(joinpath(@__DIR__,"variables.jl"))
 Px = CuArray{p.IntPrecision}(Px);
 P = CuArray{p.FloatPrecision}(P);
+nc0 = CuArray{p.IntPrecision}(nc0)
 stim = CuArray{p.FloatPrecision}(stim);
 xtarg = CuArray{p.FloatPrecision}(xtarg);
-dt = p.FloatPrecision(p.dt)
 w0Index = CuArray{p.IntPrecision}(w0Index)
 w0Weights = CuArray{p.FloatPrecision}(w0Weights)
 wpIndexIn = CuArray{p.IntPrecision}(wpIndexIn)
@@ -126,23 +126,23 @@ for iloop =1:parsed_args["nloops"]
        mod(iloop,parsed_args["performance_interval"]) != 0
 
         loop_train(
-            p.learn_every, p.stim_on, p.stim_off, p.train_time, dt, p.Nsteps,
-            p.Ncells, p.L, nothing, refrac, vre, invtauedecay, invtauidecay,
-            invtaudecay_plastic, mu, thresh, invtau, ns, forwardInputsE,
-            forwardInputsI, forwardInputsP, forwardInputsEPrev,
-            forwardInputsIPrev, forwardInputsPPrev, forwardSpike,
-            forwardSpikePrev, xedecay, xidecay, xpdecay, synInputBalanced,
-            synInput, r, bias, nothing, nothing, lastSpike, bnotrefrac,
-            bspike, plusone, minusone, k, den, e, delta, v, p.rng, noise,
-            sig, P, Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn,
-            wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, nothing,
-            nothing)
+            p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
+            p.Nsteps, p.Ncells, p.L, nothing, refrac, vre, invtauedecay,
+            invtauidecay, invtaudecay_plastic, mu, thresh, invtau, nothing,
+            nothing, ns, forwardInputsE, forwardInputsI, forwardInputsP,
+            forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
+            forwardSpike, forwardSpikePrev, xedecay, xidecay, xpdecay,
+            synInputBalanced, synInput, r, bias, nothing, nothing, lastSpike,
+            bnotrefrac, bspike, plusone, minusone, k, den, e, delta, v,
+            p.rng, noise, sig, P, Px, w0Index, w0Weights, nc0, stim, xtarg,
+            wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
+            nothing, nothing)
     else
         _, _, xtotal, _ = loop_train_test(
             p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
             p.Nsteps, p.Ncells, p.L, nothing, refrac, vre, invtauedecay,
-            invtauidecay, invtaudecay_plastic, mu, thresh, invtau,
-            ns, forwardInputsE, forwardInputsI, forwardInputsP,
+            invtauidecay, invtaudecay_plastic, mu, thresh, invtau, maxTimes,
+            times, ns, forwardInputsE, forwardInputsI, forwardInputsP,
             forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
             forwardSpike, forwardSpikePrev, xedecay, xidecay, xpdecay,
             synInputBalanced, synInput, r, bias, p.wid, p.example_neurons,

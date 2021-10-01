@@ -38,13 +38,14 @@ cukernelP = cufunction(kernelP, Tuple{CuDeviceArray{UInt64,1,AS.Global}, CuDevic
 
 @eval function $(Symbol("loop_",kind))(learn_every, stim_on, stim_off,
     train_time, dt, Nsteps, Ncells, L, Ne, refrac, vre, invtauedecay,
-    invtauidecay, invtaudecay_plastic, mu, thresh, invtau, ns, forwardInputsE,
-    forwardInputsI, forwardInputsP, forwardInputsEPrev, forwardInputsIPrev,
-    forwardInputsPPrev, forwardSpike, forwardSpikePrev, xedecay, xidecay,
-    xpdecay, synInputBalanced, synInput, r, bias, wid, example_neurons,
-    lastSpike, bnotrefrac, bspike, plusone, minusone, k, den, e, delta, v,
-    rng, noise, sig, P, Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn,
-    wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, uavg, utmp)
+    invtauidecay, invtaudecay_plastic, mu, thresh, invtau, maxTimes, times,
+    ns, forwardInputsE, forwardInputsI, forwardInputsP, forwardInputsEPrev,
+    forwardInputsIPrev, forwardInputsPPrev, forwardSpike, forwardSpikePrev,
+    xedecay, xidecay, xpdecay, synInputBalanced, synInput, r, bias, wid,
+    example_neurons, lastSpike, bnotrefrac, bspike, plusone, minusone, k,
+    den, e, delta, v, rng, noise, sig, P, Px, w0Index, w0Weights, nc0, stim,
+    xtarg, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
+    uavg, utmp)
 
 @static if kind in [:test, :train_test]
     learn_nsteps = round(Int, (train_time - stim_off)/learn_every)
@@ -155,6 +156,8 @@ for ti=1:Nsteps
     ns .+= bspike
     v .= ifelse.(bspike, vre, v)
     lastSpike .= ifelse.(bspike, t, lastSpike)
+    @static kind in [:test, :train_test] && (times[ CartesianIndex.(1:Ncells,
+                                                     min.(maxTimes, bspike.*ns) .+ 1) ] .= t)
 
     ispike = findall(bspike)
     if length(ispike)>0
@@ -183,7 +186,7 @@ end
     xibal ./= xibalcnt
     xplastic ./= xplasticcnt
 
-    return xtotal, xebal, xibal, xplastic, vtotal_exccell, vtotal_inhcell, vebal_exccell, vibal_exccell, vebal_inhcell, vibal_inhcell, vplastic_exccell, vplastic_inhcell
+    return ns, times[:,2:end], xtotal, xebal, xibal, xplastic, vtotal_exccell, vtotal_inhcell, vebal_exccell, vibal_exccell, vebal_inhcell, vibal_inhcell, vplastic_exccell, vplastic_inhcell
 end
 
 end

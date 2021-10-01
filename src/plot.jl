@@ -1,0 +1,92 @@
+using ArgParse, JLD, Random, LinearAlgebra
+
+if !(@isdefined nss)
+    s = ArgParseSettings()
+
+    @add_arg_table! s begin
+        "test_file"
+            help = "full path to the JLD file output by test.jl.  this same directory needs to contain the parameters in param.jl, the synaptic targets in xtarg.jld, and the spike rate in rate.jld"
+            required = true
+    end
+
+    parsed_args = parse_args(s)
+
+    d = load(parsed_args["test_file"])
+    ineurons_to_plot = d["ineurons_to_plot"]
+    nss = d["nss"]
+    timess = d["timess"]
+    xtotals = d["xtotals"]
+
+    include(joinpath(@__DIR__,"struct.jl"))
+    p = load(joinpath(dirname(parsed_args["test_file"]),"p.jld"))["p"]
+
+    xtarg = load(joinpath(dirname(parsed_args["test_file"]),"xtarg.jld"))["xtarg"]
+    if isfile(joinpath(dirname(parsed_args["test_file"]),"rate.jld"))
+        rate = load(joinpath(dirname(parsed_args["test_file"]),"rate.jld"))["rate"]
+    else
+        rate = missing
+    end
+
+    output_prefix = splitext(parsed_args["test_file"])[1]
+else
+    ineurons_to_plot = parsed_args["ineurons_to_plot"]
+
+    xtarg = load(joinpath(parsed_args["data_dir"],"xtarg.jld"))["xtarg"]
+    if isfile(joinpath(parsed_args["data_dir"],"rate.jld"))
+        rate = load(joinpath(parsed_args["data_dir"],"rate.jld"))["rate"]
+    else
+        rate = missing
+    end
+
+    output_prefix = joinpath(parsed_args["data_dir"], "test")
+end
+
+using Gadfly, DataFrames, StatsBase, Statistics
+
+ntrials = length(nss)
+nneurons = length(nss[1])
+
+ps = Gadfly.Plot[]
+for ci=1:nneurons
+    df = DataFrame((t = (1:size(xtarg,1)).*p.learn_every/1000,
+                    xtarg = xtarg[:,ineurons_to_plot[ci]]))
+    xtotal_ci = hcat((x[:,ci] for x in xtotals)...)
+    df[!,:xtotal_mean] = dropdims(mean(xtotal_ci, dims=2), dims=2)
+    df[!,:xtotal_std] = dropdims(std(xtotal_ci, dims=2), dims=2)
+    transform!(df, [:xtotal_mean, :xtotal_std] => ByRow((mu,sigma)->mu+sigma) => :xtotal_upper)
+    transform!(df, [:xtotal_mean, :xtotal_std] => ByRow((mu,sigma)->mu-sigma) => :xtotal_lower)
+    push!(ps, plot(df, x=:t, y=Col.value(:xtarg, :xtotal_mean),
+                   color=Col.index(:xtarg, :xtotal_mean),
+                   ymax=Col.value(:xtotal_upper), ymin=Col.value(:xtotal_lower),
+                   Geom.line, Geom.ribbon,
+                   Guide.colorkey(title="", labels=["carbon","silicon"]),
+                   Guide.title(string("neuron #", ineurons_to_plot[ci])),
+                   Guide.xlabel("time (sec)", orientation=:horizontal),
+                   Guide.ylabel("synaptic input", orientation=:vertical),
+                   Guide.xticks(orientation=:horizontal)))
+end
+gridstack(permutedims(reshape(ps, 4,4), (2,1))) |>
+        SVGJS(string(output_prefix, "-syninput.svg"), 2*sqrt(200)cm, 20cm)
+
+timess_cat = hcat(timess...)
+ps = Gadfly.Plot[]
+for ci=1:nneurons
+    psth = fit(Histogram, vec(timess_cat[ci,:]), p.stim_off : p.learn_every : p.train_time)
+    df = DataFrame(t=p.learn_every/1000 : p.learn_every/1000 : p.train_time/1000-1,
+                   silicon=psth.weights./ntrials./p.learn_every*1000)
+    if ismissing(rate)
+        cols = (:silicon, )
+    else
+        df[!,:carbon] = rate[:, ineurons_to_plot[ci]]
+        cols = (:carbon, :silicon)
+    end
+    push!(ps, plot(df, x=:t, y=Col.value(cols...), color=Col.index(cols...),
+                   Geom.line,
+                   Guide.colorkey(title=""),
+                   Guide.title(string("neuron #", ineurons_to_plot[ci])),
+                   Guide.xlabel("time (sec)", orientation=:horizontal),
+                   Guide.ylabel("spike rate", orientation=:vertical),
+                   Guide.xticks(orientation=:horizontal)))
+end
+gridstack(permutedims(reshape(ps, 4,4), (2,1))) |>
+        SVGJS(string(output_prefix , "-psth.svg"), 2*sqrt(200)cm, 20cm)

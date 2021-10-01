@@ -12,6 +12,8 @@ invtau = CuVector{p.FloatPrecision}(undef, p.Ncells)
 invtau[1:p.Ne] .= 1/p.taue
 invtau[(1+p.Ne):p.Ncells] .= 1/p.taui
 
+maxTimes = round(Int, p.maxrate*p.train_time/1000)
+times = CUDA.zeros(p.Ncells, 1+maxTimes)
 ns = CuVector{p.IntPrecision}(undef, p.Ncells)
 
 forwardInputsE = CuVector{p.FloatPrecision}(undef, p.Ncells+1)  # excitatory synaptic currents to neurons via balanced connections at one time step

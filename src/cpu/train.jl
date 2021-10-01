@@ -100,6 +100,7 @@ Px = Vector{Vector{p.IntPrecision}}(Px);
 P = Vector{Matrix{p.FloatPrecision}}(P);
 stim = Array{p.FloatPrecision}(stim);
 xtarg = Array{p.FloatPrecision}(xtarg);
+nc0 = Array{p.IntPrecision}(nc0)
 ncpIn = Array{p.IntPrecision}(ncpIn)
 ncpOut = Array{p.IntPrecision}(ncpOut)
 w0Index = Array{p.IntPrecision}(w0Index)

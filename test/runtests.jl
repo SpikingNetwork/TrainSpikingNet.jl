@@ -28,3 +28,18 @@ gpu_wpWeightIn = load(joinpath(@__DIR__,"gpu-data","wpWeightIn-trained.jld"))["w
 gpu_wpWeightOut = load(joinpath(@__DIR__,"gpu-data","wpWeightOut-trained.jld"))["wpWeightOut"]
 @test isapprox(reshape(transpose(cpu_wpWeightIn), 40, 1, 2000), gpu_wpWeightIn)
 @test isapprox(cpu_wpWeightOut, gpu_wpWeightOut)
+
+readlines(pipeline(`$(Base.julia_cmd())
+                    $(joinpath(@__DIR__,"..","src","cpu","test.jl"))
+                    $(joinpath(@__DIR__,"cpu-data"))`))
+
+readlines(pipeline(`$(Base.julia_cmd())
+                    $(joinpath(@__DIR__,"..","src","gpu","test.jl"))
+                    $(joinpath(@__DIR__,"gpu-data"))`))
+
+dcpu = load(joinpath(@__DIR__,"cpu-data/test.jld"))
+dgpu = load(joinpath(@__DIR__,"gpu-data/test.jld"))
+@test dcpu["nss"] == dgpu["nss"]
+@test dcpu["ineurons_to_plot"] == dgpu["ineurons_to_plot"]
+@test isapprox(dcpu["xtotals"], dgpu["xtotals"])
+@test isapprox(dcpu["timess"], dgpu["timess"])

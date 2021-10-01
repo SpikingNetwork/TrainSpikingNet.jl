@@ -2,8 +2,8 @@ FloatPrecision = Float64
 IntPrecision = UInt64
 seed=1
 
-example_neurons = 25
-wid = 50
+example_neurons = 25  # no. of neurons to save for visualization 
+wid = 50 # width (ms) of the moving average window in time
 
 rng = Random.default_rng()
 isnothing(seed) || Random.seed!(rng, seed)
