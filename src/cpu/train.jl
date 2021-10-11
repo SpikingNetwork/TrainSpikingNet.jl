@@ -88,6 +88,7 @@ wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells)
 wpWeightOut = convertWgtIn2Out(p.Ncells,ncpIn,wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
 
 isnothing(p.seed) || Random.seed!(p.rng, p.seed)
+save(joinpath(parsed_args["data_dir"],"rng.jld"), "rng", p.rng)
 
 # --- set up correlation matrix --- #
 P = Vector{Array{Float64,2}}(); 

@@ -73,6 +73,7 @@ wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells)
 wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
 
 isnothing(p.seed) || Random.seed!(p.rng, p.seed)
+save(joinpath(parsed_args["data_dir"],"rng.jld"), "rng", p.rng)
 
 #--- set up correlation matrix ---#
 ci_numExcSyn = p.Lexc;
