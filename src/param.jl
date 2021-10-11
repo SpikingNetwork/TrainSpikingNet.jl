@@ -30,6 +30,17 @@ train_time     = stim_off + train_duration;
 
 Nsteps = round(Int, train_time/dt)
 
+# network size
+Ncells = 5000;
+Ne = floor(Int, Ncells*0.5);
+Ni = ceil(Int, Ncells*0.5);
+
+if Ncells == typemax(IntPrecision)
+  @warn "IntPrecision is too small for GPU (but fine for CPU)"
+elseif Ncells > typemax(IntPrecision)
+  @error "IntPrecision is too small"
+end
+
 # neuron param      
 taue = 10; #membrane time constant for exc. neurons (ms)
 taui = 10; 
@@ -41,18 +52,7 @@ vre = 0.0
 #synaptic time constants (ms) 
 tauedecay = 3
 tauidecay = 3
-taudecay_plastic = 150 
-
-# network size      
-Ncells = 5000;
-Ne = floor(Int, Ncells*0.5);
-Ni = ceil(Int, Ncells*0.5);
-
-if Ncells == typemax(IntPrecision)
-  @warn "IntPrecision is too small for GPU (but fine for CPU)"
-elseif Ncells > typemax(IntPrecision)
-  @error "IntPrecision is too small"
-end
+taudecay_plastic = fill(150, Ncells)
 
 # connectivity 
 pree = 0.1
@@ -93,9 +93,7 @@ wpie = 2.0 * taue * g / wpscale
 wpei = -2.0 * taue * g / wpscale
 wpii = -2.0 * taue * g / wpscale
 
-
 sig0 = 9.0*sqrt(dt)/(taue+taui)*2
-
 
 maxrate = 500 #(Hz) maximum average firing rate.  if the average firing rate across the simulation for any neuron exceeds this value, some of that neuron's spikes will not be saved
 

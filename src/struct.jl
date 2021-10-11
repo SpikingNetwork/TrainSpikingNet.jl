@@ -52,7 +52,7 @@ mutable struct paramType
     refrac::Float64
     tauedecay::Float64
     tauidecay::Float64
-    taudecay_plastic::Float64    
+    taudecay_plastic::Vector{Float64}
     sig0::Float64
     maxrate::Float64
 end

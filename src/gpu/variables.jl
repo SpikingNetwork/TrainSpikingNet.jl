@@ -2,7 +2,7 @@ mu = CuArray{p.FloatPrecision}(p.mu)
 
 invtauedecay = p.FloatPrecision(1/p.tauedecay)
 invtauidecay = p.FloatPrecision(1/p.tauidecay)
-invtaudecay_plastic = p.FloatPrecision(1/p.taudecay_plastic)
+invtaudecay_plastic = CuVector{p.FloatPrecision}(inv.(p.taudecay_plastic))
 
 thresh = CuVector{p.FloatPrecision}(undef, p.Ncells)
 thresh[1:p.Ne] .= p.threshe
