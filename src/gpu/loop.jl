@@ -73,6 +73,7 @@ end
 @static if kind in [:train, :train_test]
     learn_seq = 1
     r .= 0
+    forwardSpikePrev .= 0
 end
 
 ns .= 0
