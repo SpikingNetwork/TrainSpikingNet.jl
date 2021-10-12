@@ -97,8 +97,6 @@ synchronize()
 Threads.@threads for itrial=1:parsed_args["ntrials"]
     idevice = Threads.threadid()
     device!(idevice-1)
-    fill(copy_times[idevice], 0);
-    fill(copy_ns[idevice], 0);
     t = @elapsed thisns, thistimes, thisxtotal, _ = loop_test(
           p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
           p.Nsteps, p.Ncells, p.L, nothing, refrac, vre, invtauedecay,

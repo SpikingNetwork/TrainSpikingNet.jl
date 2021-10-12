@@ -13,7 +13,7 @@ invtau[1:p.Ne] .= 1/p.taue
 invtau[(1+p.Ne):p.Ncells] .= 1/p.taui
 
 maxTimes = round(Int,p.maxrate*p.train_time/1000)
-times = zeros(p.Ncells,maxTimes)
+times = Array{p.FloatPrecision}(undef, p.Ncells, maxTimes)
 ns = Vector{p.IntPrecision}(undef, p.Ncells)
 
 forwardInputsE = Vector{p.FloatPrecision}(undef, p.Ncells)     # excitatory synaptic currents to neurons via balanced connections at one time step

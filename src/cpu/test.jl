@@ -93,8 +93,6 @@ for var in [:times, :ns,
   @eval $(Symbol("copy_",var)) = [deepcopy($var) for _=1:Threads.nthreads()];
 end
 Threads.@threads for itrial=1:parsed_args["ntrials"]
-    fill(copy_times[Threads.threadid()], 0);
-    fill(copy_ns[Threads.threadid()], 0);
     t = @elapsed thisns, thistimes, thisxtotal, _ = loop_test(
           p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
           p.Nsteps, p.Ncells, nothing, refrac, vre, invtauedecay,

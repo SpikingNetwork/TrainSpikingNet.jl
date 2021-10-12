@@ -37,6 +37,8 @@ end
     forwardSpikePrev .= 0
 end
 
+@static kind in [:test, :train_test] && (times .= 0)
+
 ns .= 0
 lastSpike .= -100.0
 randn!(rng, v)
