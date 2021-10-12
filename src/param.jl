@@ -1,4 +1,4 @@
-FloatPrecision = Float32
+FloatPrecision = Float64
 IntPrecision = UInt32
 seed=nothing
 
@@ -31,7 +31,7 @@ train_time     = stim_off + train_duration;
 Nsteps = round(Int, train_time/dt)
 
 # network size
-Ncells = 5000;
+Ncells = 4096;
 Ne = floor(Int, Ncells*0.5);
 Ni = ceil(Int, Ncells*0.5);
 

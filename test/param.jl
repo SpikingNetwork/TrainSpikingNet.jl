@@ -1,10 +1,12 @@
 FloatPrecision = Float64
-IntPrecision = UInt64
+IntPrecision = UInt32
 seed=1
 
 example_neurons = 25  # no. of neurons to save for visualization 
-wid = 50 # width (ms) of the moving average window in time
+wid = 50  # width (ms) of the moving average window in time
 
+monitor_resources_used = 0  # set to N to measure every N seconds
+ 
 rng = Random.default_rng()
 isnothing(seed) || Random.seed!(rng, seed)
 
@@ -29,7 +31,7 @@ train_time     = stim_off + train_duration;
 Nsteps = round(Int, train_time/dt)
 
 # network size
-Ncells = 2000;
+Ncells = 4096;
 Ne = floor(Int, Ncells*0.5);
 Ni = ceil(Int, Ncells*0.5);
 
