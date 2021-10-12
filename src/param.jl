@@ -93,7 +93,7 @@ wpie = 2.0 * taue * g / wpscale
 wpei = -2.0 * taue * g / wpscale
 wpii = -2.0 * taue * g / wpscale
 
-sig0 = 9.0*sqrt(dt)/(taue+taui)*2
+sig0 = 0.65*sqrt(dt)
 
 maxrate = 500 #(Hz) maximum average firing rate.  if the average firing rate across the simulation for any neuron exceeds this value, some of that neuron's spikes will not be saved
 
