@@ -5,8 +5,8 @@ function kernelEI(ispike, w0Index, w0Weights, forwardInputsE, forwardInputsI)
     jstride = blockDim().y * gridDim().y
 
     @inbounds for i=i0:istride:size(w0Index,1), j=j0:jstride:length(ispike)
-        @atomic forwardInputsE[0x1 + w0Index[i,ispike[j]]] += max(w0Weights[i,ispike[j]], 0)
-        @atomic forwardInputsI[0x1 + w0Index[i,ispike[j]]] += min(w0Weights[i,ispike[j]], 0)
+        CUDA.@atomic forwardInputsE[0x1 + w0Index[i,ispike[j]]] += max(w0Weights[i,ispike[j]], 0)
+        CUDA.@atomic forwardInputsI[0x1 + w0Index[i,ispike[j]]] += min(w0Weights[i,ispike[j]], 0)
     end
     return nothing
 end
@@ -18,7 +18,7 @@ function kernelP(ispike, wpIndexOut, wpWeightOut, forwardInputsP)
     jstride = blockDim().y * gridDim().y
 
     @inbounds for i=i0:istride:size(wpIndexOut,1), j=j0:jstride:length(ispike)
-        @atomic forwardInputsP[0x1 + wpIndexOut[i,ispike[j]]] += wpWeightOut[i,ispike[j]]
+        CUDA.@atomic forwardInputsP[0x1 + wpIndexOut[i,ispike[j]]] += wpWeightOut[i,ispike[j]]
     end
     return nothing
 end

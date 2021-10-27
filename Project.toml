@@ -10,4 +10,4 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 [compat]
 CUDA = "3.4"
 NNlib = "0.7.28"
-julia = "1.6"
+julia = "1.7"
