@@ -30,7 +30,6 @@ s = ArgParseSettings()
         arg_type = Int
         default = nothing
         range_tester = x->x>0
-        metavar = "R"
     "data_dir"
         help = "full path to the directory containing the parameters file"
         required = true

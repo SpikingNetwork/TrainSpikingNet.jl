@@ -31,3 +31,13 @@ to re-plot without re-computing the trials.
 
 Additional options for all of these scripts can be displayed with `-h` or
 `--help`.
+
+# Intel Math Kernel Library #
+
+The CPU code can be sped up by about 10% on Intel machines using the
+drop-in MKL package to replace the default OpenBLAS.  To install it,
+`cd` into this git repo directory, start Julia, and execute `]add MKL`.
+Then edit "src/cpu/train.jl" and add the line "using MKL" at the top.
+Alternatively, MKL can be automatically used for other Julia code as well
+by adding this same line to "~/.julia/config/startup.jl" instead.
+

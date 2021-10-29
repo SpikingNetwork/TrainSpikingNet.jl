@@ -7,31 +7,26 @@ s = ArgParseSettings()
         help = "number of iterations to train"
         arg_type = Int
         default = 1
-        metavar = "N"
     "--performance_interval", "-p"
         help = "measure correlation every P training loops.  default is never"
         arg_type = Int
         default = nothing
         range_tester = x->x>0
-        metavar = "P"
     "--save_checkpoints", "-c"
         help = "save learned weights every C training loops.  default is to only save the last loop"
         arg_type = Int
         default = nothing
         range_tester = x->x>0
-        metavar = "C"
     "--restore_from_checkpoint", "-r"
         help = "continue training from checkpoint R.  default is to start from the beginning"
         arg_type = Int
         default = nothing
         range_tester = x->x>0
-        metavar = "R"
     "--monitor_resources_used", "-m"
         help = "measure power, cores, and memory usage every R seconds.  default is never"
         arg_type = Int
         default = nothing
         range_tester = x->x>0
-        metavar = "M"
     "data_dir"
         help = "full path to the directory containing the parameters file"
         required = true
