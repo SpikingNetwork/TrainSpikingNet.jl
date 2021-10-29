@@ -1,11 +1,11 @@
-using ArgParse, JLD, Random, LinearAlgebra
+using ArgParse, JLD2, Random, LinearAlgebra
 
 if !(@isdefined nss)
     s = ArgParseSettings()
 
     @add_arg_table! s begin
         "test_file"
-            help = "full path to the JLD file output by test.jl.  this same directory needs to contain the parameters in param.jl, the synaptic targets in xtarg.jld, and the spike rate in rate.jld"
+            help = "full path to the JLD file output by test.jl.  this same directory needs to contain the parameters in p.jld2, the synaptic targets in xtarg.jld2, and (optionally) the spike rate in rate.jld2"
             required = true
     end
 
@@ -18,11 +18,11 @@ if !(@isdefined nss)
     xtotals = d["xtotals"]
 
     include(joinpath(@__DIR__,"struct.jl"))
-    p = load(joinpath(dirname(parsed_args["test_file"]),"p.jld"))["p"]
+    p = load(joinpath(dirname(parsed_args["test_file"]),"p.jld2"), "p")
 
-    xtarg = load(joinpath(dirname(parsed_args["test_file"]),"xtarg.jld"))["xtarg"]
-    if isfile(joinpath(dirname(parsed_args["test_file"]),"rate.jld"))
-        rate = load(joinpath(dirname(parsed_args["test_file"]),"rate.jld"))["rate"]
+    xtarg = load(joinpath(dirname(parsed_args["test_file"]),"xtarg.jld2"), "xtarg")
+    if isfile(joinpath(dirname(parsed_args["test_file"]),"rate.jld2"))
+        rate = load(joinpath(dirname(parsed_args["test_file"]),"rate.jld2"), "rate")
     else
         rate = missing
     end
@@ -31,9 +31,9 @@ if !(@isdefined nss)
 else
     ineurons_to_plot = parsed_args["ineurons_to_plot"]
 
-    xtarg = load(joinpath(parsed_args["data_dir"],"xtarg.jld"))["xtarg"]
-    if isfile(joinpath(parsed_args["data_dir"],"rate.jld"))
-        rate = load(joinpath(parsed_args["data_dir"],"rate.jld"))["rate"]
+    xtarg = load(joinpath(parsed_args["data_dir"],"xtarg.jld2"), "xtarg")
+    if isfile(joinpath(parsed_args["data_dir"],"rate.jld2"))
+        rate = load(joinpath(parsed_args["data_dir"],"rate.jld2"), "rate")
     else
         rate = missing
     end

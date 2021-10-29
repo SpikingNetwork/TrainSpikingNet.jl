@@ -1,4 +1,4 @@
-using LinearAlgebra, Random, JLD, CUDA, NNlib, NNlibCUDA, ArgParse
+using LinearAlgebra, Random, JLD2, CUDA, NNlib, NNlibCUDA, ArgParse
 
 Threads.nthreads() < ndevices() && @warn "performance is best if no. threads is set to no. GPUs"
 if Threads.nthreads() > ndevices()
@@ -40,7 +40,7 @@ parsed_args = parse_args(s)
 
 # --- load code --- #
 include(joinpath(dirname(@__DIR__),"struct.jl"))
-p = load(joinpath(parsed_args["data_dir"],"p.jld"))["p"]
+p = load(joinpath(parsed_args["data_dir"],"p.jld2"), "p")
 
 include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
 include(joinpath(@__DIR__,"rls.jl"))
@@ -49,22 +49,22 @@ include(joinpath(@__DIR__,"loop.jl"))
 include(joinpath(@__DIR__,"funRollingAvg.jl"))
 
 #----------- load initialization --------------#
-nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld"))["nc0"]
-stim = load(joinpath(parsed_args["data_dir"],"stim.jld"))["stim"]
-w0Index = load(joinpath(parsed_args["data_dir"],"w0Index.jld"))["w0Index"]
-w0Weights = load(joinpath(parsed_args["data_dir"],"w0Weights.jld"))["w0Weights"]
-wpIndexIn = load(joinpath(parsed_args["data_dir"],"wpIndexIn.jld"))["wpIndexIn"]
-wpIndexOut = load(joinpath(parsed_args["data_dir"],"wpIndexOut.jld"))["wpIndexOut"]
-wpIndexConvert = load(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld"))["wpIndexConvert"]
+nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0")
+stim = load(joinpath(parsed_args["data_dir"],"stim.jld2"), "stim")
+w0Index = load(joinpath(parsed_args["data_dir"],"w0Index.jld2"), "w0Index")
+w0Weights = load(joinpath(parsed_args["data_dir"],"w0Weights.jld2"), "w0Weights")
+wpIndexIn = load(joinpath(parsed_args["data_dir"],"wpIndexIn.jld2"), "wpIndexIn")
+wpIndexOut = load(joinpath(parsed_args["data_dir"],"wpIndexOut.jld2"), "wpIndexOut")
+wpIndexConvert = load(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld2"), "wpIndexConvert")
 if isnothing(parsed_args["restore_from_checkpoint"])
     R = maximum([parse(Int, m.captures[1])
-                 for m in match.(r"ckpt([0-9]+)\.jld",
+                 for m in match.(r"ckpt([0-9]+)\.jld2",
                                  filter(startswith("wpWeightIn-ckpt"),
                                         readdir(parsed_args["data_dir"])))])
 else
     R = parsed_args["restore_from_checkpoint"]
 end
-wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld"))["wpWeightIn"]
+wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld2"))["wpWeightIn"]
 wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells)
 wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
 
@@ -147,7 +147,7 @@ Threads.@threads for itrial=1:parsed_args["ntrials"]
     @info string("trial #", itrial, ", ", round(t, sigdigits=3), " sec")
 end
 
-save(joinpath(parsed_args["data_dir"],"test.jld"),
+save(joinpath(parsed_args["data_dir"], "test.jld2"),
      "ineurons_to_plot", parsed_args["ineurons_to_plot"],
      "nss", nss, "timess", timess, "xtotals", xtotals)
 

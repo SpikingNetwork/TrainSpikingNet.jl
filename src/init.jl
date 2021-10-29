@@ -1,4 +1,4 @@
-using LinearAlgebra, Random, JLD, Statistics, StatsBase, ArgParse
+using LinearAlgebra, Random, JLD2, Statistics, StatsBase, ArgParse
 
 s = ArgParseSettings()
 
@@ -62,15 +62,15 @@ end
 stim = genStim(p)
 
 #----------- save initialization --------------#
-save(joinpath(parsed_args["data_dir"],"p.jld"), "p", p)
-save(joinpath(parsed_args["data_dir"],"w0Index.jld"), "w0Index", w0Index)
-save(joinpath(parsed_args["data_dir"],"w0Weights.jld"), "w0Weights", w0Weights)
-save(joinpath(parsed_args["data_dir"],"nc0.jld"), "nc0", nc0)
-save(joinpath(parsed_args["data_dir"],"stim.jld"), "stim", stim)
-save(joinpath(parsed_args["data_dir"],"xtarg.jld"), "xtarg", xtarg)
-save(joinpath(parsed_args["data_dir"],"wpIndexIn.jld"), "wpIndexIn", wpIndexIn)
-save(joinpath(parsed_args["data_dir"],"wpIndexOut.jld"), "wpIndexOut", wpIndexOut)
-save(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld"), "wpIndexConvert", wpIndexConvert)
-save(joinpath(parsed_args["data_dir"],"wpWeightIn.jld"), "wpWeightIn", wpWeightIn)
-save(joinpath(parsed_args["data_dir"],"ncpIn.jld"), "ncpIn", ncpIn)
-save(joinpath(parsed_args["data_dir"],"ncpOut.jld"), "ncpOut", ncpOut)
+save(joinpath(parsed_args["data_dir"],"p.jld2"), "p", p)
+save(joinpath(parsed_args["data_dir"],"w0Index.jld2"), "w0Index", w0Index)
+save(joinpath(parsed_args["data_dir"],"w0Weights.jld2"), "w0Weights", w0Weights)
+save(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0", nc0)
+save(joinpath(parsed_args["data_dir"],"stim.jld2"), "stim", stim)
+save(joinpath(parsed_args["data_dir"],"xtarg.jld2"), "xtarg", xtarg)
+save(joinpath(parsed_args["data_dir"],"wpIndexIn.jld2"), "wpIndexIn", wpIndexIn)
+save(joinpath(parsed_args["data_dir"],"wpIndexOut.jld2"), "wpIndexOut", wpIndexOut)
+save(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld2"), "wpIndexConvert", wpIndexConvert)
+save(joinpath(parsed_args["data_dir"],"wpWeightIn.jld2"), "wpWeightIn", wpWeightIn)
+save(joinpath(parsed_args["data_dir"],"ncpIn.jld2"), "ncpIn", ncpIn)
+save(joinpath(parsed_args["data_dir"],"ncpOut.jld2"), "ncpOut", ncpOut)
