@@ -1,4 +1,4 @@
-using LinearAlgebra, Random, JLD2, Statistics, ArgParse
+using LinearAlgebra, Random, JLD2, Statistics, ArgParse, PackedArrays
 
 s = ArgParseSettings()
 
@@ -86,7 +86,7 @@ isnothing(p.seed) || Random.seed!(p.rng, p.seed)
 save(joinpath(parsed_args["data_dir"],"rng.jld2"), "rng", p.rng)
 
 # --- set up correlation matrix --- #
-P = Vector{Array{Float64,2}}();
+P = Vector{p.PType}();
 Px = Vector{Array{Int64,1}}();
 
 ci_numExcSyn = p.Lexc;
@@ -106,13 +106,14 @@ Pinv_norm = Pinv \ I
 for ci=1:p.Ncells
     # neurons presynaptic to ci
     push!(Px, wpIndexIn[ci,:]) 
-    push!(P, copy(Pinv_norm));
+    push!(P, p.PType(copy(Pinv_norm)));
 end
 
 # --- set up variables --- #
 include(joinpath(@__DIR__,"variables.jl"))
 Px = Vector{Vector{p.IntPrecision}}(Px);
-P = Vector{Matrix{p.FloatPrecision}}(P);
+PType = typeof(p.PType(p.FloatPrecision.([1. 2; 3 4])));
+P = Vector{PType}(P);
 stim = Array{p.FloatPrecision}(stim);
 xtarg = Array{p.FloatPrecision}(xtarg);
 nc0 = Array{p.IntPrecision}(nc0)
@@ -164,10 +165,11 @@ for iloop = R.+(1:parsed_args["nloops"])
             nothing, ns, forwardInputsE, forwardInputsI, forwardInputsP,
             forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
             forwardSpike, forwardSpikePrev, xedecay, xidecay, xpdecay,
-            synInputBalanced, synInput, r, bias, nothing, nothing, lastSpike,
-            plusone, k, v, p.rng, noise, sig, P, Px, w0Index, w0Weights, nc0, stim,
-            xtarg, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
-            ncpIn, ncpOut, nothing, nothing)
+            synInputBalanced, synInput, r, bias, nothing, nothing,
+            lastSpike, plusone, exactlyzero, k, v, p.rng, noise, sig, P,
+            Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut,
+            wpIndexConvert, wpWeightIn, wpWeightOut, ncpIn, ncpOut, nothing,
+            nothing)
     else
         _, _, xtotal, _ = loop_train_test(
             p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
@@ -175,11 +177,12 @@ for iloop = R.+(1:parsed_args["nloops"])
             invtauidecay, invtaudecay_plastic, mu, thresh, invtau, maxTimes,
             times, ns, forwardInputsE, forwardInputsI, forwardInputsP,
             forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
-            forwardSpike, forwardSpikePrev, xedecay, xidecay, xpdecay, synInputBalanced,
-            synInput, r, bias, p.wid, p.example_neurons, lastSpike,
-            plusone, k, v, p.rng, noise, sig, P, Px, w0Index,
-            w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn,
-            wpWeightOut, ncpIn, ncpOut, nothing, nothing)
+            forwardSpike, forwardSpikePrev, xedecay, xidecay, xpdecay,
+            synInputBalanced, synInput, r, bias, p.wid, p.example_neurons,
+            lastSpike, plusone, exactlyzero, k, v, p.rng, noise, sig, P,
+            Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut,
+            wpIndexConvert, wpWeightIn, wpWeightOut, ncpIn, ncpOut, nothing,
+            nothing)
 
         pcor = zeros(p.Ncells)
         for (index, ci) in enumerate(1:p.Ncells)

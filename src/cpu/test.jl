@@ -114,7 +114,7 @@ Threads.@threads for itrial=1:parsed_args["ntrials"]
           copy_bias[Threads.threadid()],
           p.wid, p.example_neurons,
           copy_lastSpike[Threads.threadid()],
-          nothing, nothing,
+          nothing, nothing, nothing,
           copy_v[Threads.threadid()],
           copy_rng[Threads.threadid()],
           copy_noise[Threads.threadid()],

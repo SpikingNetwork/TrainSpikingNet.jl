@@ -4,9 +4,9 @@
     ns, forwardInputsE, forwardInputsI, forwardInputsP, forwardInputsEPrev,
     forwardInputsIPrev, forwardInputsPPrev, forwardSpike, forwardSpikePrev,
     xedecay, xidecay, xpdecay, synInputBalanced, synInput, r, bias, wid,
-    example_neurons, lastSpike, plusone, k, v, rng, noise, sig, P, Px, w0Index,
-    w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut, wpIndexConvert,
-    wpWeightIn, wpWeightOut, ncpIn, ncpOut, uavg, utmp)
+    example_neurons, lastSpike, plusone, exactlyzero, k, v, rng, noise,
+    sig, P, Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut,
+    wpIndexConvert, wpWeightIn, wpWeightOut, ncpIn, ncpOut, uavg, utmp)
 
 @static if kind in [:test, :train_test]
     learn_nsteps = round(Int, (train_time - stim_off)/learn_every)
@@ -95,7 +95,7 @@ for ti=1:Nsteps
     #                  - Fixed throughout the simulation. Used to compute forwardInputsP (see line 221)
 
     @static kind in [:train, :train_test] && if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
-        wpWeightIn, wpWeightOut = rls(k, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone)
+        wpWeightIn, wpWeightOut = rls(k, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, exactlyzero)
         learn_seq += 1
     end
 
@@ -259,8 +259,8 @@ for ti=1:Nsteps
 end #end loop over time
 
 @static if kind == :init
-    println("mean excitatory firing rate: ",mean(1000*ns[1:Ne]/train_time)," Hz")
-    println("mean inhibitory firing rate: ",mean(1000*ns[(Ne+1):Ncells]/train_time)," Hz")
+    println("mean excitatory firing rate: ", 1000*mean(ns[1:Ne])/train_time, " Hz")
+    println("mean inhibitory firing rate: ", 1000*mean(ns[(Ne+1):Ncells])/train_time, " Hz")
                 
     ustd = mean(std(utmp, dims=1))
     return uavg, ns, ustd

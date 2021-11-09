@@ -37,6 +37,7 @@ bias = Vector{p.FloatPrecision}(undef, p.Ncells)             # total external in
 lastSpike = Array{p.FloatPrecision}(undef, p.Ncells)  # last time a neuron spiked
 
 plusone = p.FloatPrecision(1.0)
+exactlyzero = p.FloatPrecision(0.0)
 
 refrac = p.FloatPrecision(p.refrac)
 vre = p.FloatPrecision(p.vre)

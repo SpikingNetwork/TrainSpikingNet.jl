@@ -1,6 +1,7 @@
 mutable struct paramType
     FloatPrecision::DataType
     IntPrecision::DataType
+    PType::UnionAll
     seed::Union{Nothing,Int}
     rng::AbstractRNG
     example_neurons::Int
