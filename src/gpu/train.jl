@@ -187,7 +187,7 @@ for iloop = R.+(1:parsed_args["nloops"])
          "wpWeightIn", Array(wpWeightIn))
     if (isnothing(parsed_args["save_checkpoints"]) && iloop>1) ||
        (!isnothing(parsed_args["save_checkpoints"]) && iloop % parsed_args["save_checkpoints"] != 1)
-        rm(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$(iloop-1).jld2"))
+        rm(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$(iloop-1).jld2"), force=true)
     end
 end
 
