@@ -49,23 +49,23 @@ if !isnothing(parsed_args["performance_interval"])
 end
 
 #----------- load initialization --------------#
-w0Index = load(joinpath(parsed_args["data_dir"],"w0Index.jld2"), "w0Index")
-w0Weights = load(joinpath(parsed_args["data_dir"],"w0Weights.jld2"), "w0Weights")
-nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0")
-stim = load(joinpath(parsed_args["data_dir"],"stim.jld2"), "stim")
-xtarg = load(joinpath(parsed_args["data_dir"],"xtarg.jld2"), "xtarg")
-wpIndexIn = load(joinpath(parsed_args["data_dir"],"wpIndexIn.jld2"), "wpIndexIn")
-wpIndexOut = load(joinpath(parsed_args["data_dir"],"wpIndexOut.jld2"), "wpIndexOut")
-wpIndexConvert = load(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld2"), "wpIndexConvert")
+w0Index = load(joinpath(parsed_args["data_dir"],"w0Index.jld2"), "w0Index");
+w0Weights = load(joinpath(parsed_args["data_dir"],"w0Weights.jld2"), "w0Weights");
+nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0");
+stim = load(joinpath(parsed_args["data_dir"],"stim.jld2"), "stim");
+xtarg = load(joinpath(parsed_args["data_dir"],"xtarg.jld2"), "xtarg");
+wpIndexIn = load(joinpath(parsed_args["data_dir"],"wpIndexIn.jld2"), "wpIndexIn");
+wpIndexOut = load(joinpath(parsed_args["data_dir"],"wpIndexOut.jld2"), "wpIndexOut");
+wpIndexConvert = load(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld2"), "wpIndexConvert");
 if isnothing(parsed_args["restore_from_checkpoint"])
     R=0
-    wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn.jld2"), "wpWeightIn")
+    wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn.jld2"), "wpWeightIn");
 else
     R = parsed_args["restore_from_checkpoint"]
-    wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld2"), "wpWeightIn")
-end
-wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells)
-wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
+    wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld2"), "wpWeightIn");
+end;
+wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells);
+wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut);
 
 isnothing(p.seed) || Random.seed!(p.rng, p.seed)
 save(joinpath(parsed_args["data_dir"],"rng.jld2"), "rng", p.rng)
@@ -73,17 +73,17 @@ save(joinpath(parsed_args["data_dir"],"rng.jld2"), "rng", p.rng)
 #--- set up correlation matrix ---#
 ci_numExcSyn = p.Lexc;
 ci_numInhSyn = p.Linh;
-ci_numSyn = ci_numExcSyn + ci_numInhSyn
+ci_numSyn = ci_numExcSyn + ci_numInhSyn;
 
 # neurons presynaptic to ci
-Px = wpIndexIn'
+Px = wpIndexIn';
 
 # L2-penalty
-Pinv_L2 = p.penlambda*one(zeros(ci_numSyn,ci_numSyn))
+Pinv_L2 = p.penlambda*one(zeros(ci_numSyn,ci_numSyn));
 # row sum penalty
 vec10 = [ones(ci_numExcSyn); zeros(ci_numInhSyn)];
 vec01 = [zeros(ci_numExcSyn); ones(ci_numInhSyn)];
-Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01')
+Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01');
 # sum of penalties
 Pinv = Pinv_L2 + Pinv_rowsum;
 P = Array{Float64}(undef, (p.Lexc+p.Linh, p.Lexc+p.Linh, p.Ncells)); 
@@ -93,16 +93,16 @@ P .= Pinv \ I;
 include(joinpath(@__DIR__,"variables.jl"))
 Px = CuArray{p.IntPrecision}(Px);
 P = CuArray{p.FloatPrecision}(P);
-nc0 = CuArray{p.IntPrecision}(nc0)
+nc0 = CuArray{p.IntPrecision}(nc0);
 stim = CuArray{p.FloatPrecision}(stim);
 xtarg = CuArray{p.FloatPrecision}(xtarg);
-w0Index = CuArray{p.IntPrecision}(w0Index)
-w0Weights = CuArray{p.FloatPrecision}(w0Weights)
-wpIndexIn = CuArray{p.IntPrecision}(wpIndexIn)
-wpIndexConvert = CuArray{p.IntPrecision}(wpIndexConvert)
-wpIndexOut = CuArray{p.IntPrecision}(wpIndexOut)
+w0Index = CuArray{p.IntPrecision}(w0Index);
+w0Weights = CuArray{p.FloatPrecision}(w0Weights);
+wpIndexIn = CuArray{p.IntPrecision}(wpIndexIn);
+wpIndexConvert = CuArray{p.IntPrecision}(wpIndexConvert);
+wpIndexOut = CuArray{p.IntPrecision}(wpIndexOut);
 wpWeightIn = CuArray{p.FloatPrecision}(wpWeightIn);
-wpWeightOut = CuArray{p.FloatPrecision}(wpWeightOut)
+wpWeightOut = CuArray{p.FloatPrecision}(wpWeightOut);
 
 # --- monitor resources used ---#
 function monitor_resources(c::Channel)

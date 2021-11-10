@@ -61,26 +61,26 @@ if !isnothing(parsed_args["performance_interval"])
 end
 
 #----------- load initialization --------------#
-w0Index = load(joinpath(parsed_args["data_dir"],"w0Index.jld2"), "w0Index")
-w0Weights = load(joinpath(parsed_args["data_dir"],"w0Weights.jld2"), "w0Weights")
-nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0")
-ncpIn = load(joinpath(parsed_args["data_dir"],"ncpIn.jld2"), "ncpIn")
-ncpOut = load(joinpath(parsed_args["data_dir"],"ncpOut.jld2"), "ncpOut")
-stim = load(joinpath(parsed_args["data_dir"],"stim.jld2"), "stim")
-xtarg = load(joinpath(parsed_args["data_dir"],"xtarg.jld2"), "xtarg")
-wpIndexIn = load(joinpath(parsed_args["data_dir"],"wpIndexIn.jld2"), "wpIndexIn")
-wpIndexOut = load(joinpath(parsed_args["data_dir"],"wpIndexOut.jld2"), "wpIndexOut")
-wpIndexConvert = load(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld2"), "wpIndexConvert")
-if isnothing(parsed_args["restore_from_checkpoint"])
+w0Index = load(joinpath(parsed_args["data_dir"],"w0Index.jld2"), "w0Index");
+w0Weights = load(joinpath(parsed_args["data_dir"],"w0Weights.jld2"), "w0Weights");
+nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0");
+ncpIn = load(joinpath(parsed_args["data_dir"],"ncpIn.jld2"), "ncpIn");
+ncpOut = load(joinpath(parsed_args["data_dir"],"ncpOut.jld2"), "ncpOut");
+stim = load(joinpath(parsed_args["data_dir"],"stim.jld2"), "stim");
+xtarg = load(joinpath(parsed_args["data_dir"],"xtarg.jld2"), "xtarg");
+wpIndexIn = load(joinpath(parsed_args["data_dir"],"wpIndexIn.jld2"), "wpIndexIn");
+wpIndexOut = load(joinpath(parsed_args["data_dir"],"wpIndexOut.jld2"), "wpIndexOut");
+wpIndexConvert = load(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld2"), "wpIndexConvert");
+if isnothing(parsed_args["restore_from_checkpoint"]);
     R=0
-    wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn.jld2"), "wpWeightIn")
-    wpWeightIn = transpose(dropdims(wpWeightIn, dims=2))
+    wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn.jld2"), "wpWeightIn");
+    wpWeightIn = transpose(dropdims(wpWeightIn, dims=2));
 else
-    R = parsed_args["restore_from_checkpoint"]
-    wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld2"), "wpWeightIn")
-end
-wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells)
-wpWeightOut = convertWgtIn2Out(p.Ncells,ncpIn,wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
+    R = parsed_args["restore_from_checkpoint"];
+    wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld2"), "wpWeightIn");
+end;
+wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells);
+wpWeightOut = convertWgtIn2Out(p.Ncells,ncpIn,wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut);
 
 isnothing(p.seed) || Random.seed!(p.rng, p.seed)
 save(joinpath(parsed_args["data_dir"],"rng.jld2"), "rng", p.rng)
@@ -91,21 +91,21 @@ Px = Vector{Array{Int64,1}}();
 
 ci_numExcSyn = p.Lexc;
 ci_numInhSyn = p.Linh;
-ci_numSyn = ci_numExcSyn + ci_numInhSyn
+ci_numSyn = ci_numExcSyn + ci_numInhSyn;
 
 # L2-penalty
-Pinv_L2 = p.penlambda*one(zeros(ci_numSyn,ci_numSyn))
+Pinv_L2 = p.penlambda*one(zeros(ci_numSyn,ci_numSyn));
 # row sum penalty
 vec10 = [ones(ci_numExcSyn); zeros(ci_numInhSyn)];
 vec01 = [zeros(ci_numExcSyn); ones(ci_numInhSyn)];
-Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01')
+Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01');
 # sum of penalties
 Pinv = Pinv_L2 + Pinv_rowsum;
-Pinv_norm = Pinv \ I
+Pinv_norm = Pinv \ I;
 
 for ci=1:p.Ncells
     # neurons presynaptic to ci
-    push!(Px, wpIndexIn[ci,:]) 
+    push!(Px, wpIndexIn[ci,:]);
     push!(P, p.PType(copy(Pinv_norm)));
 end
 
@@ -116,16 +116,16 @@ PType = typeof(p.PType(p.FloatPrecision.([1. 2; 3 4])));
 P = Vector{PType}(P);
 stim = Array{p.FloatPrecision}(stim);
 xtarg = Array{p.FloatPrecision}(xtarg);
-nc0 = Array{p.IntPrecision}(nc0)
-ncpIn = Array{p.IntPrecision}(ncpIn)
-ncpOut = Array{p.IntPrecision}(ncpOut)
-w0Index = Array{p.IntPrecision}(w0Index)
-w0Weights = Array{p.FloatPrecision}(w0Weights)
-wpIndexIn = Array{p.IntPrecision}(wpIndexIn)
-wpIndexConvert = Array{p.IntPrecision}(wpIndexConvert)
-wpIndexOut = Array{p.IntPrecision}(wpIndexOut)
+nc0 = Array{p.IntPrecision}(nc0);
+ncpIn = Array{p.IntPrecision}(ncpIn);
+ncpOut = Array{p.IntPrecision}(ncpOut);
+w0Index = Array{p.IntPrecision}(w0Index);
+w0Weights = Array{p.FloatPrecision}(w0Weights);
+wpIndexIn = Array{p.IntPrecision}(wpIndexIn);
+wpIndexConvert = Array{p.IntPrecision}(wpIndexConvert);
+wpIndexOut = Array{p.IntPrecision}(wpIndexOut);
 wpWeightIn = Array{p.FloatPrecision}(wpWeightIn);
-wpWeightOut = Array{p.FloatPrecision}(wpWeightOut)
+wpWeightOut = Array{p.FloatPrecision}(wpWeightOut);
 
 # --- monitor resources used ---#
 function monitor_resources(c::Channel)
