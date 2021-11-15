@@ -67,8 +67,9 @@ end;
 wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells);
 wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut);
 
-isnothing(p.seed) || Random.seed!(p.rng, p.seed)
-save(joinpath(parsed_args["data_dir"],"rng.jld2"), "rng", p.rng)
+rng = eval(p.rng_func["gpu"])
+isnothing(p.seed) || Random.seed!(rng, p.seed)
+save(joinpath(parsed_args["data_dir"],"rng-train.jld2"), "rng",rng)
 
 #--- set up correlation matrix ---#
 ci_numExcSyn = p.Lexc;
@@ -150,7 +151,7 @@ for iloop = R.+(1:parsed_args["nloops"])
             forwardSpike, forwardSpikePrev, xedecay, xidecay, xpdecay,
             synInputBalanced, synInput, r, bias, nothing, nothing, lastSpike,
             bnotrefrac, bspike, plusone, minusone, k, den, e, delta, v,
-            p.rng, noise, sig, P, Px, w0Index, w0Weights, nc0, stim, xtarg,
+            rng, noise, sig, P, Px, w0Index, w0Weights, nc0, stim, xtarg,
             wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
             nothing, nothing)
     else
@@ -163,7 +164,7 @@ for iloop = R.+(1:parsed_args["nloops"])
             forwardSpike, forwardSpikePrev, xedecay, xidecay, xpdecay,
             synInputBalanced, synInput, r, bias, p.wid, p.example_neurons,
             lastSpike, bnotrefrac, bspike, plusone, minusone, k, den, e,
-            delta, v, p.rng, noise, sig, P, Px, w0Index, w0Weights, nc0,
+            delta, v, rng, noise, sig, P, Px, w0Index, w0Weights, nc0,
             stim, xtarg, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn,
             wpWeightOut, nothing, nothing)
 

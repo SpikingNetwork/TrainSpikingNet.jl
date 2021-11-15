@@ -68,6 +68,10 @@ wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld2"), "w
 wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells)
 wpWeightOut = convertWgtIn2Out(p.Ncells,ncpIn,wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
 
+rng = eval(p.rng_func["cpu"])
+isnothing(p.seed) || Random.seed!(rng, p.seed)
+save(joinpath(parsed_args["data_dir"],"rng-test.jld2"), "rng", rng)
+
 # --- set up variables --- #
 include(joinpath(@__DIR__,"variables.jl"))
 stim = Array{p.FloatPrecision}(stim);
@@ -82,7 +86,7 @@ wpWeightOut = Array{p.FloatPrecision}(wpWeightOut);
 nss = Vector{Any}(undef, parsed_args["ntrials"]);
 timess = Vector{Any}(undef, parsed_args["ntrials"]);
 xtotals = Vector{Any}(undef, parsed_args["ntrials"]);
-copy_rng = [typeof(p.rng)() for _=1:Threads.nthreads()];
+copy_rng = [typeof(rng)() for _=1:Threads.nthreads()];
 isnothing(p.seed) || Random.seed!.(copy_rng, p.seed)
 for var in [:times, :ns,
             :forwardInputsE, :forwardInputsI, :forwardInputsP,

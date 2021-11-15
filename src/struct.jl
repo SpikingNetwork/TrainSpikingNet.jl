@@ -3,7 +3,7 @@ mutable struct paramType
     IntPrecision::DataType
     PType::UnionAll
     seed::Union{Nothing,Int}
-    rng::AbstractRNG
+    rng_func::Dict
     example_neurons::Int
     wid::Int
     train_duration::Float64

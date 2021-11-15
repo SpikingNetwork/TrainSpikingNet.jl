@@ -8,8 +8,10 @@ wid = 50  # width (ms) of the moving average window in time
 
 monitor_resources_used = 0  # set to N to measure every N seconds
  
-rng = Random.default_rng()
+rng_func = Dict("gpu"=>:(Random.default_rng()), "cpu"=>:(Random.default_rng()))
+rng = eval(rng_func["cpu"])
 isnothing(seed) || Random.seed!(rng, seed)
+save(joinpath(parsed_args["data_dir"],"rng-init.jld2"), "rng", rng)
 
 dt = 0.1 #simulation timestep (ms)
 
@@ -99,5 +101,5 @@ sig0 = 0.65*sqrt(dt)
 maxrate = 500 #(Hz) maximum average firing rate.  if the average firing rate across the simulation for any neuron exceeds this value, some of that neuron's spikes will not be saved
 
 
-p = paramType(FloatPrecision,IntPrecision,PType,seed,rng,example_neurons,wid,train_duration,penlambda,penlamEE,penlamEI,penlamIE,penlamII,penmu,frac,learn_every,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
+p = paramType(FloatPrecision,IntPrecision,PType,seed,rng_func,example_neurons,wid,train_duration,penlambda,penlamEE,penlamEI,penlamIE,penlamII,penmu,frac,learn_every,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
 je,ji,jx,jee,jei,jie,jii,wpee,wpei,wpie,wpii,mu,vre,threshe,threshi,refrac,tauedecay,tauidecay,taudecay_plastic,sig0,maxrate);

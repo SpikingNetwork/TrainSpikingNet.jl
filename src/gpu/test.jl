@@ -76,11 +76,15 @@ w0Weights = CuArray{p.FloatPrecision}(w0Weights);
 wpIndexOut = CuArray{p.IntPrecision}(wpIndexOut);
 wpWeightOut = CuArray{p.FloatPrecision}(wpWeightOut);
 
+rng = eval(p.rng_func["gpu"])
+isnothing(p.seed) || Random.seed!(rng, p.seed)
+save(joinpath(parsed_args["data_dir"],"rng-test.jld2"), "rng", rng)
+
 #----------- test the network --------------#
 nss = Vector{Any}(undef, parsed_args["ntrials"]);
 timess = Vector{Any}(undef, parsed_args["ntrials"]);
 xtotals = Vector{Any}(undef, parsed_args["ntrials"]);
-copy_rng = [typeof(p.rng)() for _=1:ndevices()];
+copy_rng = [typeof(rng)() for _=1:ndevices()];
 isnothing(p.seed) || Random.seed!.(copy_rng, p.seed)
 for var in [:times, :ns, :stim, :nc0, :thresh, :invtau,
             :w0Index, :w0Weights, :wpIndexOut, :wpWeightOut,
