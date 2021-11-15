@@ -8,7 +8,7 @@ wid = 50  # width (ms) of the moving average window in time
 
 monitor_resources_used = 0  # set to N to measure every N seconds
  
-rng_func = Dict("gpu"=>:(Random.default_rng()), "cpu"=>:(Random.default_rng()))
+rng_func = Dict("gpu"=>:(MersenneTwister()), "cpu"=>:(MersenneTwister()))
 rng = eval(rng_func["cpu"])
 isnothing(seed) || Random.seed!(rng, seed)
 save(joinpath(parsed_args["data_dir"],"rng-init.jld2"), "rng", rng)
