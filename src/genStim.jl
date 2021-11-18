@@ -8,7 +8,7 @@ b = 1/20;
 sig = 0.2; #0.1;
 for ci = 1:p.Ncells
     for i = 1:timeSteps-1
-        stim[i+1,ci] = stim[i,ci]+b*(mu-stim[i,ci])*p.dt + sig*sqrt(p.dt)*randn();
+        stim[i+1,ci] = stim[i,ci]+b*(mu-stim[i,ci])*p.dt + sig*sqrt(p.dt)*randn(rng);
     end
 end
 

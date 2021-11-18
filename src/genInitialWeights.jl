@@ -6,7 +6,7 @@ w0Index = zeros(Int,nc0Max,p.Ncells)
 w0Weights = zeros(nc0Max,p.Ncells)
 nc0Max > 0 && for i = 1:p.Ncells
     postcells = [1:i-1; i+1:p.Ncells]  # omit autapse
-    w0Index[1:nc0Max,i] = sample(postcells, nc0Max, replace=false, ordered=true) # fixed outdegree nc0Max
+    w0Index[1:nc0Max,i] = sample(rng, postcells, nc0Max, replace=false, ordered=true) # fixed outdegree nc0Max
     nexc = count(w0Index[1:nc0Max,i] .<= p.Ne) # number of exc synapses
     if i <= p.Ne
         w0Weights[1:nexc,i] .= p.jee  ## EE weights

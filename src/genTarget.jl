@@ -19,7 +19,7 @@ if biasType == "ou"
     sig_ou_bias = 0.02;
     bias[1] = 0
     for i = 1:p.Nsteps-1
-        bias[i+1] = bias[i]+b_ou_bias*(mu_ou_bias-bias[i])*p.dt + sig_ou_bias*sqrt(p.dt)*randn();
+        bias[i+1] = bias[i]+b_ou_bias*(mu_ou_bias-bias[i])*p.dt + sig_ou_bias*sqrt(p.dt)*randn(rng);
     end
 end
 
@@ -34,7 +34,7 @@ end
 for j=1:p.Ncells
     A  = 0.5
     period = 1000.0;
-    phase = period*rand();
+    phase = period*rand(rng);
     fluc = A*sin.((time.-phase).*(2*pi/period)) .+ uavg[j];
     utargSampled[:,j] = funSample(p,fluc + bias)
 end

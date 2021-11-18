@@ -34,8 +34,8 @@ function genPlasticWeights(p, w0Index, nc0, ns0)
         # indI = sort(inh_selected[rnd_start:rnd_start+p.L-1])
 
         # (2) select random neurons
-        indE = sample(exc_selected, p.L, replace=false, ordered=true)
-        indI = sample(inh_selected, p.L, replace=false, ordered=true)
+        indE = sample(rng, exc_selected, p.L, replace=false, ordered=true)
+        indI = sample(rng, inh_selected, p.L, replace=false, ordered=true)
 
         # build wpIndexIn
         ind  = [indE; indI]
