@@ -74,7 +74,6 @@ wpIndexConvert = load(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld2"), "
 if isnothing(parsed_args["restore_from_checkpoint"]);
     R=0
     wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn.jld2"), "wpWeightIn");
-    wpWeightIn = transpose(dropdims(wpWeightIn, dims=2));
 else
     R = parsed_args["restore_from_checkpoint"];
     wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld2"), "wpWeightIn");
@@ -102,12 +101,12 @@ vec01 = [zeros(ci_numExcSyn); ones(ci_numInhSyn)];
 Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01');
 # sum of penalties
 Pinv = Pinv_L2 + Pinv_rowsum;
-Pinv_norm = Pinv \ I;
+Pinv_norm = p.PType(Symmetric(UpperTriangular(Pinv) \ I));
 
 for ci=1:p.Ncells
     # neurons presynaptic to ci
     push!(Px, wpIndexIn[ci,:]);
-    push!(P, p.PType(copy(Pinv_norm)));
+    push!(P, copy(Pinv_norm));
 end
 
 # --- set up variables --- #

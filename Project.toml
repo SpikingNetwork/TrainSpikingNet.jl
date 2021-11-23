@@ -1,5 +1,6 @@
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
+BatchedCuBLAS = "dfa6e8bd-ffa5-4347-817a-aa08eb84b250"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Gadfly = "c91e804a-d5a3-530f-b6f0-dfbca275c004"

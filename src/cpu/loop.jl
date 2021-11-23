@@ -75,8 +75,8 @@ for ti=1:Nsteps
     #   - wpWeightOut is used for simulating the network activity
     #
     # wpWeightIn: - plastic weights used for and modified by the rls training algorithm 
-    #             - Ncell x Kin matrix where Kin = Lexc + Linh is the number of incoming plastic synapses to each neuron
-    #             - ith row, wpWeightIn[i,:]:
+    #             - Kin x Ncell matrix where Kin = Lexc + Linh is the number of incoming plastic synapses to each neuron
+    #             - ith col, wpWeightIn[:,i]:
     #                 - weights of the incoming connections to neuron i
     #                 - each row of wpWeightIn will be updated independently by the rls algorithm. (see line 153)
     # wpIndexIn:  - Ncell x Kin matrix where Kin = Lexc + Linh

@@ -4,7 +4,7 @@ function convertWgtIn2Out(Ncells,ncpIn,wpIndexIn,wpIndexConvert,wpWeightIn,wpWei
         for i = 1:ncpIn[postCell]
             preCell = wpIndexIn[postCell,i]
             postCellConvert = wpIndexConvert[postCell,i]
-            wpWeightOut[postCellConvert,preCell] = wpWeightIn[postCell,i]
+            wpWeightOut[postCellConvert,preCell] = wpWeightIn[i,postCell]
         end
     end
 

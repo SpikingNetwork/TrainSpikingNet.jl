@@ -22,8 +22,8 @@ function rls(k, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpI
         elseif p.PType == SymmetricPacked
             PackedArrays.spr!('U', -den, k[:,ci], P[ci].tri)
         end
-        e  = wpWeightIn[ci,:]'*rtrim + synInputBalanced[ci] - xtarg[learn_seq,ci]
-        wpWeightIn[ci,:] .-= e*k[:,ci]*den
+        e  = wpWeightIn[:,ci]'*rtrim + synInputBalanced[ci] - xtarg[learn_seq,ci]
+        wpWeightIn[:,ci] .-= e*k[:,ci]*den
     end
     wpWeightOut = convertWgtIn2Out(Ncells,ncpIn,wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
 

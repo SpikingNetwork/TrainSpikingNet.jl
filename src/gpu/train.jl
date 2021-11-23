@@ -1,4 +1,4 @@
-using LinearAlgebra, Random, JLD2, Statistics, CUDA, NNlib, NNlibCUDA, ArgParse
+using LinearAlgebra, Random, JLD2, Statistics, CUDA, NNlib, NNlibCUDA, ArgParse, PackedArrays, BatchedCuBLAS
 
 s = ArgParseSettings()
 
@@ -60,6 +60,9 @@ wpIndexConvert = load(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld2"), "
 if isnothing(parsed_args["restore_from_checkpoint"])
     R=0
     wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn.jld2"), "wpWeightIn");
+    @static if p.PType == Array
+        wpWeightIn = wpWeightIn[:,[CartesianIndex()],:]
+    end
 else
     R = parsed_args["restore_from_checkpoint"]
     wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld2"), "wpWeightIn");
@@ -87,8 +90,10 @@ vec01 = [zeros(ci_numExcSyn); ones(ci_numInhSyn)];
 Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01');
 # sum of penalties
 Pinv = Pinv_L2 + Pinv_rowsum;
-P = Array{Float64}(undef, (p.Lexc+p.Linh, p.Lexc+p.Linh, p.Ncells)); 
-P .= Pinv \ I;
+P1 = p.PType(Array{Float64}(undef, p.Lexc+p.Linh, p.Lexc+p.Linh));
+P = Array{Float64}(undef, (size(p.PType==SymmetricPacked ? P1.tri : P1)..., p.Ncells)); 
+Pinv_norm = p.PType(Symmetric(UpperTriangular(Pinv) \ I));
+P .= p.PType==SymmetricPacked ? Pinv_norm.tri : Pinv_norm;
 
 # --- set up variables --- #
 include(joinpath(@__DIR__,"variables.jl"))

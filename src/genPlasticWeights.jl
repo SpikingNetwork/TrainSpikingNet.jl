@@ -23,7 +23,7 @@ function genPlasticWeights(p, w0Index, nc0, ns0)
     inh_selected = sort(inh_ordered[end-frac_cells+1:end])
     
     # define weights_plastic
-    wpWeightIn = Array{Float64}(undef, p.Lexc+p.Linh, 1, p.Ncells)
+    wpWeightIn = Array{Float64}(undef, p.Lexc+p.Linh, p.Ncells)
     wpIndexIn = Array{Int}(undef, p.Ncells, p.Lexc+p.Linh)
     ncpIn = Array{Int}(undef, p.Ncells)
     for postCell = 1:p.Ncells
@@ -46,11 +46,11 @@ function genPlasticWeights(p, w0Index, nc0, ns0)
         if postCell <= p.Ne
             wpee = fill(p.wpee, p.Lexc)
             wpei = fill(p.wpei, p.Linh)
-            wpWeightIn[:, 1, postCell] = [wpee; wpei]
+            wpWeightIn[:, postCell] = [wpee; wpei]
         else
             wpie = fill(p.wpie, p.Lexc)
             wpii = fill(p.wpii, p.Linh)
-            wpWeightIn[:, 1, postCell] = [wpie; wpii]
+            wpWeightIn[:, postCell] = [wpie; wpii]
         end
     end
     
