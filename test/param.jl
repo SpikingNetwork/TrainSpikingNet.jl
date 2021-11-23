@@ -1,5 +1,5 @@
-FloatPrecision = Float64
-IntPrecision = UInt32
+FloatPrecision = Float32
+IntPrecision = UInt16
 PType=Array  # or Symmetric, or SymmetricPacked
 seed=1
 
@@ -34,7 +34,7 @@ train_time     = stim_off + train_duration;
 Nsteps = round(Int, train_time/dt)
 
 # network size
-Ncells = 4096;
+Ncells = 1024;
 Ne = floor(Int, Ncells*0.5);
 Ni = ceil(Int, Ncells*0.5);
 
