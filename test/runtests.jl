@@ -37,7 +37,6 @@ for kind in ("Array", "Symmetric", "SymmetricPacked")
                               "wpWeightIn")
         gpu_wpWeightIn = load(joinpath(@__DIR__, "gpu-$kind", "wpWeightIn-ckpt1.jld2"),
                               "wpWeightIn")
-        kind=="Array" && (gpu_wpWeightIn = dropdims(gpu_wpWeightIn, dims=2))
         @test isapprox(cpu_wpWeightIn, gpu_wpWeightIn)
 
         if kind!="Array"
@@ -50,13 +49,13 @@ for kind in ("Array", "Symmetric", "SymmetricPacked")
     end
 end
 
-readlines(pipeline(`$(Base.julia_cmd())
-                    $(joinpath(@__DIR__,"..","src","cpu","test.jl"))
-                    $(joinpath(@__DIR__,"cpu-Array"))`))
+run(pipeline(`$(Base.julia_cmd())
+              $(joinpath(@__DIR__,"..","src","cpu","test.jl"))
+              $(joinpath(@__DIR__,"cpu-Array"))`))
 
-readlines(pipeline(`$(Base.julia_cmd())
-                    $(joinpath(@__DIR__,"..","src","gpu","test.jl"))
-                    $(joinpath(@__DIR__,"gpu-Array"))`))
+run(pipeline(`$(Base.julia_cmd())
+              $(joinpath(@__DIR__,"..","src","gpu","test.jl"))
+              $(joinpath(@__DIR__,"gpu-Array"))`))
 
 dcpu = load(joinpath(@__DIR__,"cpu-Array/test.jld2"))
 dgpu = load(joinpath(@__DIR__,"gpu-Array/test.jld2"))

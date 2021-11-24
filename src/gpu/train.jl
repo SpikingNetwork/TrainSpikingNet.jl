@@ -60,9 +60,6 @@ wpIndexConvert = load(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld2"), "
 if isnothing(parsed_args["restore_from_checkpoint"])
     R=0
     wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn.jld2"), "wpWeightIn");
-    @static if p.PType == Array
-        wpWeightIn = wpWeightIn[:,[CartesianIndex()],:]
-    end
 else
     R = parsed_args["restore_from_checkpoint"]
     wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld2"), "wpWeightIn");

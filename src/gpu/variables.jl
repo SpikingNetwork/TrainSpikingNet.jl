@@ -48,17 +48,10 @@ exactlyzero = p.FloatPrecision(0.0)
 refrac = p.FloatPrecision(p.refrac)
 vre = p.FloatPrecision(p.vre)
 
-if p.PType == Array
-  k = CuArray{p.FloatPrecision}(undef, 2*p.L, 1, p.Ncells)
-  den = CuArray{p.FloatPrecision}(undef, 1, 1, p.Ncells)
-  e = CuArray{p.FloatPrecision}(undef, 1, 1, p.Ncells)
-  delta = CuArray{p.FloatPrecision}(undef, 2*p.L, 1, p.Ncells)
-else
-  k = CuArray{p.FloatPrecision}(undef, 2*p.L, p.Ncells)
-  den = CuArray{p.FloatPrecision}(undef, p.Ncells)
-  e = CuArray{p.FloatPrecision}(undef, p.Ncells)
-  delta = CuArray{p.FloatPrecision}(undef, 2*p.L, p.Ncells)
-end
+k = CuArray{p.FloatPrecision}(undef, 2*p.L, p.Ncells)
+den = CuArray{p.FloatPrecision}(undef, p.Ncells)
+e = CuArray{p.FloatPrecision}(undef, p.Ncells)
+delta = CuArray{p.FloatPrecision}(undef, 2*p.L, p.Ncells)
 v = CuVector{p.FloatPrecision}(undef, p.Ncells)
 noise = CuArray{p.FloatPrecision}(undef, p.Ncells)
 sig = CUDA.fill(p.FloatPrecision(p.sig0), p.Ncells)
