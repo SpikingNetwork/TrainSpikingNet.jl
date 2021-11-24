@@ -41,12 +41,14 @@ else
     output_prefix = joinpath(parsed_args["data_dir"], "test")
 end
 
-using Gadfly, DataFrames, StatsBase, Statistics
+using Gadfly, Compose, DataFrames, StatsBase, Statistics
 
 ntrials = length(nss)
 nneurons = length(nss[1])
+nrows = isqrt(nneurons)
+ncols = cld(nneurons, nrows)
 
-ps = Gadfly.Plot[]
+ps = Union{Plot,Context}[]
 for ci=1:nneurons
     df = DataFrame((t = (1:size(xtarg,1)).*p.learn_every/1000,
                     xtarg = xtarg[:,ineurons_to_plot[ci]],
@@ -66,11 +68,12 @@ for ci=1:nneurons
                    Guide.ylabel("synaptic input", orientation=:vertical),
                    Guide.xticks(orientation=:horizontal)))
 end
-gridstack(permutedims(reshape(ps, 4,4), (2,1))) |>
-        SVGJS(string(output_prefix, "-syninput.svg"), 2*sqrt(200)cm, 20cm)
+append!(ps, fill(Compose.context(), nrows*ncols-nneurons))
+gridstack(permutedims(reshape(ps, ncols, nrows), (2,1))) |>
+        SVGJS(string(output_prefix, "-syninput.svg"), 10cm*ncols, 7.5cm*nrows)
 
 timess_cat = hcat(timess...)
-ps = Gadfly.Plot[]
+ps = Union{Plot,Context}[]
 for ci=1:nneurons
     psth = fit(Histogram, vec(timess_cat[ci,:]), p.stim_off : p.learn_every : p.train_time)
     df = DataFrame(t=p.learn_every/1000 : p.learn_every/1000 : p.train_time/1000-1,
@@ -89,5 +92,6 @@ for ci=1:nneurons
                    Guide.ylabel("spike rate", orientation=:vertical),
                    Guide.xticks(orientation=:horizontal)))
 end
-gridstack(permutedims(reshape(ps, 4,4), (2,1))) |>
-        SVGJS(string(output_prefix , "-psth.svg"), 2*sqrt(200)cm, 20cm)
+append!(ps, fill(Compose.context(), nrows*ncols-nneurons))
+gridstack(permutedims(reshape(ps, ncols, nrows), (2,1))) |>
+        SVGJS(string(output_prefix , "-psth.svg"), 10cm*ncols, 7.5cm*nrows)
