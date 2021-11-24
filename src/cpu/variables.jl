@@ -45,7 +45,7 @@ vre = p.FloatPrecision(p.vre)
 uavg = zeros(p.FloatPrecision, p.Ncells)
 utmp = Matrix{p.FloatPrecision}(undef, p.Nsteps - Int(1000/p.dt), 1000)
 
-k = Matrix{p.FloatPrecision}(undef, 2*p.L, p.Ncells)
+k = Matrix{p.FloatPrecision}(undef, 2*p.L, Threads.nthreads())
 v = Vector{p.FloatPrecision}(undef, p.Ncells)
 noise = Vector{p.FloatPrecision}(undef, p.Ncells)
 sig = fill(p.FloatPrecision(p.sig0), p.Ncells)
