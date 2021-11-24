@@ -49,17 +49,18 @@ nneurons = length(nss[1])
 ps = Gadfly.Plot[]
 for ci=1:nneurons
     df = DataFrame((t = (1:size(xtarg,1)).*p.learn_every/1000,
-                    xtarg = xtarg[:,ineurons_to_plot[ci]]))
+                    xtarg = xtarg[:,ineurons_to_plot[ci]],
+                    xtotal1 = xtotals[1][:,ci]))
     xtotal_ci = hcat((x[:,ci] for x in xtotals)...)
     df[!,:xtotal_mean] = dropdims(mean(xtotal_ci, dims=2), dims=2)
     df[!,:xtotal_std] = dropdims(std(xtotal_ci, dims=2), dims=2)
     transform!(df, [:xtotal_mean, :xtotal_std] => ByRow((mu,sigma)->mu+sigma) => :xtotal_upper)
     transform!(df, [:xtotal_mean, :xtotal_std] => ByRow((mu,sigma)->mu-sigma) => :xtotal_lower)
-    push!(ps, plot(df, x=:t, y=Col.value(:xtarg, :xtotal_mean),
-                   color=Col.index(:xtarg, :xtotal_mean),
+    push!(ps, plot(df, x=:t, y=Col.value(:xtarg, :xtotal_mean, :xtotal1),
+                   color=Col.index(:xtarg, :xtotal_mean, :xtotal1),
                    ymax=Col.value(:xtotal_upper), ymin=Col.value(:xtotal_lower),
                    Geom.line, Geom.ribbon,
-                   Guide.colorkey(title="", labels=["carbon","silicon"]),
+                   Guide.colorkey(title="", labels=["carbon","silicon","silicon1"]),
                    Guide.title(string("neuron #", ineurons_to_plot[ci])),
                    Guide.xlabel("time (sec)", orientation=:horizontal),
                    Guide.ylabel("synaptic input", orientation=:vertical),
