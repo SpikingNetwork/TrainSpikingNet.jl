@@ -1,11 +1,5 @@
 using LinearAlgebra, Random, JLD2, CUDA, NNlib, NNlibCUDA, ArgParse
 
-Threads.nthreads() < ndevices() && @warn "performance is best if no. threads is set to no. GPUs"
-if Threads.nthreads() > ndevices()
-    @error "no. threads cannot exceed no. GPUs"
-    exit()
-end
-
 import ArgParse: parse_item
 
 function ArgParse.parse_item(::Type{Vector{Int}}, x::AbstractString)
@@ -30,12 +24,21 @@ s = ArgParseSettings()
         arg_type = Int
         default = nothing
         range_tester = x->x>0
+    "--no-plot"
+        help = "just save to JLD2 file"
+        action = :store_true
     "data_dir"
         help = "full path to the directory containing the parameters file"
         required = true
 end
 
 parsed_args = parse_args(s)
+
+Threads.nthreads() < ndevices() && @warn "performance is best if no. threads is set to no. GPUs"
+if Threads.nthreads() > ndevices()
+    @error "no. threads cannot exceed no. GPUs"
+    exit()
+end
 
 # --- load code --- #
 include(joinpath(dirname(@__DIR__),"struct.jl"))
@@ -158,4 +161,4 @@ save(joinpath(parsed_args["data_dir"], "test.jld2"),
      "ineurons_to_plot", parsed_args["ineurons_to_plot"],
      "nss", nss, "timess", timess, "xtotals", xtotals)
 
-include(joinpath(dirname(@__DIR__),"plot.jl"))
+parsed_args["no-plot"] || include(joinpath(dirname(@__DIR__),"plot.jl"))

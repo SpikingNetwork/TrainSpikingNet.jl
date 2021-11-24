@@ -24,6 +24,9 @@ s = ArgParseSettings()
         arg_type = Int
         default = nothing
         range_tester = x->x>0
+    "--no-plot"
+        help = "just save to JLD2 file"
+        action = :store_true
     "data_dir"
         help = "full path to the directory containing the parameters file"
         required = true
@@ -135,4 +138,4 @@ save(joinpath(parsed_args["data_dir"],"test.jld2"),
      "ineurons_to_plot", parsed_args["ineurons_to_plot"],
      "nss", nss, "timess", timess, "xtotals", xtotals)
 
-include(joinpath(dirname(@__DIR__),"plot.jl"))
+parsed_args["no-plot"] || include(joinpath(dirname(@__DIR__),"plot.jl"))
