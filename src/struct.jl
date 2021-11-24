@@ -1,4 +1,4 @@
-mutable struct paramType
+struct paramType
     FloatPrecision::DataType
     IntPrecision::DataType
     PType::UnionAll
@@ -53,7 +53,7 @@ mutable struct paramType
     refrac::Float64
     tauedecay::Float64
     tauidecay::Float64
-    taudecay_plastic::Vector{Float64}
+    taudecay_plastic  #::Union{Float64,Vector{Float64}}
     sig0::Float64
     maxrate::Float64
 end

@@ -124,7 +124,11 @@ for ti=1:Nsteps
             xidecay[ci] += (-dt*xidecay[ci] + forwardInputsIPrev[ci]) * invtauidecay
         end
         @static if kind in [:train, :test, :train_test]
-            xpdecay[ci] += (-dt*xpdecay[ci] + forwardInputsPPrev[ci]) * invtaudecay_plastic[ci]
+            @static if typeof(p.taudecay_plastic)<:Number
+                xpdecay[ci] += (-dt*xpdecay[ci] + forwardInputsPPrev[ci]) * invtaudecay_plastic
+            else
+                xpdecay[ci] += (-dt*xpdecay[ci] + forwardInputsPPrev[ci]) * invtaudecay_plastic[ci]
+            end
         end
 
         @static if kind in [:train, :test, :train_test]
@@ -174,7 +178,11 @@ for ti=1:Nsteps
 
         # if training, compute synapse-filtered spike trains
         @static if kind in [:train, :train_test]
-            r[ci] += (-dt*r[ci] + forwardSpikePrev[ci])*invtaudecay_plastic[ci]
+            @static if typeof(p.taudecay_plastic)<:Number
+                r[ci] += (-dt*r[ci] + forwardSpikePrev[ci])*invtaudecay_plastic
+            else
+                r[ci] += (-dt*r[ci] + forwardSpikePrev[ci])*invtaudecay_plastic[ci]
+            end
         end
 
         # external inputs

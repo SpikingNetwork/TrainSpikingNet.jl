@@ -87,14 +87,17 @@ xtotals = Vector{Any}(undef, parsed_args["ntrials"]);
 copy_rng = [typeof(rng)() for _=1:ndevices()];
 isnothing(p.seed) || Random.seed!.(copy_rng, p.seed)
 for var in [:times, :ns, :stim, :nc0, :thresh, :invtau,
-            :w0Index, :w0Weights, :wpIndexOut, :wpWeightOut,
-            :mu, :invtaudecay_plastic,
+            :w0Index, :w0Weights, :wpIndexOut, :wpWeightOut, :mu,
             :forwardInputsE, :forwardInputsI, :forwardInputsP,
             :forwardInputsEPrev, :forwardInputsIPrev, :forwardInputsPPrev,
             :xedecay, :xidecay, :xpdecay, :synInputBalanced, :synInput,
             :bias, :lastSpike, :bnotrefrac, :bspike, :v, :noise, :sig]
   @eval (device!(0); tmp = Array($var))
   @eval $(Symbol("copy_",var)) = [(device!(idevice-1); CuArray($tmp)) for idevice=1:ndevices()];
+end
+if typeof(p.taudecay_plastic)<:AbstractArray
+  device!(0); tmp = Array(invtaudecay_plastic)
+  copy_invtaudecay_plastic = [(device!(idevice-1); CuArray(tmp)) for idevice=1:ndevices()];
 end
 synchronize()
 Threads.@threads for itrial=1:parsed_args["ntrials"]
@@ -104,7 +107,7 @@ Threads.@threads for itrial=1:parsed_args["ntrials"]
           p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
           p.Nsteps, p.Ncells, p.L, nothing, refrac, vre, invtauedecay,
           invtauidecay,
-          copy_invtaudecay_plastic[idevice],
+          typeof(p.taudecay_plastic)<:Number ? invtaudecay_plastic : copy_invtaudecay_plastic[idevice],
           copy_mu[idevice],
           copy_thresh[idevice],
           copy_invtau[idevice],
@@ -129,7 +132,8 @@ Threads.@threads for itrial=1:parsed_args["ntrials"]
           copy_lastSpike[idevice],
           copy_bnotrefrac[idevice],
           copy_bspike[idevice],
-          nothing, nothing, nothing, nothing, nothing, nothing,
+          plusone,
+          nothing, nothing, nothing, nothing, nothing,
           copy_v[idevice],
           copy_rng[idevice],
           copy_noise[idevice],

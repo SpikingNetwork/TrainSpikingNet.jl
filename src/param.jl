@@ -55,7 +55,7 @@ vre = 0.0
 #synaptic time constants (ms) 
 tauedecay = 3
 tauidecay = 3
-taudecay_plastic = fill(150, Ncells)
+taudecay_plastic = 150  # can be a vector too, e.g. (150-70)*rand(rng, Ncells) .+ 70
 
 # connectivity 
 pree = 0.1
