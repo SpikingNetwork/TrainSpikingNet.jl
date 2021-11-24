@@ -101,10 +101,17 @@ for ti=1:Nsteps
     end
 
     @static if p.K>0
-        xedecay .+= (-dt.*xedecay .+ forwardInputsEPrev[2:end]) .* invtauedecay
-        xidecay .+= (-dt.*xidecay .+ forwardInputsIPrev[2:end]) .* invtauidecay
+        axpby!(invtauedecay, (@view forwardInputsEPrev[2:end]),
+               plusone-dt*invtauedecay, xedecay)
+        axpby!(invtauidecay, (@view forwardInputsIPrev[2:end]),
+               plusone-dt*invtauidecay, xidecay)
     end
-    xpdecay .+= (-dt.*xpdecay .+ forwardInputsPPrev[2:end]) .* invtaudecay_plastic
+    @static if typeof(p.taudecay_plastic)<:Number
+        axpby!(invtaudecay_plastic, (@view forwardInputsPPrev[2:end]),
+               plusone-dt*invtaudecay_plastic, xpdecay)
+    else
+        xpdecay .+= (-dt.*xpdecay .+ (@view forwardInputsPPrev[2:end])) .* invtaudecay_plastic
+    end
 
     @static if p.K>0
         synInputBalanced .= xedecay .+ xidecay
@@ -137,7 +144,11 @@ for ti=1:Nsteps
     end
 
     @static if kind in [:train, :train_test]
-        r .+= (-dt.*r .+ forwardSpikePrev).*invtaudecay_plastic
+        @static if typeof(p.taudecay_plastic)<:Number
+            axpby!(invtaudecay_plastic, forwardSpikePrev, plusone-dt*invtaudecay_plastic, r)
+        else
+            r .+= (-dt.*r .+ forwardSpikePrev) .* invtaudecay_plastic
+        end
     end
 
     if t > stim_on && t < stim_off
