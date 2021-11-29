@@ -1,40 +1,48 @@
-function kernelEI(ispike, w0Index, w0Weights, forwardInputsE, forwardInputsI)
-    i0 = threadIdx().x + (blockIdx().x - 1) * blockDim().x
-    j0 = threadIdx().y + (blockIdx().y - 1) * blockDim().y
-    istride = blockDim().x * gridDim().x
-    jstride = blockDim().y * gridDim().y
+function update_forwardInputs(bspike,
+                              w0Index, w0Weights, forwardInputsE, forwardInputsI,
+                              wpIndexOut, wpWeightOut, forwardInputsP)
 
-    @inbounds for i=i0:istride:size(w0Index,1), j=j0:jstride:length(ispike)
-        CUDA.@atomic forwardInputsE[0x1 + w0Index[i,ispike[j]]] += max(w0Weights[i,ispike[j]], 0)
-        CUDA.@atomic forwardInputsI[0x1 + w0Index[i,ispike[j]]] += min(w0Weights[i,ispike[j]], 0)
+    function kernel(bspike,
+                    w0Index, w0Weights, forwardInputsE, forwardInputsI,
+                    wpIndexOut, wpWeightOut, forwardInputsP)
+        i0 = threadIdx().x + (blockIdx().x - 1) * blockDim().x
+        j0 = threadIdx().y + (blockIdx().y - 1) * blockDim().y
+        istride = blockDim().x * gridDim().x
+        jstride = blockDim().y * gridDim().y
+
+        @inbounds for i=i0:istride:length(bspike)
+            if i<=length(bspike) && bspike[i]
+                for j=j0:jstride:max(size(w0Index,1),size(wpIndexOut,1))
+                    @static if p.K>0
+                        if j<=size(w0Index,1)
+                            CUDA.@atomic forwardInputsE[0x1 + w0Index[j,i]] += max(w0Weights[j,i], 0)
+                            CUDA.@atomic forwardInputsI[0x1 + w0Index[j,i]] += min(w0Weights[j,i], 0)
+                        end
+                    end
+                    if j<=size(wpIndexOut,1)
+                        CUDA.@atomic forwardInputsP[0x1 + wpIndexOut[j,i]] += wpWeightOut[j,i]
+                    end
+                end
+            end
+        end
+        return nothing
     end
-    return nothing
+
+    kernel = @cuda launch=false kernel(bspike,
+                                       w0Index, w0Weights, forwardInputsE, forwardInputsI,
+                                       wpIndexOut, wpWeightOut, forwardInputsP)
+    config = launch_configuration(kernel.fun)
+    dims = (length(bspike),
+            (@static p.K>0 ? max(size(w0Index,1),size(wpIndexOut,1)) : size(wpIndexOut,1)))
+    xthreads = min(32, dims[1])
+    ythreads = min(fld(config.threads, xthreads), cld(prod(dims), xthreads))
+    xblocks = min(config.blocks, cld(dims[1], xthreads))
+    yblocks = min(cld(config.blocks, xblocks), cld(dims[2], ythreads))
+    kernel(bspike,
+           w0Index, w0Weights, forwardInputsE, forwardInputsI,
+           wpIndexOut, wpWeightOut, forwardInputsP;
+           threads=(xthreads,ythreads), blocks=(xblocks<<2,yblocks<<2))
 end
-
-function kernelP(ispike, wpIndexOut, wpWeightOut, forwardInputsP)
-    i0 = threadIdx().x + (blockIdx().x - 1) * blockDim().x
-    j0 = threadIdx().y + (blockIdx().y - 1) * blockDim().y
-    istride = blockDim().x * gridDim().x
-    jstride = blockDim().y * gridDim().y
-
-    @inbounds for i=i0:istride:size(wpIndexOut,1), j=j0:jstride:length(ispike)
-        CUDA.@atomic forwardInputsP[0x1 + wpIndexOut[i,ispike[j]]] += wpWeightOut[i,ispike[j]]
-    end
-    return nothing
-end
-
-function configurator(config, size_weights)
-    xthreads = min(32, size_weights[1])
-    ythreads = min(cld(config.threads, xthreads), cld(prod(size_weights), xthreads))
-    xblocks = cld(size_weights[1], xthreads)
-    yblocks = cld(size_weights[2], ythreads)
-
-    return (threads=(xthreads, ythreads), blocks=(xblocks, yblocks))
-end
-
-cukernelEI = cufunction(kernelEI, Tuple{CuDeviceArray{UInt64,1,AS.Global}, CuDeviceArray{p.IntPrecision,2,AS.Global}, CuDeviceArray{p.FloatPrecision,2,AS.Global}, CuDeviceArray{p.FloatPrecision,1,AS.Global}, CuDeviceArray{p.FloatPrecision,1,AS.Global}})
-
-cukernelP = cufunction(kernelP, Tuple{CuDeviceArray{UInt64,1,AS.Global}, CuDeviceArray{p.IntPrecision,2,AS.Global}, CuDeviceArray{p.FloatPrecision,2,AS.Global}, CuDeviceArray{p.FloatPrecision,1,AS.Global}})
 
 @eval function $(Symbol("loop_",kind))(learn_every, stim_on, stim_off,
     train_time, dt, Nsteps, Ncells, L, Ne, refrac, vre, invtauedecay,
@@ -173,18 +181,9 @@ for ti=1:Nsteps
     @static kind in [:test, :train_test] && (times[ CartesianIndex.(1:Ncells,
                                                      min.(maxTimes, bspike.*ns) .+ 1) ] .= t)
 
-    ispike = findall(bspike)
-    if length(ispike)>0
-        @static if p.K>0
-            configEI = configurator(CUDA.launch_configuration(cukernelEI.fun),
-                                    (size(w0Weights,1),length(ispike)))
-            @cuda name="update_forwardInputsEI" threads=configEI.threads blocks=configEI.blocks kernelEI(ispike, w0Index, w0Weights, forwardInputsE, forwardInputsI)
-        end
-
-        configP = configurator(CUDA.launch_configuration(cukernelP.fun),
-                               (size(wpWeightOut,1),length(ispike)))
-        @cuda name="update_forwardInputsP" threads=configP.threads blocks=configP.blocks kernelP(ispike, wpIndexOut, wpWeightOut, forwardInputsP)
-    end
+    update_forwardInputs(bspike,
+                         w0Index, w0Weights, forwardInputsE, forwardInputsI,
+                         wpIndexOut, wpWeightOut, forwardInputsP)
 
     @static if p.K>0
         forwardInputsEPrev .= forwardInputsE
