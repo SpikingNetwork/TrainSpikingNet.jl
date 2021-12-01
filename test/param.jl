@@ -1,6 +1,6 @@
 FloatPrecision = Float32
 IntPrecision = UInt16
-PType=Array  # or Symmetric, or SymmetricPacked
+PType=Symmetric  # or SymmetricPacked for large models
 seed=1
 
 example_neurons = 25  # no. of neurons to save for visualization 
