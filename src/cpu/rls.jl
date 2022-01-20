@@ -21,7 +21,7 @@ function rls(k, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpI
         elseif p.PType == Symmetric
             BLAS.syr!('U', -den, k_tid, P[ci].data)
         elseif p.PType == SymmetricPacked
-            PackedArrays.spr!('U', -den, k_tid, P[ci].tri)
+            SymmetricFormats.spr!('U', -den, k_tid, P[ci].tri)
         end
         wpWeightInci = @view wpWeightIn[:,ci]
         e = wpWeightInci'*rtrim + synInputBalanced[ci] - xtarg[learn_seq,ci]

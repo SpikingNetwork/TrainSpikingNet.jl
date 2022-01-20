@@ -1,14 +1,14 @@
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
-BatchedCuBLAS = "dfa6e8bd-ffa5-4347-817a-aa08eb84b250"
+BatchedBLAS = "dfa6e8bd-ffa5-4347-817a-aa08eb84b250"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Gadfly = "c91e804a-d5a3-530f-b6f0-dfbca275c004"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 NNlib = "872c559c-99b0-510c-b3b7-b6c96a88d5cd"
 NNlibCUDA = "a00861dc-f156-4864-bf3c-e6376f28a68d"
-PackedArrays = "a91e544d-b3d6-4431-ae28-0549b1291c16"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+SymmetricFormats = "a91e544d-b3d6-4431-ae28-0549b1291c16"
 
 [compat]
 CUDA = "3.4"

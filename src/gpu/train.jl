@@ -1,4 +1,4 @@
-using LinearAlgebra, Random, JLD2, Statistics, CUDA, NNlib, NNlibCUDA, ArgParse, PackedArrays, BatchedCuBLAS
+using LinearAlgebra, Random, JLD2, Statistics, CUDA, NNlib, NNlibCUDA, ArgParse, SymmetricFormats, BatchedBLAS
 
 s = ArgParseSettings()
 
