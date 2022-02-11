@@ -16,27 +16,23 @@ save(joinpath(parsed_args["data_dir"],"rng-init.jld2"), "rng", rng)
 dt = 0.1 #simulation timestep (ms)
 
 # training variables
-penlambda      = 3.0; # 0.1 or 0.5 
-penlamEE       = 3.0; # 2.0
-penlamEI       = 3.0; # 0.08
-penlamIE       = 3.0; # 2.0
-penlamII       = 3.0; # 0.08
-penmu          = 8.0; # 2.0
-frac           = 1.0;
+penlambda      = 0.8  # 1 / learning rate
+penmu          = 0.01 # regularize weights
+frac           = 1.0
 learn_every    = 10.0 # (ms)
 
 # innate, train, test time (ms)
-train_duration = 1000.;
-stim_on        = 800.;
-stim_off       = 1000.;
-train_time     = stim_off + train_duration;
+train_duration = 1000.0
+stim_on        = 800.0
+stim_off       = 1000.0
+train_time     = stim_off + train_duration
 
 Nsteps = round(Int, train_time/dt)
 
 # network size
-Ncells = 4096;
-Ne = floor(Int, Ncells*0.5);
-Ni = ceil(Int, Ncells*0.5);
+Ncells = 4096
+Ne = floor(Int, Ncells*0.5)
+Ni = ceil(Int, Ncells*0.5)
 
 if Ncells == typemax(IntPrecision)
   @warn "IntPrecision is too small for GPU (but fine for CPU)"
@@ -45,8 +41,8 @@ elseif Ncells > typemax(IntPrecision)
 end
 
 # neuron param      
-taue = 10; #membrane time constant for exc. neurons (ms)
-taui = 10; 
+taue = 10 #membrane time constant for exc. neurons (ms)
+taui = 10 
 threshe = 1.0 # spike threshold
 threshi = 1.0   
 refrac = 0.1 # refractory period
@@ -101,5 +97,5 @@ sig0 = 0.65*sqrt(dt)
 maxrate = 500 #(Hz) maximum average firing rate.  if the average firing rate across the simulation for any neuron exceeds this value, some of that neuron's spikes will not be saved
 
 
-p = paramType(FloatPrecision,IntPrecision,PType,seed,rng_func,example_neurons,wid,train_duration,penlambda,penlamEE,penlamEI,penlamIE,penlamII,penmu,frac,learn_every,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
-je,ji,jx,jee,jei,jie,jii,wpee,wpei,wpie,wpii,mu,vre,threshe,threshi,refrac,tauedecay,tauidecay,taudecay_plastic,sig0,maxrate);
+p = paramType(FloatPrecision,IntPrecision,PType,seed,rng_func,example_neurons,wid,train_duration,penlambda,penmu,frac,learn_every,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
+je,ji,jx,jee,jei,jie,jii,wpee,wpei,wpie,wpii,mu,vre,threshe,threshi,refrac,tauedecay,tauidecay,taudecay_plastic,sig0,maxrate)

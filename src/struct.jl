@@ -8,10 +8,6 @@ struct paramType
     wid::Int
     train_duration::Float64
     penlambda::Float64
-    penlamEE::Float64
-    penlamEI::Float64
-    penlamIE::Float64
-    penlamII::Float64
     penmu::Float64
     frac::Float64
     learn_every::Float64
