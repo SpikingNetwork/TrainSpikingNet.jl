@@ -62,7 +62,7 @@ for ci=1:nneurons
                    color=Col.index(:xtarg, :xtotal_mean, :xtotal1),
                    ymax=Col.value(:xtotal_upper), ymin=Col.value(:xtotal_lower),
                    Geom.line, Geom.ribbon,
-                   Guide.colorkey(title="", labels=["carbon","silicon","silicon1"]),
+                   Guide.colorkey(title="", labels=["data","model","model1"]),
                    Guide.title(string("neuron #", ineurons_to_plot[ci])),
                    Guide.xlabel("time (sec)", orientation=:horizontal),
                    Guide.ylabel("synaptic input", orientation=:vertical),
@@ -70,22 +70,26 @@ for ci=1:nneurons
 end
 append!(ps, fill(Compose.context(), nrows*ncols-nneurons))
 gridstack(permutedims(reshape(ps, ncols, nrows), (2,1))) |>
-        SVGJS(string(output_prefix, "-syninput.svg"), 10cm*ncols, 7.5cm*nrows)
+        SVGJS(string(output_prefix, "-syninput.svg"), 8cm*ncols, 6.5cm*nrows)
+
 
 timess_cat = hcat(timess...)
 ps = Union{Plot,Context}[]
 for ci=1:nneurons
     psth = fit(Histogram, vec(timess_cat[ci,:]), p.stim_off : p.learn_every : p.train_time)
     df = DataFrame(t=p.learn_every/1000 : p.learn_every/1000 : p.train_time/1000-1,
-                   silicon=psth.weights./ntrials./p.learn_every*1000)
+                   model=psth.weights./ntrials./p.learn_every*1000)
     if ismissing(rate)
-        cols = (:silicon, )
+        scale_color = Scale.color_discrete(n->Scale.default_discrete_colors(n+1)[2:end])
+        cols = (:model, )
     else
-        df[!,:carbon] = rate[:, ineurons_to_plot[ci]]
-        cols = (:carbon, :silicon)
+        scale_color = Scale.default_discrete_colors
+        df[!,:data] = rate[:, ineurons_to_plot[ci]]
+        cols = (:data, :model)
     end
     push!(ps, plot(df, x=:t, y=Col.value(cols...), color=Col.index(cols...),
                    Geom.line,
+                   scale_color,
                    Guide.colorkey(title=""),
                    Guide.title(string("neuron #", ineurons_to_plot[ci])),
                    Guide.xlabel("time (sec)", orientation=:horizontal),
@@ -94,4 +98,4 @@ for ci=1:nneurons
 end
 append!(ps, fill(Compose.context(), nrows*ncols-nneurons))
 gridstack(permutedims(reshape(ps, ncols, nrows), (2,1))) |>
-        SVGJS(string(output_prefix , "-psth.svg"), 10cm*ncols, 7.5cm*nrows)
+        SVGJS(string(output_prefix , "-psth.svg"), 8cm*ncols, 6.5cm*nrows)
