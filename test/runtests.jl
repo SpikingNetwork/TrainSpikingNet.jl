@@ -50,11 +50,11 @@ end
 @testset "test" begin
     run(pipeline(`$(Base.julia_cmd())
                   $(joinpath(@__DIR__,"..","src","cpu","test.jl"))
-                  $(joinpath(@__DIR__,"cpu-Array"))`, stderr=devnull))
+                  $(joinpath(@__DIR__,"cpu-Array"))`, stdout=devnull))
 
     run(pipeline(`$(Base.julia_cmd())
                   $(joinpath(@__DIR__,"..","src","gpu","test.jl"))
-                  $(joinpath(@__DIR__,"gpu-Array"))`, stderr=devnull))
+                  $(joinpath(@__DIR__,"gpu-Array"))`, stdout=devnull))
 
     dcpu = load(joinpath(@__DIR__,"cpu-Array/test.jld2"))
     dgpu = load(joinpath(@__DIR__,"gpu-Array/test.jld2"))

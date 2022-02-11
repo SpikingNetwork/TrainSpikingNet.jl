@@ -131,7 +131,7 @@ Threads.@threads for itrial=1:parsed_args["ntrials"]
     nss[itrial] = thisns[parsed_args["ineurons_to_plot"]]
     timess[itrial] = thistimes[parsed_args["ineurons_to_plot"],:]
     xtotals[itrial] = thisxtotal[:,parsed_args["ineurons_to_plot"]]
-    @info string("trial #", itrial, ", ", round(t, sigdigits=3), " sec")
+    println("trial #", itrial, ", ", round(t, sigdigits=3), " sec")
 end
 
 save(joinpath(parsed_args["data_dir"],"test.jld2"),

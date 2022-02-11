@@ -178,7 +178,7 @@ for iloop = R.+(1:parsed_args["nloops"])
         end
 
         bnotnan = .!isnan.(pcor)
-        println("cor = ", mean(pcor[bnotnan]),
+        println("correlation: ", mean(pcor[bnotnan]),
                 all(bnotnan) ? "" : string(" (", length(pcor)-count(bnotnan)," are NaN)"))
     end
 
