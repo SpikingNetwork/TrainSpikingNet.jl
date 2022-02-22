@@ -16,8 +16,8 @@ Install Julia with [juliaup](https://github.com/JuliaLang/juliaup)
 or by manually downloading the latest version from
 [julialang.org](https://julialang.org/).
 
-Download the trainBalancedNet.jl repository with either the ZIP link or by
-using git-clone:
+Download the trainBalancedNet.jl repository with either the ZIP link on
+github.com or by using git-clone:
 
 ```
 $ git clone --depth 1 https://github.com/JaneliaSciComp/trainBalancedNet.git
@@ -33,8 +33,7 @@ Modify the unix PATH environment variable to include the path to the Julia
 executable as well as this respository:
 
 ```
-$ grep trainBalancedNet ~/.bashrc
-export PATH=$PATH:~/bin/julia-1.7.1/bin:~/bin/trainBalancedNet
+$ echo "export PATH=$PATH:~/bin/julia-1.7.1/bin:~/bin/trainBalancedNet" >> ~/.bashrc
 ```
 
 Download all of the required packages:
@@ -59,12 +58,14 @@ Test Summary: | Pass  Total
 test          |    4      4
 Test Summary: | Pass  Total
 K=0           |    5      5
+Test Summary: | Pass  Total
+Ricciardi     |    7      7
 ```
 
 # Basic Usage #
 
 Edit "src/param.jl" to set your network size, connectivity, stimulus
-pattern, etc.  Optionally copy it to another directory:
+pattern, etc.  Optionally, make a copy of it:
 
 ```
 $ cp src/param.jl ~/data
@@ -86,10 +87,13 @@ Ne = floor(Int, Ncells*0.5)
 Ni = ceil(Int, Ncells*0.5)
 ```
 
-Initialize a model with random weights.  If the full path to a JLD2 file
-containing the synaptic targets is not specified with the `-x` flag,
-artificial targets will be generated consisting of sinusoids.  The results
-are stored in several JLD2 files alongside "param.jl":
+Initialize a model with random weights.  By default, artificial synaptic
+targets will be generated consisting of sinusoids.  Optionally, specify the
+full path to a JLD2 file containing either the desired synaptic targets or
+the corresponding spike rates using the `-x` and `-s` flags, respectively
+(but not both!).  Spike rates will be converted to synptic currents using
+the method of Ricciardi (XXXX).  In all cases, the synaptic targets are
+stored in "xtarg.jld2", which can be subsquently referenced using `-x`.
 
 ```
 $ tbn.sh init -t auto ~/data
@@ -102,7 +106,7 @@ ncpIn.jld2       wpIndexOut.jld2      stim.jld2   w0Index.jld2    param.jl
 wpWeightIn.jld2  wpIndexIn.jld2       nc0.jld2    p.jld2
 ```
 
-Train a model by iteratively updating the weights with sequential
+Now, Train a model by iteratively updating the weights with sequential
 presentations of the stimulus.  The trained weights are stored in additional
 JLD2 files and the correlations to the targets dumped to the standard output.
 Use the `-t` flag to thread the CPU version of train.jl; it has no effect
@@ -193,9 +197,15 @@ optional arguments:
   -h, --help            show this help message and exit
 ```
 
-JLD2 files are just HDF5 files with a particular structure designed to
-store Julia objects.  They should be readable in any programming language
-that can read HDF5.
+
+# File Formats #
+
+All data are stored in JLD2 files, which are HDF5 files with a particular
+structure inside designed to store Julia objects.  They should be readable
+in any programming language that can read HDF5.
+
+Plots are output as SVG files which should be readable by any internet
+browser.
 
 
 # Intel Math Kernel Library #

@@ -3,11 +3,18 @@ using LinearAlgebra, Random, JLD2, Statistics, StatsBase, ArgParse, SymmetricFor
 s = ArgParseSettings()
 
 @add_arg_table! s begin
-    "--xtarg_file", "-x"
-        help = "full path to the JLD file containing the synaptic targets.  default is sinusoids"
     "data_dir"
         help = "full path to the directory containing the parameters file"
         required = true
+end
+
+add_arg_group!(s, "mutually exclusive arguments.  if neither is specified, sinusoids\nwill be generated for synpatic inputs", exclusive = true);
+
+@add_arg_table! s begin
+    "--xtarg_file", "-x"
+        help = "full path to the JLD file containing the synaptic current targets"
+    "--spikerate_file", "-s"
+        help = "full path to the JLD file containing the spike rates"
 end
 
 parsed_args = parse_args(s)
@@ -37,6 +44,7 @@ include(joinpath(@__DIR__,"genTarget.jl"))
 include(joinpath(@__DIR__,"genStim.jl"))
 include(joinpath(@__DIR__,"cpu","loop.jl"))
 include(joinpath(@__DIR__,"funSample.jl"))
+include(joinpath(@__DIR__,"rate2synInput.jl"))
 
 #----------- initialization --------------#
 w0Index, w0Weights, nc0 = genInitialWeights(p)
@@ -53,11 +61,19 @@ uavg, ns0, ustd = loop_init(nothing, nothing, nothing, p.train_time, dt,
 wpWeightIn, wpIndexIn, wpIndexOut, wpIndexConvert, ncpIn, ncpOut =
     genPlasticWeights(p, w0Index, nc0, ns0)
 
-if isnothing(parsed_args["xtarg_file"])
-  xtarg = genTarget(p,uavg,"zero")
-else
+if parsed_args["xtarg_file"] !== nothing
   xtarg_dict = load(parsed_args["xtarg_file"])
   xtarg = xtarg_dict[first(keys(xtarg_dict))]
+  Ntime = floor(Int, (p.train_time-p.stim_off)/p.learn_every)
+  if size(xtarg,1)==Ntime
+     error(parsed_args["xtarg_file"],
+           " should have (train_time-stim_off)/learn_every = ",
+           Ntime, " rows")
+  end
+elseif parsed_args["spikerate_file"] !== nothing
+  xtarg = rate2synInput(p, ustd)
+else
+  xtarg = genTarget(p,uavg,"zero")
 end
 stim = genStim(p)
 

@@ -104,3 +104,31 @@ end
                           "wpWeightIn")
     @test isapprox(cpu_wpWeightIn, gpu_wpWeightIn)
 end
+
+@testset "Ricciardi" begin
+    mkdir(joinpath(@__DIR__, "ricciardi"))
+    open(joinpath(@__DIR__, "ricciardi", "param.jl"), "w") do fileout 
+        for line in readlines(joinpath(@__DIR__,"param.jl"))
+            if startswith(line, "Ncells")
+                println(fileout, "Ncells=4096")
+            else
+                println(fileout, line)
+            end
+        end
+    end
+    psth = Float64[1:100 100:-1:1 vcat(1:50,50:-1:1) (25 .+ 25*sin.(range(0,2*pi,100)))]
+    save(joinpath(@__DIR__, "ricciardi", "spikerates.jld2"), "psth", psth)
+    init_out = readlines(pipeline(`$(Base.julia_cmd()) -t 2
+                                   $(joinpath(@__DIR__,"..","src","init.jl"))
+                                   -s $(joinpath(@__DIR__,"ricciardi","spikerates.jld2"))
+                                   $(joinpath(@__DIR__,"ricciardi"))`))
+    xtarg = load(joinpath(@__DIR__,"ricciardi","xtarg.jld2"))["xtarg"]
+    dx = diff(xtarg, dims=1)
+    @test all(dx[:,1].>0)
+    @test all(dx[:,2].<0)
+    @test all(dx[1:49,3].>0)
+    @test all(dx[51:99,3].<0)
+    @test all(dx[1:25,4].>0)
+    @test all(dx[26:74,4].<0)
+    @test all(dx[75:99,4].>0)
+end
