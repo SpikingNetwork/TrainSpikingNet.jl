@@ -17,7 +17,7 @@ invtau[1:p.Ne] .= 1/p.taue
 invtau[(1+p.Ne):p.Ncells] .= 1/p.taui
 
 maxTimes = round(Int,p.maxrate*p.train_time/1000)
-times = Array{p.FloatPrecision}(undef, p.Ncells, maxTimes)
+times = Array{Float64}(undef, p.Ncells, maxTimes)
 ns = Vector{p.IntPrecision}(undef, p.Ncells)
 
 forwardInputsE = Vector{p.FloatPrecision}(undef, p.Ncells)     # excitatory synaptic currents to neurons via balanced connections at one time step
@@ -38,16 +38,16 @@ r = Vector{p.FloatPrecision}(undef, p.Ncells)                # synapse-filtered 
 
 bias = Vector{p.FloatPrecision}(undef, p.Ncells)             # total external input to neurons
 
-lastSpike = Array{p.FloatPrecision}(undef, p.Ncells)  # last time a neuron spiked
+lastSpike = Array{Float64}(undef, p.Ncells)  # last time a neuron spiked
 
 plusone = p.FloatPrecision(1.0)
 exactlyzero = p.FloatPrecision(0.0)
 
-refrac = p.FloatPrecision(p.refrac)
+refrac = p.refrac
 vre = p.FloatPrecision(p.vre)
 
 uavg = zeros(p.FloatPrecision, p.Ncells)
-utmp = Matrix{p.FloatPrecision}(undef, p.Nsteps - Int(1000/p.dt), 1000)
+utmp = Matrix{p.FloatPrecision}(undef, p.Nsteps - round(Int, 1000/p.dt), 1000)
 
 k = Matrix{p.FloatPrecision}(undef, 2*p.L, Threads.nthreads())
 v = Vector{p.FloatPrecision}(undef, p.Ncells)

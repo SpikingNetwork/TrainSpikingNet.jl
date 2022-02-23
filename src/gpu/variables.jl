@@ -17,7 +17,7 @@ invtau[1:p.Ne] .= 1/p.taue
 invtau[(1+p.Ne):p.Ncells] .= 1/p.taui
 
 maxTimes = round(Int, p.maxrate*p.train_time/1000)
-times = CuArray{p.FloatPrecision}(undef, p.Ncells, 1+maxTimes)
+times = CuArray{Float64}(undef, p.Ncells, 1+maxTimes)
 ns = CuVector{p.IntPrecision}(undef, p.Ncells)
 
 forwardInputsE = CuVector{p.FloatPrecision}(undef, p.Ncells+1)  # excitatory synaptic currents to neurons via balanced connections at one time step
@@ -37,7 +37,7 @@ synInput = CuVector{p.FloatPrecision}(undef, p.Ncells) # sum of xedecay and xide
 r = CuVector{p.FloatPrecision}(undef, p.Ncells)      # synapse-filtered spikes (i.e. filtered version of forwardSpike)
 
 bias = CuVector{p.FloatPrecision}(undef, p.Ncells)   # total external input to neurons
-lastSpike = CuArray{p.FloatPrecision}(undef, p.Ncells)  # last time a neuron spiked
+lastSpike = CuArray{Float64}(undef, p.Ncells)  # last time a neuron spiked
 
 bnotrefrac = CuVector{Bool}(undef, p.Ncells)
 bspike = CuVector{Bool}(undef, p.Ncells)
@@ -45,7 +45,7 @@ plusone = p.FloatPrecision(1.0)
 minusone = p.FloatPrecision(-1.0)
 exactlyzero = p.FloatPrecision(0.0)
 
-refrac = p.FloatPrecision(p.refrac)
+refrac = Float64(p.refrac)
 vre = p.FloatPrecision(p.vre)
 
 k = CuArray{p.FloatPrecision}(undef, 2*p.L, p.Ncells)

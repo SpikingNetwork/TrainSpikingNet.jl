@@ -98,7 +98,7 @@ end
 @static p.K==0 && (sqrtdt = sqrt(dt))
 
 for ti=1:Nsteps
-    t = dt*ti;
+    t = p.dt*ti;
 
     @static p.K>0 && (forwardInputsE .= forwardInputsI .= 0.0)
     forwardInputsP .= 0.0
@@ -160,7 +160,7 @@ for ti=1:Nsteps
     end
 
     if t > stim_on && t < stim_off
-        bias .= mu .+ stim[ti-round(Int,stim_on/dt),:]
+        bias .= mu .+ stim[ti-round(Int,stim_on/p.dt),:]
     else
         bias .= mu
     end

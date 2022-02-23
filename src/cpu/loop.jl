@@ -8,6 +8,8 @@
     sig, P, Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut,
     wpIndexConvert, wpWeightIn, wpWeightOut, ncpIn, ncpOut, uavg, utmp)
 
+@static kind == :init && (steps_per_sec = round(Int, 1000/p.dt))
+
 @static if kind in [:test, :train_test]
     learn_nsteps = round(Int, (train_time - stim_off)/learn_every)
     widInc = round(Int, 2*wid/learn_every - 1)
@@ -57,7 +59,7 @@ end
 
 # start the actual training
 for ti=1:Nsteps
-    t = dt*ti;
+    t = p.dt*ti;
 
     # reset spiking activities from the previous time step
     @static p.K>0 && (forwardInputsE .= forwardInputsI .= 0.0)
@@ -144,12 +146,11 @@ for ti=1:Nsteps
         end
 
         @static if kind == :init
-            if ti > 1000/dt # 1000 ms
-                uavg[ci] += synInput[ci] / (Nsteps - round(Int,1000/dt)) # save synInput
-            end
-
-            if ti > 1000/dt && ci <= 1000
-                utmp[ti - round(Int,1000/dt), ci] = synInput[ci]
+            if ti > 1000/p.dt # 1000 ms
+                uavg[ci] += synInput[ci] / (Nsteps - steps_per_sec) # save synInput
+                if ci <= 1000
+                    utmp[ti - steps_per_sec, ci] = synInput[ci]
+                end
             end
         end
 
@@ -191,7 +192,7 @@ for ti=1:Nsteps
         #         : applied within the time interval [stim_on, stim_off]
         @static if kind in [:train, :test, :train_test]
             if t > stim_on && t < stim_off
-                bias[ci] = mu[ci] + stim[ti-round(Int,stim_on/dt),ci]
+                bias[ci] = mu[ci] + stim[ti-round(Int,stim_on/p.dt),ci]
             else
                 bias[ci] = mu[ci]
             end
