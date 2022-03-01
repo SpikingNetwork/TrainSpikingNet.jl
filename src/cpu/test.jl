@@ -38,7 +38,7 @@ BLAS.set_num_threads(1)
 
 # --- load code --- #
 include(joinpath(dirname(@__DIR__),"struct.jl"))
-p = load(joinpath(parsed_args["data_dir"],"p.jld2"), "p")
+p = load(joinpath(parsed_args["data_dir"],"param.jld2"), "p")
 
 macro maybethread(loop)
   quote $(esc(loop)); end

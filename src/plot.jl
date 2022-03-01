@@ -5,7 +5,7 @@ if !(@isdefined nss)
 
     @add_arg_table! s begin
         "test_file"
-            help = "full path to the JLD file output by test.jl.  this same directory needs to contain the parameters in p.jld2, the synaptic targets in xtarg.jld2, and (optionally) the spike rate in rate.jld2"
+            help = "full path to the JLD file output by test.jl.  this same directory needs to contain the parameters in param.jld2, the synaptic targets in xtarg.jld2, and (optionally) the spike rate in rate.jld2"
             required = true
     end
 
@@ -18,7 +18,7 @@ if !(@isdefined nss)
     xtotals = d["xtotals"]
 
     include(joinpath(@__DIR__,"struct.jl"))
-    p = load(joinpath(dirname(parsed_args["test_file"]),"p.jld2"), "p")
+    p = load(joinpath(dirname(parsed_args["test_file"]),"param.jld2"), "p")
 
     xtarg = load(joinpath(dirname(parsed_args["test_file"]),"xtarg.jld2"), "xtarg")
     if isfile(joinpath(dirname(parsed_args["test_file"]),"rate.jld2"))
@@ -71,7 +71,6 @@ end
 append!(ps, fill(Compose.context(), nrows*ncols-nneurons))
 gridstack(permutedims(reshape(ps, ncols, nrows), (2,1))) |>
         SVGJS(string(output_prefix, "-syninput.svg"), 8cm*ncols, 6.5cm*nrows)
-
 
 timess_cat = hcat(timess...)
 ps = Union{Plot,Context}[]

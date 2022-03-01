@@ -13,7 +13,7 @@ s = ArgParseSettings()
         default = nothing
         range_tester = x->x>0
     "--save_checkpoints", "-c"
-        help = "save learned weights every C training loops.  default is to only save the last loop"
+        help = "save the learned weights and covariance matrices every C training loops.  the default is just the last one"
         arg_type = Int
         default = nothing
         range_tester = x->x>0
@@ -36,7 +36,7 @@ parsed_args = parse_args(s)
 
 # --- load code --- #
 include(joinpath(dirname(@__DIR__),"struct.jl"))
-p = load(joinpath(parsed_args["data_dir"],"p.jld2"), "p")
+p = load(joinpath(parsed_args["data_dir"],"param.jld2"), "p")
 
 kind=:train
 include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
@@ -60,9 +60,14 @@ wpIndexConvert = load(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld2"), "
 if isnothing(parsed_args["restore_from_checkpoint"])
     R=0
     wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn.jld2"), "wpWeightIn");
+    Pinv_norm = load(joinpath(parsed_args["data_dir"],"P.jld2"), "P");
+    P1 = p.PType(Array{Float64}(undef, p.Lexc+p.Linh, p.Lexc+p.Linh));
+    P = Array{Float64}(undef, (size(p.PType==SymmetricPacked ? P1.tri : P1)..., p.Ncells));
+    P .= p.PType==SymmetricPacked ? Pinv_norm.tri : Pinv_norm;
 else
     R = parsed_args["restore_from_checkpoint"]
     wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld2"), "wpWeightIn");
+    P = load(joinpath(parsed_args["data_dir"],"P-ckpt$R.jld2"), "P");
 end;
 wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells);
 wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut);
@@ -72,25 +77,7 @@ isnothing(p.seed) || Random.seed!(rng, p.seed)
 save(joinpath(parsed_args["data_dir"],"rng-train.jld2"), "rng",rng)
 
 #--- set up correlation matrix ---#
-ci_numExcSyn = p.Lexc;
-ci_numInhSyn = p.Linh;
-ci_numSyn = ci_numExcSyn + ci_numInhSyn;
-
-# neurons presynaptic to ci
-Px = wpIndexIn';
-
-# L2-penalty
-Pinv_L2 = p.penlambda*one(zeros(ci_numSyn,ci_numSyn));
-# row sum penalty
-vec10 = [ones(ci_numExcSyn); zeros(ci_numInhSyn)];
-vec01 = [zeros(ci_numExcSyn); ones(ci_numInhSyn)];
-Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01');
-# sum of penalties
-Pinv = Pinv_L2 + Pinv_rowsum;
-P1 = p.PType(Array{Float64}(undef, p.Lexc+p.Linh, p.Lexc+p.Linh));
-P = Array{Float64}(undef, (size(p.PType==SymmetricPacked ? P1.tri : P1)..., p.Ncells)); 
-Pinv_norm = p.PType(Symmetric(UpperTriangular(Pinv) \ I));
-P .= p.PType==SymmetricPacked ? Pinv_norm.tri : Pinv_norm;
+Px = wpIndexIn'; # neurons presynaptic to ci
 
 # --- set up variables --- #
 include(joinpath(@__DIR__,"variables.jl"))
@@ -182,16 +169,16 @@ for iloop = R.+(1:parsed_args["nloops"])
                 all(bnotnan) ? "" : string(" (", length(pcor)-count(bnotnan)," are NaN)"))
     end
 
+    if (isnothing(parsed_args["save_checkpoints"]) && iloop == R+parsed_args["nloops"]) ||
+       (!isnothing(parsed_args["save_checkpoints"]) && iloop % parsed_args["save_checkpoints"] != 1)
+        save(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$iloop.jld2"),
+             "wpWeightIn", Array(wpWeightIn))
+        save(joinpath(parsed_args["data_dir"],"P-ckpt$iloop.jld2"), "P", Array(P))
+    end
+
     elapsed_time = time()-start_time
     println("elapsed time: ",elapsed_time, " sec")
     println("firing rate: ",mean(ns)/(dt/1000*p.Nsteps), " Hz")
-
-    save(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$iloop.jld2"),
-         "wpWeightIn", Array(wpWeightIn))
-    if (isnothing(parsed_args["save_checkpoints"]) && iloop>1) ||
-       (!isnothing(parsed_args["save_checkpoints"]) && iloop % parsed_args["save_checkpoints"] != 1)
-        rm(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$(iloop-1).jld2"), force=true)
-    end
 end
 
 if !isnothing(parsed_args["monitor_resources_used"])

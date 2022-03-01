@@ -77,8 +77,23 @@ else
 end
 stim = genStim(p)
 
+# --- set up correlation matrix --- #
+ci_numExcSyn = p.Lexc;
+ci_numInhSyn = p.Linh;
+ci_numSyn = ci_numExcSyn + ci_numInhSyn;
+
+# L2-penalty
+Pinv_L2 = p.penlambda*one(zeros(ci_numSyn,ci_numSyn));
+# row sum penalty
+vec10 = [ones(ci_numExcSyn); zeros(ci_numInhSyn)];
+vec01 = [zeros(ci_numExcSyn); ones(ci_numInhSyn)];
+Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01');
+# sum of penalties
+Pinv = Pinv_L2 + Pinv_rowsum;
+Pinv_norm = p.PType(Symmetric(UpperTriangular(Pinv) \ I));
+
 #----------- save initialization --------------#
-save(joinpath(parsed_args["data_dir"],"p.jld2"), "p", p)
+save(joinpath(parsed_args["data_dir"],"param.jld2"), "p", p)
 save(joinpath(parsed_args["data_dir"],"w0Index.jld2"), "w0Index", w0Index)
 save(joinpath(parsed_args["data_dir"],"w0Weights.jld2"), "w0Weights", w0Weights)
 save(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0", nc0)
@@ -90,3 +105,4 @@ save(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld2"), "wpIndexConvert", 
 save(joinpath(parsed_args["data_dir"],"wpWeightIn.jld2"), "wpWeightIn", wpWeightIn)
 save(joinpath(parsed_args["data_dir"],"ncpIn.jld2"), "ncpIn", ncpIn)
 save(joinpath(parsed_args["data_dir"],"ncpOut.jld2"), "ncpOut", ncpOut)
+save(joinpath(parsed_args["data_dir"],"P.jld2"), "P", Pinv_norm)

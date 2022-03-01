@@ -101,9 +101,9 @@ mean excitatory firing rate: 3.427978515625 Hz
 mean inhibitory firing rate: 6.153564453125 Hz
 
 $ ls -t ~/data
-ncpOut.jld2      wpIndexConvert.jld2  xtarg.jld2  w0Weights.jld2  rng-init.jld2
-ncpIn.jld2       wpIndexOut.jld2      stim.jld2   w0Index.jld2    param.jl
-wpWeightIn.jld2  wpIndexIn.jld2       nc0.jld2    p.jld2
+P.jld2       wpWeightIn.jld2      wpIndexIn.jld2  nc0.jld2        param.jld2
+ncpOut.jld2  wpIndexConvert.jld2  xtarg.jld2      w0Weights.jld2  rng-init.jld2
+ncpIn.jld2   wpIndexOut.jld2      stim.jld2       w0Index.jld2    param.jl*
 ```
 
 Now, Train a model by iteratively updating the weights with sequential
@@ -137,10 +137,11 @@ elapsed time: 11.195262908935547 sec
 firing rate: 5.787353515625 Hz
 
 $ ls -t ~/data
-wpWeightIn-ckpt100.jld2  wpWeightIn.jld2      xtarg.jld2      w0Index.jld2
-rng-train.jld2           wpIndexConvert.jld2  stim.jld2       p.jld2
-ncpOut.jld2              wpIndexOut.jld2      nc0.jld2        rng-init.jld2
-ncpIn.jld2               wpIndexIn.jld2       w0Weights.jld2  param.jl
+P-ckpt100.jld2           ncpIn.jld2           xtarg.jld2      param.jld2
+wpWeightIn-ckpt100.jld2  wpWeightIn.jld2      stim.jld2       rng-init.jld2
+rng-train.jld2           wpIndexConvert.jld2  nc0.jld2        param.jl*
+P.jld2                   wpIndexOut.jld2      w0Weights.jld2
+ncpOut.jld2              wpIndexIn.jld2       w0Index.jld2
 ```
 
 Finally, plot the trainined activities.  The underlying data is stored in
@@ -155,11 +156,12 @@ trial #3, 9.24 sec
 trial #50, 9.24 sec
 
 $ ls -t ~/data
-test-psth.svg            rng-train.jld2       wpIndexOut.jld2  w0Weights.jld2
-test-syninput.svg        ncpOut.jld2          wpIndexIn.jld2   w0Index.jld2
-test.jld2                ncpIn.jld2           xtarg.jld2       p.jld2
-rng-test.jld2            wpWeightIn.jld2      stim.jld2        rng-init.jld2
-wpWeightIn-ckpt100.jld2  wpIndexConvert.jld2  nc0.jld2         param.jl
+test-psth.svg            rng-train.jld2       wpIndexOut.jld2  w0Index.jld2
+test-syninput.svg        P.jld2               wpIndexIn.jld2   param.jld2
+test.jld2                ncpOut.jld2          xtarg.jld2       rng-init.jld2
+rng-test.jld2            ncpIn.jld2           stim.jld2        param.jl*
+P-ckpt100.jld2           wpWeightIn.jld2      nc0.jld2
+wpWeightIn-ckpt100.jld2  wpIndexConvert.jld2  w0Weights.jld2
 ```
 
 ![synpatic inputs](/test-syninput.svg)

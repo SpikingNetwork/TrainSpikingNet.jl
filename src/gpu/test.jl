@@ -42,7 +42,7 @@ end
 
 # --- load code --- #
 include(joinpath(dirname(@__DIR__),"struct.jl"))
-p = load(joinpath(parsed_args["data_dir"],"p.jld2"), "p")
+p = load(joinpath(parsed_args["data_dir"],"param.jld2"), "p")
 
 include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
 include(joinpath(@__DIR__,"rls.jl"))
