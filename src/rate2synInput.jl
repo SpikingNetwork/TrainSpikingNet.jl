@@ -18,18 +18,16 @@ function rate2synInput(p, ustd)
     invtau = 1000.0/p.taue
     VT = p.threshe
     Vr = p.vre
-    F = Matrix{Float64}(undef, Ntime, Threads.nthreads())
 
     Threads.@threads for nid in 1:size(targetRate, 2)
         #---------- Solve Ricciardi ----------#
-        xtarg[:,nid] .= solveRicci(F[:,Threads.threadid()],
-                                   targetRate[:,nid], initial_mu, sigma, invtau, VT, Vr)
+        xtarg[:,nid] .= solveRicci(targetRate[:,nid], initial_mu, sigma, invtau, VT, Vr)
     end
 
     return xtarg
 end
 
-function solveRicci(F, rate, initial_mu, sigma, invtau, VT, Vr)
+function solveRicci(rate, initial_mu, sigma, invtau, VT, Vr)
     sol = nlsolve((F,mu) -> f!(F,mu,sigma,invtau,VT,Vr,rate), initial_mu)
     return sol.zero
 end
