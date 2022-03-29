@@ -92,8 +92,9 @@ targets will be generated consisting of sinusoids.  Optionally, specify the
 full path to a JLD2 file containing either the desired synaptic targets or
 the corresponding spike rates using the `-x` and `-s` flags, respectively
 (but not both!).  Spike rates will be converted to synptic currents using
-the method of Ricciardi (XXXX).  In all cases, the synaptic targets are
-stored in "xtarg.jld2", which can be subsquently referenced using `-x`.
+the method of Ricciardi (Brunel 2000, J. Comput. Neurosci; Richardson 2007,
+Phys. Rev. E).  In all cases, the synaptic targets are stored in "xtarg.jld2",
+which can be subsquently referenced using `-x`.
 
 ```
 $ tbn.sh init -t auto ~/data

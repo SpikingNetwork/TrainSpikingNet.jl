@@ -1,6 +1,6 @@
 using NLsolve
 
-function rate2synInput(p, ustd)
+function rate2synInput(p, sigma)
     targetRate_dict = load(parsed_args["spikerate_file"])
     targetRate = targetRate_dict[first(keys(targetRate_dict))]
     Ntime = floor(Int, (p.train_time-p.stim_off)/p.learn_every)
@@ -14,7 +14,6 @@ function rate2synInput(p, ustd)
 
     #---------- initial condition to Ricciardi ----------#
     initial_mu = 0.5*ones(Ntime)
-    sigma = ustd / sqrt(p.tauedecay * 1.3) # factor 1.3 was calibrated manually
     invtau = 1000.0/p.taue
     VT = p.threshe
     Vr = p.vre
@@ -51,7 +50,7 @@ function ricciardi(mu,sigma,invtau,VT,Vr)
     # where VT is the threshold voltage and Vr is the reset potential.
     
     VT<Vr && error("Threshold lower than reset in function ricciardi! I am quitting :(")
-    sigma<0.0 && error("Negative  noise variance in function ricciardi! I am quitting :(")
+    sigma<0.0 && error("Negative noise variance in function ricciardi! I am quitting :(")
     if sigma==0
         if mu<VT
             return 0

@@ -71,7 +71,7 @@ if parsed_args["xtarg_file"] !== nothing
            Ntime, " rows")
   end
 elseif parsed_args["spikerate_file"] !== nothing
-  xtarg = rate2synInput(p, ustd)
+  xtarg = rate2synInput(p, p.K==0 ? sig0 : (ustd / sqrt(p.tauedecay * 1.3))) # factor 1.3 was calibrated manually
 else
   xtarg = genTarget(p,uavg,"zero")
 end
