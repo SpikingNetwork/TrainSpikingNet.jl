@@ -132,3 +132,31 @@ end
     @test all(dx[26:74,4].<0)
     @test all(dx[75:99,4].>0)
 end
+
+@testset "Int16" begin
+    mkdir(joinpath(@__DIR__, "Int16"))
+    open(joinpath(@__DIR__, "Int16", "param.jl"), "w") do fileout 
+        for line in readlines(joinpath(@__DIR__,"param.jl"))
+            if startswith(line, "PPrecision")
+                println(fileout, "PPrecision=Int16")
+            elseif startswith(line, "PScale")
+                println(fileout, "PScale=2^14")
+            else
+                println(fileout, line)
+            end
+        end
+    end
+
+    init_out = readlines(pipeline(`$(Base.julia_cmd()) -t 2
+                                   $(joinpath(@__DIR__,"..","src","init.jl"))
+                                   $(joinpath(@__DIR__,"Int16"))`))
+    for iHz in findall(contains("Hz"), init_out)
+      @test 0 < parse(Float64, match(r"([.0-9]+) Hz", init_out[iHz]).captures[1]) < 10
+    end
+
+    gpu_out = readlines(pipeline(`$(Base.julia_cmd())
+                                  $(joinpath(@__DIR__,"..","src","gpu","train.jl"))
+                                  $(joinpath(@__DIR__,"Int16"))`))
+    iHz = findlast(contains("Hz"), gpu_out)
+    @test 0 < parse(Float64, match(r"([.0-9]+) Hz", gpu_out[iHz]).captures[1]) < 10
+end

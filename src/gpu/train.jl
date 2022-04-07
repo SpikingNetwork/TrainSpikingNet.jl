@@ -64,6 +64,9 @@ if isnothing(parsed_args["restore_from_checkpoint"])
     P1 = p.PType(Array{Float64}(undef, p.Lexc+p.Linh, p.Lexc+p.Linh));
     P = Array{Float64}(undef, (size(p.PType==SymmetricPacked ? P1.tri : P1)..., p.Ncells));
     P .= p.PType==SymmetricPacked ? Pinv_norm.tri : Pinv_norm;
+    if p.PPrecision<:Integer
+        P .= round.(P .* p.PScale)
+    end
 else
     R = parsed_args["restore_from_checkpoint"]
     wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld2"), "wpWeightIn");
@@ -82,7 +85,7 @@ Px = wpIndexIn'; # neurons presynaptic to ci
 # --- set up variables --- #
 include(joinpath(@__DIR__,"variables.jl"))
 Px = CuArray{p.IntPrecision}(Px);
-P = CuArray{p.FloatPrecision}(P);
+P = CuArray{p.PPrecision}(P);
 nc0 = CuArray{p.IntPrecision}(nc0);
 stim = CuArray{p.FloatPrecision}(stim);
 xtarg = CuArray{p.FloatPrecision}(xtarg);
@@ -139,7 +142,7 @@ for iloop = R.+(1:parsed_args["nloops"])
             forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
             forwardSpike, forwardSpikePrev, xedecay, xidecay, xpdecay,
             synInputBalanced, synInput, r, bias, nothing, nothing, lastSpike,
-            bnotrefrac, bspike, plusone, minusone, k, den, e, delta, v,
+            bnotrefrac, bspike, plusone, minusone, PScale, k, den, e, delta, v,
             rng, noise, sig, P, Px, w0Index, w0Weights, nc0, stim, xtarg,
             wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
             nothing, nothing)
@@ -152,7 +155,7 @@ for iloop = R.+(1:parsed_args["nloops"])
             forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
             forwardSpike, forwardSpikePrev, xedecay, xidecay, xpdecay,
             synInputBalanced, synInput, r, bias, p.wid, p.example_neurons,
-            lastSpike, bnotrefrac, bspike, plusone, minusone, k, den, e,
+            lastSpike, bnotrefrac, bspike, plusone, minusone, PScale, k, den, e,
             delta, v, rng, noise, sig, P, Px, w0Index, w0Weights, nc0,
             stim, xtarg, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn,
             wpWeightOut, nothing, nothing)

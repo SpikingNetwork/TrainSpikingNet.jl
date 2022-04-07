@@ -1,20 +1,20 @@
 function rls(k, den, e, delta, L, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, minusone, exactlyzero)
     rtrim = r[Px]
     @static if p.PType == Array
-        batched_gemv!('N', plusone, P, rtrim, exactlyzero, k)
+        batched_gemv!('N', plusone/PScale, P, rtrim, exactlyzero, k)
     elseif p.PType == Symmetric
-        batched_symv!('U', plusone, P, rtrim, exactlyzero, k)
+        batched_symv!('U', plusone/PScale, P, rtrim, exactlyzero, k)
     elseif p.PType == SymmetricPacked
-        batched_spmv!('U', plusone, P, rtrim, exactlyzero, k)
+        batched_spmv!('U', plusone/PScale, P, rtrim, exactlyzero, k)
     end
     batched_dot!(den, rtrim, k)
     den .= plusone ./ (plusone .+ den)
     @static if p.PType == Array
-        batched_ger!(-den, k, k, P)
+        batched_ger!(-den*PScale, k, k, P)
     elseif p.PType == Symmetric
-        batched_syr!('U', -den, k, P)
+        batched_syr!('U', -den*PScale, k, P)
     elseif p.PType == SymmetricPacked
-        batched_spr!('U', -den, k, P)
+        batched_spr!('U', -den*PScale, k, P)
     end
     batched_dot!(e, wpWeightIn, rtrim)
     e .+= synInputBalanced .- xtarg[learn_seq,:]

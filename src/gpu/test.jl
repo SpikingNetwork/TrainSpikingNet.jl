@@ -136,7 +136,7 @@ Threads.@threads for itrial=1:parsed_args["ntrials"]
           copy_bnotrefrac[idevice],
           copy_bspike[idevice],
           plusone,
-          nothing, nothing, nothing, nothing, nothing,
+          nothing, nothing, nothing, nothing, nothing, nothing,
           copy_v[idevice],
           copy_rng[idevice],
           copy_noise[idevice],

@@ -1,4 +1,6 @@
 struct paramType
+    PPrecision::DataType
+    PScale::Int
     FloatPrecision::DataType
     IntPrecision::DataType
     PType::UnionAll

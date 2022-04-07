@@ -4,7 +4,7 @@
     ns, forwardInputsE, forwardInputsI, forwardInputsP, forwardInputsEPrev,
     forwardInputsIPrev, forwardInputsPPrev, forwardSpike, forwardSpikePrev,
     xedecay, xidecay, xpdecay, synInputBalanced, synInput, r, bias, wid,
-    example_neurons, lastSpike, plusone, exactlyzero, k, v, rng, noise,
+    example_neurons, lastSpike, plusone, exactlyzero, PScale, k, v, rng, noise,
     sig, P, Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut,
     wpIndexConvert, wpWeightIn, wpWeightOut, ncpIn, ncpOut, uavg, utmp)
 

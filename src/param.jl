@@ -1,3 +1,5 @@
+PPrecision = Float64  # can be <:Integer on GPUs
+PScale = 1  # if PPrecision<:Integer then PScale should be e.g. 2^(nbits-2)
 FloatPrecision = Float64
 IntPrecision = UInt32
 PType=Symmetric  # or SymmetricPacked for large models
@@ -97,5 +99,5 @@ sig0 = 0.65
 maxrate = 500 #(Hz) maximum average firing rate.  if the average firing rate across the simulation for any neuron exceeds this value, some of that neuron's spikes will not be saved
 
 
-p = paramType(FloatPrecision,IntPrecision,PType,seed,rng_func,example_neurons,wid,train_duration,penlambda,penmu,frac,learn_every,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
+p = paramType(PPrecision,PScale,FloatPrecision,IntPrecision,PType,seed,rng_func,example_neurons,wid,train_duration,penlambda,penmu,frac,learn_every,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
 je,ji,jx,jee,jei,jie,jii,wpee,wpei,wpie,wpii,mu,vre,threshe,threshi,refrac,tauedecay,tauidecay,taudecay_plastic,sig0,maxrate)

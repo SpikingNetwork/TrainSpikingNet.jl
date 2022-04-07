@@ -54,7 +54,7 @@ uavg, ns0, ustd = loop_init(nothing, nothing, nothing, p.train_time, dt,
     nothing, mu, thresh, invtau, nothing, nothing, ns, forwardInputsE,
     forwardInputsI, nothing, forwardInputsEPrev, forwardInputsIPrev, nothing,
     nothing, nothing, xedecay, xidecay, nothing, nothing, synInput, nothing,
-    bias, nothing, nothing, lastSpike, nothing, nothing, nothing, v, rng,
+    bias, nothing, nothing, lastSpike, nothing, nothing, nothing, nothing, v, rng,
     noise, sig, nothing, nothing, w0Index, w0Weights, nc0, nothing, nothing,
     nothing, nothing, nothing, nothing, nothing, nothing, nothing, uavg, utmp)
 

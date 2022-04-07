@@ -44,6 +44,7 @@ bspike = CuVector{Bool}(undef, p.Ncells)
 plusone = p.FloatPrecision(1.0)
 minusone = p.FloatPrecision(-1.0)
 exactlyzero = p.FloatPrecision(0.0)
+PScale = p.FloatPrecision(p.PScale)
 
 refrac = Float64(p.refrac)
 vre = p.FloatPrecision(p.vre)

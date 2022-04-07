@@ -60,6 +60,8 @@ Test Summary: | Pass  Total
 K=0           |    5      5
 Test Summary: | Pass  Total
 Ricciardi     |    7      7
+Test Summary: | Pass  Total
+Int16         |    3      3
 ```
 
 # Basic Usage #

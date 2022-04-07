@@ -77,7 +77,11 @@ if isnothing(parsed_args["restore_from_checkpoint"]);
     Pinv_norm = load(joinpath(parsed_args["data_dir"],"P.jld2"), "P");
     P = Vector{p.PType}();
     for ci=1:p.Ncells
-        push!(P, copy(Pinv_norm));
+        if p.PPrecision<:AbstractFloat
+            push!(P, copy(Pinv_norm));
+        else
+            push!(P, round.(Pinv_norm * p.PScale));
+        end
     end
 else
     R = parsed_args["restore_from_checkpoint"];
@@ -100,7 +104,7 @@ end
 # --- set up variables --- #
 include(joinpath(@__DIR__,"variables.jl"))
 Px = Vector{Vector{p.IntPrecision}}(Px);
-PType = typeof(p.PType(p.FloatPrecision.([1. 2; 3 4])));
+PType = typeof(p.PType(p.PPrecision.([1. 2; 3 4])));
 P = Vector{PType}(P);
 stim = Array{p.FloatPrecision}(stim);
 xtarg = Array{p.FloatPrecision}(xtarg);
@@ -154,7 +158,7 @@ for iloop = R.+(1:parsed_args["nloops"])
             forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
             forwardSpike, forwardSpikePrev, xedecay, xidecay, xpdecay,
             synInputBalanced, synInput, r, bias, nothing, nothing,
-            lastSpike, plusone, exactlyzero, k, v, rng, noise, sig, P,
+            lastSpike, plusone, exactlyzero, PScale, k, v, rng, noise, sig, P,
             Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut,
             wpIndexConvert, wpWeightIn, wpWeightOut, ncpIn, ncpOut, nothing,
             nothing)
@@ -167,7 +171,7 @@ for iloop = R.+(1:parsed_args["nloops"])
             forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
             forwardSpike, forwardSpikePrev, xedecay, xidecay, xpdecay,
             synInputBalanced, synInput, r, bias, p.wid, p.example_neurons,
-            lastSpike, plusone, exactlyzero, k, v, rng, noise, sig, P,
+            lastSpike, plusone, exactlyzero, PScale, k, v, rng, noise, sig, P,
             Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut,
             wpIndexConvert, wpWeightIn, wpWeightOut, ncpIn, ncpOut, nothing,
             nothing)

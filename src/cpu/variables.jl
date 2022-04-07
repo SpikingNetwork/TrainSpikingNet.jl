@@ -42,6 +42,7 @@ lastSpike = Array{Float64}(undef, p.Ncells)  # last time a neuron spiked
 
 plusone = p.FloatPrecision(1.0)
 exactlyzero = p.FloatPrecision(0.0)
+PScale = p.FloatPrecision(p.PScale)
 
 refrac = p.refrac
 vre = p.FloatPrecision(p.vre)
