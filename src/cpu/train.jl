@@ -7,16 +7,14 @@ s = ArgParseSettings()
         help = "number of iterations to train"
         arg_type = Int
         default = 1
-    "--performance_interval", "-p"
-        help = "measure correlation every P training loops.  default is never"
+    "--correlation_interval", "-c"
+        help = "measure correlation every C training loops.  default is every loop"
         arg_type = Int
-        default = nothing
+        default = 1
         range_tester = x->x>0
-    "--save_checkpoints", "-c"
-        help = "save the learned weights and covariance matrices every C training loops.  the default is after the last one"
-        arg_type = Int
-        default = nothing
-        range_tester = x->x>0
+    "--save_best_checkpoint", "-s"
+        help = "save the learned weights and covariance matrices with the highest measured correlation too.  default is to only save the last one"
+        action = :store_true
     "--restore_from_checkpoint", "-r"
         help = "continue training from checkpoint R.  default is to start from the beginning"
         arg_type = Int
@@ -55,7 +53,7 @@ kind=:train
 include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
 include(joinpath(@__DIR__,"loop.jl"))
 include(joinpath(@__DIR__,"rls.jl"))
-if !isnothing(parsed_args["performance_interval"])
+if parsed_args["correlation_interval"] <= parsed_args["nloops"]
     kind=:train_test
     include(joinpath(@__DIR__,"loop.jl"))
 end
@@ -142,13 +140,13 @@ if !isnothing(parsed_args["monitor_resources_used"])
 end
 
 #----------- train the network --------------#
+maxcor = -Inf
 for iloop = R.+(1:parsed_args["nloops"])
     println("Loop no. ",iloop) 
 
     start_time = time()
 
-    if isnothing(parsed_args["performance_interval"]) ||
-       mod(iloop,parsed_args["performance_interval"]) != 0
+    if mod(iloop, parsed_args["correlation_interval"]) != 0
 
         loop_train(
             p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
@@ -184,16 +182,31 @@ for iloop = R.+(1:parsed_args["nloops"])
         end
 
         bnotnan = .!isnan.(pcor)
-        println("correlation: ", mean(pcor[bnotnan]),
+        thiscor = mean(pcor[bnotnan])
+        println("correlation: ", thiscor,
                 all(bnotnan) ? "" : string(" (", length(pcor)-count(bnotnan)," are NaN)"))
+        if parsed_args["save_best_checkpoint"] && thiscor>maxcor && all(bnotnan)
+            suffix = string("ckpt", iloop, "-cor", round(thiscor, digits=3))
+            save(joinpath(parsed_args["data_dir"], "wpWeightIn-$suffix.jld2"),
+                 "wpWeightIn", Array(wpWeightIn))
+            save(joinpath(parsed_args["data_dir"], "P-$suffix.jld2"), "P", Array(P))
+            if maxcor != -Inf
+                for oldckptfile in filter(x -> !contains(x, string("ckpt", iloop)) &&
+                                          contains(x, string("-cor", round(maxcor, digits=3))),
+                                          readdir(parsed_args["data_dir"]))
+                    rm(joinpath(parsed_args["data_dir"], oldckptfile))
+                end
+            end
+            global maxcor = max(maxcor, thiscor)
+        end
     end
 
-    if (isnothing(parsed_args["save_checkpoints"]) && iloop == R+parsed_args["nloops"]) ||
-       (!isnothing(parsed_args["save_checkpoints"]) && iloop % parsed_args["save_checkpoints"] != 1)
+    if iloop == R+parsed_args["nloops"]
         save(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$iloop.jld2"),
-             "wpWeightIn", wpWeightIn)
-        save(joinpath(parsed_args["data_dir"],"P-ckpt$iloop.jld2"), "P", P)
+             "wpWeightIn", Array(wpWeightIn))
+        save(joinpath(parsed_args["data_dir"],"P-ckpt$iloop.jld2"), "P", Array(P))
     end
+
 
     elapsed_time = time()-start_time
     println("elapsed time: ",elapsed_time, " sec")

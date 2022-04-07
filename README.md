@@ -70,11 +70,13 @@ Edit "src/param.jl" to set your network size, connectivity, stimulus
 pattern, etc.  Optionally, make a copy of it:
 
 ```
+$ mkdir ~/data
+
 $ cp src/param.jl ~/data
 
 $ vi ~/data/param.jl
 
-$ grep -A11 -m1 innate ~/param.jl 
+$ grep -A11 -m1 innate ~/data/param.jl 
 # innate, train, test time (ms)
 train_duration = 1000.0
 stim_on        = 800.0
@@ -116,28 +118,32 @@ Use the `-t` flag to thread the CPU version of train.jl; it has no effect
 on the GPU:
 
 ```
-$ tbn.sh train gpu -n 100 -p 5 ~/data
+$ tbn.sh train gpu -n100 ~/data
 Loop no. 1
-elapsed time: 52.7787561416626 sec
-firing rate: 4.5877685546875 Hz
+correlation: -0.023547219725048148
+elapsed time: 41.81254005432129 sec
+firing rate: 4.606689453125 Hz
 Loop no. 2
-elapsed time: 4.295434951782227 sec
-firing rate: 4.5635986328125 Hz
+correlation: -0.019123938089304755
+elapsed time: 5.6806960105896 sec
+firing rate: 4.608642578125 Hz
 Loop no. 3
-elapsed time: 4.279933214187622 sec
-firing rate: 4.534423828125 Hz
+correlation: -0.014787908839497654
+elapsed time: 5.547835111618042 sec
+firing rate: 4.6173095703125 Hz
 Loop no. 4
-elapsed time: 4.239899158477783 sec
-firing rate: 4.515625 Hz
+correlation: 0.007915293563043593
+elapsed time: 5.602427959442139 sec
+firing rate: 4.59765625 Hz
 Loop no. 5
-correlation: 0.017975493144920994
-elapsed time: 33.15775799751282 sec
-firing rate: 4.5009765625 Hz
+correlation: 0.010099408049965756
+elapsed time: 5.525408029556274 sec
+firing rate: 4.60498046875 Hz
 <SNIP>
 Loop no. 100
-correlation: 0.7493257340926016
-elapsed time: 11.195262908935547 sec
-firing rate: 5.787353515625 Hz
+correlation: 0.7823279444123159
+elapsed time: 10.06592607498169 sec
+firing rate: 5.996826171875 Hz
 
 $ ls -t ~/data
 P-ckpt100.jld2           ncpIn.jld2           xtarg.jld2      param.jld2
@@ -151,7 +157,7 @@ Finally, plot the trainined activities.  The underlying data is stored in
 "test.jld2":
 
 ```
-$ tbn.sh test gpu -n 50 ~/data
+$ tbn.sh test gpu -n50 ~/data
 trial #1, 53.0 sec
 trial #2, 9.34 sec
 trial #3, 9.24 sec
@@ -175,8 +181,8 @@ Additional options for all of these scripts can be displayed with `-h` or
 
 ```
 $ tbn.sh train gpu -h
-usage: train.jl [-n NLOOPS] [-p PERFORMANCE_INTERVAL]
-                [-c SAVE_CHECKPOINTS] [-r RESTORE_FROM_CHECKPOINT]
+usage: train.jl [-n NLOOPS] [-c CORRELATION_INTERVAL] [-s]
+                [-r RESTORE_FROM_CHECKPOINT]
                 [-m MONITOR_RESOURCES_USED] [-h] data_dir
 
 positional arguments:
@@ -186,18 +192,19 @@ positional arguments:
 optional arguments:
   -n, --nloops NLOOPS   number of iterations to train (type: Int64,
                         default: 1)
-  -p, --performance_interval PERFORMANCE_INTERVAL
-                        measure correlation every P training loops.
-                        default is never (type: Int64)
-  -c, --save_checkpoints SAVE_CHECKPOINTS
-                        save learned weights every C training loops.
-                        default is to only save the last loop (type:
-                        Int64)
+  -c, --correlation_interval CORRELATION_INTERVAL
+                        measure correlation every C training loops.
+                        default is every loop (type: Int64, default:
+                        1)
+  -s, --save_best_checkpoint
+                        save the learned weights and covariance
+                        matrices with the highest measured correlation
+                        too.  default is to only save the last one
   -r, --restore_from_checkpoint RESTORE_FROM_CHECKPOINT
                         continue training from checkpoint R.  default
                         is to start from the beginning (type: Int64)
   -m, --monitor_resources_used MONITOR_RESOURCES_USED
-                        measure power, cores, and memory usage every R
+                        measure power, cores, and memory usage every M
                         seconds.  default is never (type: Int64)
   -h, --help            show this help message and exit
 ```
