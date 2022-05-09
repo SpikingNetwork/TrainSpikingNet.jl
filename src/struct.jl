@@ -10,6 +10,7 @@ struct paramType
     wid::Int
     train_duration::Float64
     penlambda::Float64
+    penlamFF::Float64
     penmu::Float64
     frac::Float64
     learn_every::Float64
@@ -30,6 +31,7 @@ struct paramType
     K::Int64
     sqrtK::Float64
     L::Int64
+    Lffwd::Int64
     Lexc::Int64
     Linh::Int64
     wpscale::Float64
@@ -44,6 +46,10 @@ struct paramType
     wpei::Float64
     wpie::Float64
     wpii::Float64
+    wpffwd::Float64
+    ffwdRate_mu::Float64
+    ffwdRate_bou::Float64
+    ffwdRate_sig::Float64
     mu::Vector{Float64}
     vre::Float64
     threshe::Float64

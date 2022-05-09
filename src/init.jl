@@ -1,23 +1,23 @@
 using LinearAlgebra, Random, JLD2, Statistics, StatsBase, ArgParse, SymmetricFormats
 
-s = ArgParseSettings()
+aps = ArgParseSettings()
 
-@add_arg_table! s begin
+@add_arg_table! aps begin
     "data_dir"
         help = "full path to the directory containing the parameters file"
         required = true
 end
 
-add_arg_group!(s, "mutually exclusive arguments.  if neither is specified, sinusoids\nwill be generated for synpatic inputs", exclusive = true);
+add_arg_group!(aps, "mutually exclusive arguments.  if neither is specified, sinusoids\nwill be generated for synpatic inputs", exclusive = true);
 
-@add_arg_table! s begin
+@add_arg_table! aps begin
     "--xtarg_file", "-x"
         help = "full path to the JLD file containing the synaptic current targets"
     "--spikerate_file", "-s"
         help = "full path to the JLD file containing the spike rates"
 end
 
-parsed_args = parse_args(s)
+parsed_args = parse_args(aps)
 
 # --- set up variables --- #
 include(joinpath(@__DIR__,"struct.jl"))
@@ -39,6 +39,7 @@ end
 kind=:init
 include(joinpath(@__DIR__,"genInitialWeights.jl"))
 include(joinpath(@__DIR__,"genPlasticWeights.jl"))
+include(joinpath(@__DIR__,"genFfwdRate.jl"))
 include(joinpath(@__DIR__,"gpu","convertWgtIn2Out.jl"))
 include(joinpath(@__DIR__,"genTarget.jl"))
 include(joinpath(@__DIR__,"genStim.jl"))
@@ -48,17 +49,20 @@ include(joinpath(@__DIR__,"rate2synInput.jl"))
 
 #----------- initialization --------------#
 w0Index, w0Weights, nc0 = genInitialWeights(p)
+ffwdRate = genffwdRate(p)
 
-uavg, ns0, ustd = loop_init(nothing, nothing, nothing, p.train_time, dt,
-    p.Nsteps, p.Ncells, p.Ne, refrac, vre, invtauedecay, invtauidecay,
-    nothing, mu, thresh, invtau, nothing, nothing, ns, forwardInputsE,
-    forwardInputsI, nothing, forwardInputsEPrev, forwardInputsIPrev, nothing,
-    nothing, nothing, xedecay, xidecay, nothing, nothing, synInput, nothing,
-    bias, nothing, nothing, lastSpike, nothing, nothing, nothing, nothing, v, rng,
-    noise, sig, nothing, nothing, w0Index, w0Weights, nc0, nothing, nothing,
-    nothing, nothing, nothing, nothing, nothing, nothing, nothing, uavg, utmp)
+uavg, ns0, ustd = loop_init(nothing, nothing, p.stim_off, p.train_time, dt,
+    p.Nsteps, p.Ncells, p.Ne, nothing, refrac, vre, invtauedecay,
+    invtauidecay, nothing, mu, thresh, invtau, nothing, nothing, ns, nothing,
+    ns_ffwd, forwardInputsE, forwardInputsI, nothing, forwardInputsEPrev,
+    forwardInputsIPrev, nothing, nothing, nothing, xedecay, xidecay, nothing,
+    nothing, synInput, nothing, nothing, bias, nothing, nothing, lastSpike,
+    nothing, nothing, nothing, nothing, nothing, v, rng, noise, rndFfwd, sig,
+    nothing, nothing, w0Index, w0Weights, nc0, nothing, nothing, nothing,
+    nothing, nothing, nothing, nothing, nothing, nothing, nothing, uavg,
+    utmp, ffwdRate)
 
-wpWeightIn, wpIndexIn, wpIndexOut, wpIndexConvert, ncpIn, ncpOut =
+wpWeightFfwd, wpWeightIn, wpIndexIn, wpIndexOut, wpIndexConvert, ncpIn, ncpOut =
     genPlasticWeights(p, w0Index, nc0, ns0)
 
 if parsed_args["xtarg_file"] !== nothing
@@ -78,18 +82,20 @@ end
 stim = genStim(p)
 
 # --- set up correlation matrix --- #
-ci_numExcSyn = p.Lexc;
-ci_numInhSyn = p.Linh;
-ci_numSyn = ci_numExcSyn + ci_numInhSyn;
+pLrec = p.Lexc + p.Linh;
 
 # L2-penalty
-Pinv_L2 = p.penlambda*one(zeros(ci_numSyn,ci_numSyn));
+Pinv_L2 = Diagonal(repeat([p.penlambda], pLrec));
 # row sum penalty
-vec10 = [ones(ci_numExcSyn); zeros(ci_numInhSyn)];
-vec01 = [zeros(ci_numExcSyn); ones(ci_numInhSyn)];
+vec10 = [ones(p.Lexc); zeros(p.Linh)];
+vec01 = [zeros(p.Lexc); ones(p.Linh)];
 Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01');
 # sum of penalties
-Pinv = Pinv_L2 + Pinv_rowsum;
+Pinv_rec = Pinv_L2 + Pinv_rowsum;
+Pinv_ffwd = Diagonal(repeat([p.penlamFF], p.Lffwd))
+Pinv = zeros(pLrec+p.Lffwd, pLrec+p.Lffwd)
+Pinv[1:pLrec, 1:pLrec] = Pinv_rec
+Pinv[pLrec+1 : pLrec+p.Lffwd, pLrec+1 : pLrec+p.Lffwd] = Pinv_ffwd
 Pinv_norm = p.PType(Symmetric(UpperTriangular(Pinv) \ I));
 
 #----------- save initialization --------------#
@@ -102,7 +108,9 @@ save(joinpath(parsed_args["data_dir"],"xtarg.jld2"), "xtarg", xtarg)
 save(joinpath(parsed_args["data_dir"],"wpIndexIn.jld2"), "wpIndexIn", wpIndexIn)
 save(joinpath(parsed_args["data_dir"],"wpIndexOut.jld2"), "wpIndexOut", wpIndexOut)
 save(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld2"), "wpIndexConvert", wpIndexConvert)
+save(joinpath(parsed_args["data_dir"],"wpWeightFfwd.jld2"), "wpWeightFfwd", wpWeightFfwd)
 save(joinpath(parsed_args["data_dir"],"wpWeightIn.jld2"), "wpWeightIn", wpWeightIn)
 save(joinpath(parsed_args["data_dir"],"ncpIn.jld2"), "ncpIn", ncpIn)
 save(joinpath(parsed_args["data_dir"],"ncpOut.jld2"), "ncpOut", ncpOut)
 save(joinpath(parsed_args["data_dir"],"P.jld2"), "P", Pinv_norm)
+save(joinpath(parsed_args["data_dir"],"ffwdRate.jld2"), "ffwdRate", ffwdRate)

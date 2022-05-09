@@ -1,4 +1,4 @@
-using Test, JLD2
+using Test, JLD2, SymmetricFormats
 
 @testset "$kind" for kind in ("Array", "Symmetric", "SymmetricPacked")
     mkdir(joinpath(@__DIR__, "cpu-$kind"))
@@ -31,6 +31,12 @@ using Test, JLD2
     @test 0 < parse(Float64, match(r"([.0-9]+) Hz", cpu_out[iHz]).captures[1]) < 10
     iHz = findlast(contains("Hz"), gpu_out)
     @test 0 < parse(Float64, match(r"([.0-9]+) Hz", gpu_out[iHz]).captures[1]) < 10
+
+    cpu_P = load(joinpath(@__DIR__, "cpu-$kind", "P-ckpt1.jld2"), "P")
+    gpu_P = load(joinpath(@__DIR__, "gpu-$kind", "P-ckpt1.jld2"), "P")
+    @test isapprox(kind=="SymmetricPacked" ? cat((x.tri for x in cpu_P)..., dims=2) :
+                                             cat(cpu_P..., dims=3),
+                   gpu_P)
 
     cpu_wpWeightIn = load(joinpath(@__DIR__, "cpu-$kind", "wpWeightIn-ckpt1.jld2"),
                           "wpWeightIn")
@@ -98,6 +104,10 @@ end
     iHz = findlast(contains("Hz"), gpu_out)
     @test 0 < parse(Float64, match(r"([.0-9]+) Hz", gpu_out[iHz]).captures[1]) < 10
 
+    cpu_P = load(joinpath(@__DIR__, "cpu-K0-Array", "P-ckpt1.jld2"), "P")
+    gpu_P = load(joinpath(@__DIR__, "gpu-K0-Array", "P-ckpt1.jld2"), "P")
+    @test isapprox(cat(cpu_P..., dims=3), gpu_P)
+
     cpu_wpWeightIn = load(joinpath(@__DIR__, "cpu-K0-Array", "wpWeightIn-ckpt1.jld2"),
                           "wpWeightIn")
     gpu_wpWeightIn = load(joinpath(@__DIR__, "gpu-K0-Array", "wpWeightIn-ckpt1.jld2"),
@@ -159,4 +169,53 @@ end
                                   $(joinpath(@__DIR__,"Int16"))`))
     iHz = findlast(contains("Hz"), gpu_out)
     @test 0 < parse(Float64, match(r"([.0-9]+) Hz", gpu_out[iHz]).captures[1]) < 10
+end
+
+@testset "feed forward" begin
+    mkdir(joinpath(@__DIR__, "cpu-Lffwd"))
+    open(joinpath(@__DIR__, "cpu-Lffwd", "param.jl"), "w") do fileout 
+        for line in readlines(joinpath(@__DIR__,"param.jl"))
+            if startswith(line, "Lffwd")
+                println(fileout, "Lffwd = L>>1")
+            else
+                println(fileout, line)
+            end
+        end
+    end
+
+    init_out = readlines(pipeline(`$(Base.julia_cmd()) -t 2
+                                   $(joinpath(@__DIR__,"..","src","init.jl"))
+                                   $(joinpath(@__DIR__,"cpu-Lffwd"))`))
+    for iHz in findall(contains("Hz"), init_out)
+      @test 0 < parse(Float64, match(r"([.0-9]+) Hz", init_out[iHz]).captures[1]) < 10
+    end
+
+    cp(joinpath(@__DIR__,"cpu-Lffwd"), joinpath(@__DIR__,"gpu-Lffwd"))
+    cpu_out = readlines(pipeline(`$(Base.julia_cmd())
+                                  $(joinpath(@__DIR__,"..","src","cpu","train.jl"))
+                                  $(joinpath(@__DIR__,"cpu-Lffwd"))`))
+    gpu_out = readlines(pipeline(`$(Base.julia_cmd())
+                                  $(joinpath(@__DIR__,"..","src","gpu","train.jl"))
+                                  $(joinpath(@__DIR__,"gpu-Lffwd"))`))
+
+    iHz = findlast(contains("Hz"), cpu_out)
+    @test 0 < parse(Float64, match(r"([.0-9]+) Hz", cpu_out[iHz]).captures[1]) < 10
+    iHz = findlast(contains("Hz"), gpu_out)
+    @test 0 < parse(Float64, match(r"([.0-9]+) Hz", gpu_out[iHz]).captures[1]) < 10
+
+    cpu_P = load(joinpath(@__DIR__, "cpu-Lffwd", "P-ckpt1.jld2"), "P")
+    gpu_P = load(joinpath(@__DIR__, "gpu-Lffwd", "P-ckpt1.jld2"), "P")
+    @test isapprox(cat(cpu_P..., dims=3), gpu_P)
+
+    cpu_wpWeightIn = load(joinpath(@__DIR__, "cpu-Lffwd", "wpWeightIn-ckpt1.jld2"),
+                          "wpWeightIn")
+    gpu_wpWeightIn = load(joinpath(@__DIR__, "gpu-Lffwd", "wpWeightIn-ckpt1.jld2"),
+                          "wpWeightIn")
+    @test isapprox(cpu_wpWeightIn, gpu_wpWeightIn)
+
+    cpu_wpWeightFfwd = load(joinpath(@__DIR__, "cpu-Lffwd", "wpWeightFfwd-ckpt1.jld2"),
+                          "wpWeightFfwd")
+    gpu_wpWeightFfwd = load(joinpath(@__DIR__, "gpu-Lffwd", "wpWeightFfwd-ckpt1.jld2"),
+                          "wpWeightFfwd")
+    @test isapprox(cpu_wpWeightFfwd, gpu_wpWeightFfwd)
 end

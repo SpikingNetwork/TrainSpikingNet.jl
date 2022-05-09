@@ -45,15 +45,17 @@ function update_forwardInputs(bspike,
 end
 
 @eval function $(Symbol("loop_",kind))(learn_every, stim_on, stim_off,
-    train_time, dt, Nsteps, Ncells, L, Ne, refrac, vre, invtauedecay,
+    train_time, dt, Nsteps, Ncells, L, Ne, Lei, refrac, vre, invtauedecay,
     invtauidecay, invtaudecay_plastic, mu, thresh, invtau, maxTimes, times,
-    ns, forwardInputsE, forwardInputsI, forwardInputsP, forwardInputsEPrev,
-    forwardInputsIPrev, forwardInputsPPrev, forwardSpike, forwardSpikePrev,
-    xedecay, xidecay, xpdecay, synInputBalanced, synInput, r, bias, wid,
-    example_neurons, lastSpike, bnotrefrac, bspike, plusone, minusone, PScale, k,
-    den, e, delta, v, rng, noise, sig, P, Px, w0Index, w0Weights, nc0, stim,
-    xtarg, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
-    uavg, utmp)
+    ns, times_ffwd, ns_ffwd, forwardInputsE, forwardInputsI, forwardInputsP,
+    forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev, forwardSpike,
+    forwardSpikePrev, xedecay, xidecay, xpdecay, synInputBalanced, synInput,
+    r, s, bias, wid, example_neurons, lastSpike, bnotrefrac, bspike, plusone,
+    minusone, PScale, raug, k, den, e, delta, v, rng, noise, rndFfwd, sig,
+    P, Px, w0Index, w0Weights, nc0, stim, xtarg, wpWeightFfwd, wpIndexIn,
+    wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, uavg, utmp, ffwdRate)
+
+@static kind in [:train, :train_test] && p.Lffwd>0 && (ffwdRate /= round(Int, 1000/dt))
 
 @static if kind in [:test, :train_test]
     learn_nsteps = round(Int, (train_time - stim_off)/learn_every)
@@ -82,29 +84,39 @@ end
     learn_seq = 1
     r .= 0
     forwardSpikePrev .= 0
+    @static if p.Lffwd>0
+        ffwdSpikePrev .= 0
+        s .= 0
+    end
 end
 
-@static kind in [:test, :train_test] && (times .= 0)
+@static if kind in [:test, :train_test]
+    times .= 0
+    @static p.Lffwd>0 && (times_ffwd .= 0)
+end
 
 ns .= 0
+@static p.Lffwd>0 && (ns_ffwd .= 0)
 lastSpike .= -100.0
 randn!(rng, v)
-xedecay .= xidecay .= xpdecay .= 0
 @static if p.K>0
-    forwardInputsEPrev .= forwardInputsIPrev .= forwardInputsPPrev .= 0.0
+    xedecay .= xidecay .= 0
+    forwardInputsEPrev .= forwardInputsIPrev .= 0.0
 else
     synInputBalanced .= 0.0
 end
+xpdecay .= 0
+forwardInputsPPrev .= 0.0
 @static p.K==0 && (sqrtdt = sqrt(dt))
 
 for ti=1:Nsteps
-    t = p.dt*ti;
+    t = dt*ti;
 
     @static p.K>0 && (forwardInputsE .= forwardInputsI .= 0.0)
     forwardInputsP .= 0.0
 
     @static kind in [:train, :train_test] && if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
-        wpWeightIn, wpWeightOut = rls(k, den, e, delta, L, Ncells, r, Px, P, synInputBalanced, xtarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut, plusone, minusone, exactlyzero)
+        wpWeightIn, wpWeightOut = rls(raug, k, den, e, delta, L, Ncells, Lei, r, s, Px, P, synInputBalanced, xtarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightFfwd, wpWeightIn, wpWeightOut, plusone, minusone, exactlyzero)
         learn_seq += 1
     end
 
@@ -160,7 +172,7 @@ for ti=1:Nsteps
     end
 
     if t > stim_on && t < stim_off
-        bias .= mu .+ stim[ti-round(Int,stim_on/p.dt),:]
+        bias .= mu .+ stim[ti-round(Int,stim_on/dt),:]
     else
         bias .= mu
     end
@@ -178,19 +190,43 @@ for ti=1:Nsteps
     ns .+= bspike
     v .= ifelse.(bspike, vre, v)
     lastSpike .= ifelse.(bspike, t, lastSpike)
-    @static kind in [:test, :train_test] && (times[ CartesianIndex.(1:Ncells,
-                                                     min.(maxTimes, bspike.*ns) .+ 1) ] .= t)
+    @static if kind in [:test, :train_test]
+        times[ CartesianIndex.(1:Ncells, min.(maxTimes, bspike.*ns) .+ 1) ] .= t
+    end
 
     update_forwardInputs(bspike,
                          w0Index, w0Weights, forwardInputsE, forwardInputsI,
                          wpIndexOut, wpWeightOut, forwardInputsP)
+
+    @static p.Lffwd>0 && if t > stim_off
+        @static if kind in [:train, :train_test]
+            @static if typeof(p.taudecay_plastic)<:Number
+                axpby!(invtaudecay_plastic, ffwdSpikePrev, plusone-dt*invtaudecay_plastic, s)
+            else
+                s .+= (-dt.*s .+ ffwdSpikePrev) .* invtaudecay_plastic
+            end
+        end
+
+        tidx = ti - round(Int, stim_off/dt)
+        rand!(rng, rndFfwd)
+        bspike_ffwd .= rndFfwd .< @view ffwdRate[tidx,:]
+        @static kind in [:train, :train_test] && (ffwdSpike .= bspike_ffwd)
+        ns_ffwd .+= bspike_ffwd
+        @static if kind in [:test, :train_test]
+            times_ffwd[ CartesianIndex.(1:p.Lffwd, min.(maxTimes, bspike_ffwd.*ns_ffwd) .+ 1) ] .= t
+        end
+        forwardInputsP[2:end] .+= dropdims(sum(view(wpWeightFfwd,:,bspike_ffwd), dims=2), dims=2)
+    end
 
     @static if p.K>0
         forwardInputsEPrev .= forwardInputsE
         forwardInputsIPrev .= forwardInputsI
     end
     forwardInputsPPrev .= forwardInputsP
-    @static kind in [:train, :train_test] && (forwardSpikePrev .= forwardSpike)
+    @static if kind in [:train, :train_test]
+        forwardSpikePrev .= forwardSpike
+        @static p.Lffwd>0 && (ffwdSpikePrev .= ffwdSpike)
+    end
 end
 
 @static if kind in [:test, :train_test]
@@ -199,7 +235,7 @@ end
     xibal ./= xibalcnt
     xplastic ./= xplasticcnt
 
-    return ns, times[:,2:end], xtotal, xebal, xibal, xplastic, vtotal_exccell, vtotal_inhcell, vebal_exccell, vibal_exccell, vebal_inhcell, vibal_inhcell, vplastic_exccell, vplastic_inhcell
+    return ns, times[:,2:end], ns_ffwd, times_ffwd[:,2:end], xtotal, xebal, xibal, xplastic, vtotal_exccell, vtotal_inhcell, vebal_exccell, vibal_exccell, vebal_inhcell, vibal_inhcell, vplastic_exccell, vplastic_inhcell
 end
 
 end

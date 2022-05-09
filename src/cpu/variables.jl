@@ -19,6 +19,8 @@ invtau[(1+p.Ne):p.Ncells] .= 1/p.taui
 maxTimes = round(Int,p.maxrate*p.train_time/1000)
 times = Array{Float64}(undef, p.Ncells, maxTimes)
 ns = Vector{p.IntPrecision}(undef, p.Ncells)
+times_ffwd = Array{Float64}(undef, p.Lffwd, maxTimes)
+ns_ffwd = Vector{p.IntPrecision}(undef, p.Lffwd)
 
 forwardInputsE = Vector{p.FloatPrecision}(undef, p.Ncells)     # excitatory synaptic currents to neurons via balanced connections at one time step
 forwardInputsI = Vector{p.FloatPrecision}(undef, p.Ncells)     # inhibitory synaptic currents to neurons via balanced connections at one time step
@@ -28,6 +30,8 @@ forwardInputsIPrev = Vector{p.FloatPrecision}(undef, p.Ncells) # copy of forward
 forwardInputsPPrev = Vector{p.FloatPrecision}(undef, p.Ncells) # copy of forwardInputsP from previous time step
 forwardSpike = Vector{p.FloatPrecision}(undef, p.Ncells)       # spikes emitted by each neuron at one time step
 forwardSpikePrev = Vector{p.FloatPrecision}(undef, p.Ncells)   # copy of forwardSpike from previous time step
+ffwdSpike = Vector{p.FloatPrecision}(undef, p.Lffwd)
+ffwdSpikePrev = Vector{p.FloatPrecision}(undef, p.Lffwd)
 
 xedecay = Vector{p.FloatPrecision}(undef, p.Ncells)          # synapse-filtered excitatory current (i.e. filtered version of forwardInputsE)
 xidecay = Vector{p.FloatPrecision}(undef, p.Ncells)          # synapse-filtered inhibitory current (i.e. filtered version of forwardInputsI)
@@ -35,6 +39,7 @@ xpdecay = Vector{p.FloatPrecision}(undef, p.Ncells)          # synapse-filtered 
 synInputBalanced = Vector{p.FloatPrecision}(undef, p.Ncells) # sum of xedecay and xidecay (i.e. synaptic current from the balanced connections)
 synInput = Vector{p.FloatPrecision}(undef, p.Ncells)         # sum of xedecay and xidecay (i.e. synaptic current from the balanced connections)
 r = Vector{p.FloatPrecision}(undef, p.Ncells)                # synapse-filtered spikes (i.e. filtered version of forwardSpike)
+s = Vector{p.FloatPrecision}(undef, p.Lffwd)
 
 bias = Vector{p.FloatPrecision}(undef, p.Ncells)             # total external input to neurons
 
@@ -44,16 +49,18 @@ plusone = p.FloatPrecision(1.0)
 exactlyzero = p.FloatPrecision(0.0)
 PScale = p.FloatPrecision(p.PScale)
 
-refrac = p.refrac
 vre = p.FloatPrecision(p.vre)
 
 uavg = zeros(p.FloatPrecision, p.Ncells)
 utmp = Matrix{p.FloatPrecision}(undef, p.Nsteps - round(Int, 1000/p.dt), 1000)
 
-k = Matrix{p.FloatPrecision}(undef, 2*p.L, Threads.nthreads())
+raug = Matrix{p.FloatPrecision}(undef, p.Lexc+p.Linh+p.Lffwd, Threads.nthreads())
+k = Matrix{p.FloatPrecision}(undef, p.Lexc+p.Linh+p.Lffwd, Threads.nthreads())
+delta = Matrix{p.FloatPrecision}(undef, p.Lexc+p.Linh+p.Lffwd, Threads.nthreads())
 v = Vector{p.FloatPrecision}(undef, p.Ncells)
 noise = Vector{p.FloatPrecision}(undef, p.Ncells)
 sig = fill(p.FloatPrecision(p.sig0), p.Ncells)
 
-dt = p.FloatPrecision(p.dt)
-learn_step = round(Int, p.learn_every/dt)
+rndFfwd = Vector{p.FloatPrecision}(undef, p.Lffwd)
+
+learn_step = round(Int, p.learn_every/p.dt)

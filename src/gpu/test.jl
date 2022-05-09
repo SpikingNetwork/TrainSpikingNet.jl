@@ -66,6 +66,7 @@ if isnothing(parsed_args["restore_from_checkpoint"])
 else
     R = parsed_args["restore_from_checkpoint"]
 end
+wpWeightFfwd = load(joinpath(parsed_args["data_dir"],"wpWeightFfwd.jld2"), "wpWeightFfwd")
 wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld2"))["wpWeightIn"]
 wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells)
 wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
@@ -89,8 +90,8 @@ timess = Vector{Any}(undef, parsed_args["ntrials"]);
 xtotals = Vector{Any}(undef, parsed_args["ntrials"]);
 copy_rng = [typeof(rng)() for _=1:ndevices()];
 isnothing(p.seed) || Random.seed!.(copy_rng, p.seed)
-for var in [:times, :ns, :stim, :nc0, :thresh, :invtau,
-            :w0Index, :w0Weights, :wpIndexOut, :wpWeightOut, :mu,
+for var in [:times, :ns, :times_ffwd, :ns_ffwd, :stim, :nc0, :thresh, :invtau,
+            :w0Index, :w0Weights, :wpWeightFfwd, :wpIndexOut, :wpWeightOut, :mu,
             :forwardInputsE, :forwardInputsI, :forwardInputsP,
             :forwardInputsEPrev, :forwardInputsIPrev, :forwardInputsPPrev,
             :xedecay, :xidecay, :xpdecay, :synInputBalanced, :synInput,
@@ -106,9 +107,9 @@ synchronize()
 Threads.@threads for itrial=1:parsed_args["ntrials"]
     idevice = Threads.threadid()
     device!(idevice-1)
-    t = @elapsed thisns, thistimes, thisxtotal, _ = loop_test(
-          p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
-          p.Nsteps, p.Ncells, p.L, nothing, refrac, vre, invtauedecay,
+    t = @elapsed thisns, thistimes, _, _, thisxtotal, _ = loop_test(
+          p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
+          p.Nsteps, p.Ncells, p.L, nothing, nothing, p.refrac, vre, invtauedecay,
           invtauidecay,
           typeof(p.taudecay_plastic)<:Number ? invtaudecay_plastic : copy_invtaudecay_plastic[idevice],
           copy_mu[idevice],
@@ -117,6 +118,8 @@ Threads.@threads for itrial=1:parsed_args["ntrials"]
           maxTimes,
           copy_times[idevice],
           copy_ns[idevice],
+          copy_times_ffwd[idevice],
+          copy_ns_ffwd[idevice],
           copy_forwardInputsE[idevice],
           copy_forwardInputsI[idevice],
           copy_forwardInputsP[idevice],
@@ -129,28 +132,31 @@ Threads.@threads for itrial=1:parsed_args["ntrials"]
           copy_xpdecay[idevice],
           copy_synInputBalanced[idevice],
           copy_synInput[idevice],
-          nothing,
+          nothing, nothing,
           copy_bias[idevice],
           p.wid, p.example_neurons,
           copy_lastSpike[idevice],
           copy_bnotrefrac[idevice],
           copy_bspike[idevice],
           plusone,
-          nothing, nothing, nothing, nothing, nothing, nothing,
+          nothing, nothing, nothing, nothing, nothing, nothing, nothing,
           copy_v[idevice],
           copy_rng[idevice],
           copy_noise[idevice],
+          nothing,
           copy_sig[idevice],
           nothing, nothing,
           copy_w0Index[idevice],
           copy_w0Weights[idevice],
           copy_nc0[idevice],
           copy_stim[idevice],
-          nothing, nothing,
+          nothing,
+          copy_wpWeightFfwd[idevice],
+          nothing,
           copy_wpIndexOut[idevice],
           nothing, nothing,
           copy_wpWeightOut[idevice],
-          nothing, nothing);
+          nothing, nothing, nothing);
     nss[itrial] = Array(thisns[parsed_args["ineurons_to_plot"]])
     timess[itrial] = Array(thistimes[parsed_args["ineurons_to_plot"],:])
     xtotals[itrial] = Array(thisxtotal[:,parsed_args["ineurons_to_plot"]])

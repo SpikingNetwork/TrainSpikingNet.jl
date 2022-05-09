@@ -55,11 +55,13 @@ xtarg = load(joinpath(parsed_args["data_dir"],"xtarg.jld2"), "xtarg");
 wpIndexIn = load(joinpath(parsed_args["data_dir"],"wpIndexIn.jld2"), "wpIndexIn");
 wpIndexOut = load(joinpath(parsed_args["data_dir"],"wpIndexOut.jld2"), "wpIndexOut");
 wpIndexConvert = load(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld2"), "wpIndexConvert");
+ffwdRate = load(joinpath(parsed_args["data_dir"],"ffwdRate.jld2"), "ffwdRate");
 if isnothing(parsed_args["restore_from_checkpoint"])
     R=0
+    wpWeightFfwd = load(joinpath(parsed_args["data_dir"],"wpWeightFfwd.jld2"), "wpWeightFfwd");
     wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn.jld2"), "wpWeightIn");
     Pinv_norm = load(joinpath(parsed_args["data_dir"],"P.jld2"), "P");
-    P1 = p.PType(Array{Float64}(undef, p.Lexc+p.Linh, p.Lexc+p.Linh));
+    P1 = p.PType(Array{Float64}(undef, p.Lexc+p.Linh+p.Lffwd, p.Lexc+p.Linh+p.Lffwd));
     P = Array{Float64}(undef, (size(p.PType==SymmetricPacked ? P1.tri : P1)..., p.Ncells));
     P .= p.PType==SymmetricPacked ? Pinv_norm.tri : Pinv_norm;
     if p.PPrecision<:Integer
@@ -67,6 +69,7 @@ if isnothing(parsed_args["restore_from_checkpoint"])
     end
 else
     R = parsed_args["restore_from_checkpoint"]
+    wpWeightFfwd = load(joinpath(parsed_args["data_dir"],"wpWeightFfwd-ckpt$R.jld2"), "wpWeightFfwd");
     wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld2"), "wpWeightIn");
     P = load(joinpath(parsed_args["data_dir"],"P-ckpt$R.jld2"), "P");
 end;
@@ -92,8 +95,10 @@ w0Weights = CuArray{p.FloatPrecision}(w0Weights);
 wpIndexIn = CuArray{p.IntPrecision}(wpIndexIn);
 wpIndexConvert = CuArray{p.IntPrecision}(wpIndexConvert);
 wpIndexOut = CuArray{p.IntPrecision}(wpIndexOut);
+wpWeightFfwd = CuArray{p.FloatPrecision}(wpWeightFfwd);
 wpWeightIn = CuArray{p.FloatPrecision}(wpWeightIn);
 wpWeightOut = CuArray{p.FloatPrecision}(wpWeightOut);
+ffwdRate = CuArray{p.FloatPrecision}(ffwdRate);
 
 # --- monitor resources used ---#
 function monitor_resources(c::Channel)
@@ -124,6 +129,13 @@ if !isnothing(parsed_args["monitor_resources_used"])
 end
 
 #----------- train the network --------------#
+function make_symmetric(A::Array)
+    for i=1:size(A,1), j=i+1:size(A,2)
+        A[j,i,:] = A[i,j,:]
+    end
+    return A
+end
+
 maxcor = -Inf
 for iloop = R.+(1:parsed_args["nloops"])
     println("Loop no. ",iloop) 
@@ -133,30 +145,30 @@ for iloop = R.+(1:parsed_args["nloops"])
     if mod(iloop, parsed_args["correlation_interval"]) != 0
 
         loop_train(
-            p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
-            p.Nsteps, p.Ncells, p.L, nothing, refrac, vre, invtauedecay,
+            p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
+            p.Nsteps, p.Ncells, p.L, nothing, p.Lexc+p.Linh, p.refrac, vre, invtauedecay,
             invtauidecay, invtaudecay_plastic, mu, thresh, invtau, nothing,
-            nothing, ns, forwardInputsE, forwardInputsI, forwardInputsP,
+            nothing, ns, nothing, ns_ffwd, forwardInputsE, forwardInputsI, forwardInputsP,
             forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
             forwardSpike, forwardSpikePrev, xedecay, xidecay, xpdecay,
-            synInputBalanced, synInput, r, bias, nothing, nothing, lastSpike,
-            bnotrefrac, bspike, plusone, minusone, PScale, k, den, e, delta, v,
-            rng, noise, sig, P, Px, w0Index, w0Weights, nc0, stim, xtarg,
-            wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
-            nothing, nothing)
+            synInputBalanced, synInput, r, s, bias, nothing, nothing, lastSpike,
+            bnotrefrac, bspike, plusone, minusone, PScale, raug, k, den, e, delta, v,
+            rng, noise, rndFfwd, sig, P, Px, w0Index, w0Weights, nc0, stim, xtarg,
+            wpWeightFfwd, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
+            nothing, nothing, ffwdRate)
     else
-        _, _, xtotal, _ = loop_train_test(
-            p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
-            p.Nsteps, p.Ncells, p.L, nothing, refrac, vre, invtauedecay,
+        _, _, _, _, xtotal, _ = loop_train_test(
+            p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
+            p.Nsteps, p.Ncells, p.L, nothing, p.Lexc+p.Linh, p.refrac, vre, invtauedecay,
             invtauidecay, invtaudecay_plastic, mu, thresh, invtau, maxTimes,
-            times, ns, forwardInputsE, forwardInputsI, forwardInputsP,
+            times, ns, times_ffwd, ns_ffwd, forwardInputsE, forwardInputsI, forwardInputsP,
             forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
             forwardSpike, forwardSpikePrev, xedecay, xidecay, xpdecay,
-            synInputBalanced, synInput, r, bias, p.wid, p.example_neurons,
-            lastSpike, bnotrefrac, bspike, plusone, minusone, PScale, k, den, e,
-            delta, v, rng, noise, sig, P, Px, w0Index, w0Weights, nc0,
-            stim, xtarg, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn,
-            wpWeightOut, nothing, nothing)
+            synInputBalanced, synInput, r, s, bias, p.wid, p.example_neurons,
+            lastSpike, bnotrefrac, bspike, plusone, minusone, PScale, raug, k, den, e,
+            delta, v, rng, noise, rndFfwd, sig, P, Px, w0Index, w0Weights, nc0,
+            stim, xtarg, wpWeightFfwd, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn,
+            wpWeightOut, nothing, nothing, ffwdRate)
 
         pcor = zeros(p.Ncells)
         for (index, ci) in enumerate(1:p.Ncells)
@@ -171,9 +183,12 @@ for iloop = R.+(1:parsed_args["nloops"])
                 all(bnotnan) ? "" : string(" (", length(pcor)-count(bnotnan)," are NaN)"))
         if parsed_args["save_best_checkpoint"] && thiscor>maxcor && all(bnotnan)
             suffix = string("ckpt", iloop, "-cor", round(thiscor, digits=3))
+            save(joinpath(parsed_args["data_dir"], "wpWeightFfwd-$suffix.jld2"),
+                 "wpWeightFfwd", Array(wpWeightFfwd))
             save(joinpath(parsed_args["data_dir"], "wpWeightIn-$suffix.jld2"),
                  "wpWeightIn", Array(wpWeightIn))
-            save(joinpath(parsed_args["data_dir"], "P-$suffix.jld2"), "P", Array(P))
+            save(joinpath(parsed_args["data_dir"], "P-$suffix.jld2"),
+                 "P", p.PType==Symmetric ? make_symmetric(Array(P)) : Array(P))
             if maxcor != -Inf
                 for oldckptfile in filter(x -> !contains(x, string("ckpt", iloop)) &&
                                           contains(x, string("-cor", round(maxcor, digits=3))),
@@ -186,14 +201,17 @@ for iloop = R.+(1:parsed_args["nloops"])
     end
 
     if iloop == R+parsed_args["nloops"]
+        save(joinpath(parsed_args["data_dir"],"wpWeightFfwd-ckpt$iloop.jld2"),
+             "wpWeightFfwd", Array(wpWeightFfwd))
         save(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$iloop.jld2"),
              "wpWeightIn", Array(wpWeightIn))
-        save(joinpath(parsed_args["data_dir"],"P-ckpt$iloop.jld2"), "P", Array(P))
+        save(joinpath(parsed_args["data_dir"],"P-ckpt$iloop.jld2"),
+             "P", p.PType==Symmetric ? make_symmetric(Array(P)) : Array(P))
     end
 
     elapsed_time = time()-start_time
     println("elapsed time: ",elapsed_time, " sec")
-    println("firing rate: ",mean(ns)/(dt/1000*p.Nsteps), " Hz")
+    println("firing rate: ",mean(ns)/(p.dt/1000*p.Nsteps), " Hz")
 end
 
 if !isnothing(parsed_args["monitor_resources_used"])

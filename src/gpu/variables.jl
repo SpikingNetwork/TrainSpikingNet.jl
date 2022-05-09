@@ -19,6 +19,8 @@ invtau[(1+p.Ne):p.Ncells] .= 1/p.taui
 maxTimes = round(Int, p.maxrate*p.train_time/1000)
 times = CuArray{Float64}(undef, p.Ncells, 1+maxTimes)
 ns = CuVector{p.IntPrecision}(undef, p.Ncells)
+times_ffwd = CuArray{Float64}(undef, p.Lffwd, 1+maxTimes)
+ns_ffwd = CuVector{p.IntPrecision}(undef, p.Lffwd)
 
 forwardInputsE = CuVector{p.FloatPrecision}(undef, p.Ncells+1)  # excitatory synaptic currents to neurons via balanced connections at one time step
 forwardInputsI = CuVector{p.FloatPrecision}(undef, p.Ncells+1)  # inhibitory synaptic currents to neurons via balanced connections at one time step
@@ -28,6 +30,8 @@ forwardInputsIPrev = CuVector{p.FloatPrecision}(undef, p.Ncells+1) # copy of for
 forwardInputsPPrev = CuVector{p.FloatPrecision}(undef, p.Ncells+1) # copy of forwardInputsP from previous time step
 forwardSpike = CuVector{p.FloatPrecision}(undef, p.Ncells) # spikes emitted by each neuron at one time step
 forwardSpikePrev = CuVector{p.FloatPrecision}(undef, p.Ncells) # copy of forwardSpike from previous time step
+ffwdSpike = CuVector{p.FloatPrecision}(undef, p.Lffwd)
+ffwdSpikePrev = CuVector{p.FloatPrecision}(undef, p.Lffwd)
 
 xedecay = CuVector{p.FloatPrecision}(undef, p.Ncells)  # synapse-filtered excitatory current (i.e. filtered version of forwardInputsE)
 xidecay = CuVector{p.FloatPrecision}(undef, p.Ncells)  # synapse-filtered inhibitory current (i.e. filtered version of forwardInputsI)
@@ -35,6 +39,7 @@ xpdecay = CuVector{p.FloatPrecision}(undef, p.Ncells)  # synapse-filtered plasti
 synInputBalanced = CuVector{p.FloatPrecision}(undef, p.Ncells) # sum of xedecay and xidecay (i.e. synaptic current from the balanced connections)
 synInput = CuVector{p.FloatPrecision}(undef, p.Ncells) # sum of xedecay and xidecay (i.e. synaptic current from the balanced connections)
 r = CuVector{p.FloatPrecision}(undef, p.Ncells)      # synapse-filtered spikes (i.e. filtered version of forwardSpike)
+s = CuVector{p.FloatPrecision}(undef, p.Lffwd)
 
 bias = CuVector{p.FloatPrecision}(undef, p.Ncells)   # total external input to neurons
 lastSpike = CuArray{Float64}(undef, p.Ncells)  # last time a neuron spiked
@@ -46,16 +51,18 @@ minusone = p.FloatPrecision(-1.0)
 exactlyzero = p.FloatPrecision(0.0)
 PScale = p.FloatPrecision(p.PScale)
 
-refrac = Float64(p.refrac)
 vre = p.FloatPrecision(p.vre)
 
-k = CuArray{p.FloatPrecision}(undef, 2*p.L, p.Ncells)
+raug = CuArray{p.FloatPrecision}(undef, p.Lexc+p.Linh+p.Lffwd, p.Ncells)
+k = CuArray{p.FloatPrecision}(undef, p.Lexc+p.Linh+p.Lffwd, p.Ncells)
 den = CuArray{p.FloatPrecision}(undef, p.Ncells)
 e = CuArray{p.FloatPrecision}(undef, p.Ncells)
-delta = CuArray{p.FloatPrecision}(undef, 2*p.L, p.Ncells)
+delta = CuArray{p.FloatPrecision}(undef, p.Lexc+p.Linh+p.Lffwd, p.Ncells)
 v = CuVector{p.FloatPrecision}(undef, p.Ncells)
 noise = CuArray{p.FloatPrecision}(undef, p.Ncells)
 sig = CUDA.fill(p.FloatPrecision(p.sig0), p.Ncells)
 
-dt = p.FloatPrecision(p.dt)
-learn_step = round(Int, p.learn_every/dt)
+rndFfwd = CuArray{p.FloatPrecision}(undef, p.Lffwd)
+bspike_ffwd = CuVector{Bool}(undef, p.Lffwd)
+
+learn_step = round(Int, p.learn_every/p.dt)

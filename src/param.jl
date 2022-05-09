@@ -19,6 +19,7 @@ dt = 0.1 #simulation timestep (ms)
 
 # training variables
 penlambda      = 0.8  # 1 / learning rate
+penlamFF       = 1.0
 penmu          = 0.01 # regularize weights
 frac           = 1.0
 learn_every    = 10.0 # (ms)
@@ -85,6 +86,7 @@ mu[(Ne+1):Ncells] = (muimax-muimin)*rand(rng, Ni) .+ muimin
 
 # plastic weights
 L = round(Int,sqrt(K)*2.0) # number of exc/inh plastic weights per neuron
+Lffwd = 0  # L>>1
 Lexc = L # excitatory L
 Linh = L # inhibitory L
 wpscale = sqrt(L) * 2.0
@@ -93,11 +95,16 @@ wpee = 2.0 * taue * g / wpscale
 wpie = 2.0 * taue * g / wpscale
 wpei = -2.0 * taue * g / wpscale
 wpii = -2.0 * taue * g / wpscale
+wpffwd = 0
+
+ffwdRate_mu = 5
+ffwdRate_bou = 1/400
+ffwdRate_sig = 0.2
 
 sig0 = 0.65
 
 maxrate = 500 #(Hz) maximum average firing rate.  if the average firing rate across the simulation for any neuron exceeds this value, some of that neuron's spikes will not be saved
 
 
-p = paramType(PPrecision,PScale,FloatPrecision,IntPrecision,PType,seed,rng_func,example_neurons,wid,train_duration,penlambda,penmu,frac,learn_every,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lexc,Linh,wpscale,
-je,ji,jx,jee,jei,jie,jii,wpee,wpei,wpie,wpii,mu,vre,threshe,threshi,refrac,tauedecay,tauidecay,taudecay_plastic,sig0,maxrate)
+p = paramType(PPrecision,PScale,FloatPrecision,IntPrecision,PType,seed,rng_func,example_neurons,wid,train_duration,penlambda,penlamFF,penmu,frac,learn_every,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,pree,prei,prie,prii,taue,taui,K,sqrtK,L,Lffwd,Lexc,Linh,wpscale,
+je,ji,jx,jee,jei,jie,jii,wpee,wpei,wpie,wpii,wpffwd,ffwdRate_mu,ffwdRate_bou,ffwdRate_sig,mu,vre,threshe,threshi,refrac,tauedecay,tauidecay,taudecay_plastic,sig0,maxrate)

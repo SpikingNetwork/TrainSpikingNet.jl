@@ -6,9 +6,9 @@ function ArgParse.parse_item(::Type{Vector{Int}}, x::AbstractString)
     return eval(Meta.parse(x))
 end
 
-s = ArgParseSettings()
+aps = ArgParseSettings()
 
-@add_arg_table! s begin
+@add_arg_table! aps begin
     "--ntrials", "-n"
         help = "number of repeated trials to average over"
         arg_type = Int
@@ -32,7 +32,7 @@ s = ArgParseSettings()
         required = true
 end
 
-parsed_args = parse_args(s)
+parsed_args = parse_args(aps)
 
 BLAS.set_num_threads(1)
 
@@ -67,6 +67,7 @@ if isnothing(parsed_args["restore_from_checkpoint"])
 else
     R = parsed_args["restore_from_checkpoint"]
 end
+wpWeightFfwd = load(joinpath(parsed_args["data_dir"],"wpWeightFfwd-ckpt$R.jld2"), "wpWeightFfwd");
 wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld2"), "wpWeightIn")
 wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells)
 wpWeightOut = convertWgtIn2Out(p.Ncells,ncpIn,wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
@@ -91,7 +92,7 @@ timess = Vector{Any}(undef, parsed_args["ntrials"]);
 xtotals = Vector{Any}(undef, parsed_args["ntrials"]);
 copy_rng = [typeof(rng)() for _=1:Threads.nthreads()];
 isnothing(p.seed) || Random.seed!.(copy_rng, p.seed)
-for var in [:times, :ns,
+for var in [:times, :ns, :times_ffwd, :ns_ffwd,
             :forwardInputsE, :forwardInputsI, :forwardInputsP,
             :forwardInputsEPrev, :forwardInputsIPrev, :forwardInputsPPrev,
             :xedecay, :xidecay, :xpdecay, :synInputBalanced, :synInput,
@@ -99,12 +100,14 @@ for var in [:times, :ns,
   @eval $(Symbol("copy_",var)) = [deepcopy($var) for _=1:Threads.nthreads()];
 end
 Threads.@threads for itrial=1:parsed_args["ntrials"]
-    t = @elapsed thisns, thistimes, thisxtotal, _ = loop_test(
-          p.learn_every, p.stim_on, p.stim_off, p.train_time, dt,
-          p.Nsteps, p.Ncells, nothing, refrac, vre, invtauedecay,
+    t = @elapsed thisns, thistimes, _, _, thisxtotal, _ = loop_test(
+          p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
+          p.Nsteps, p.Ncells, nothing, nothing, p.refrac, vre, invtauedecay,
           invtauidecay, invtaudecay_plastic, mu, thresh, invtau, maxTimes,
           copy_times[Threads.threadid()],
           copy_ns[Threads.threadid()],
+          copy_times_ffwd[Threads.threadid()],
+          copy_ns_ffwd[Threads.threadid()],
           copy_forwardInputsE[Threads.threadid()],
           copy_forwardInputsI[Threads.threadid()],
           copy_forwardInputsP[Threads.threadid()],
@@ -117,17 +120,17 @@ Threads.@threads for itrial=1:parsed_args["ntrials"]
           copy_xpdecay[Threads.threadid()],
           copy_synInputBalanced[Threads.threadid()],
           copy_synInput[Threads.threadid()],
-          nothing,
+          nothing, nothing,
           copy_bias[Threads.threadid()],
           p.wid, p.example_neurons,
           copy_lastSpike[Threads.threadid()],
-          nothing, nothing, nothing, nothing,
+          nothing, nothing, nothing, nothing, nothing,
           copy_v[Threads.threadid()],
           copy_rng[Threads.threadid()],
           copy_noise[Threads.threadid()],
-          sig, nothing, nothing, w0Index, w0Weights, nc0, stim, nothing,
-          nothing, wpIndexOut, nothing, nothing, wpWeightOut, nothing,
-          ncpOut, nothing, nothing)
+          nothing, sig, nothing, nothing, w0Index, w0Weights, nc0, stim, nothing,
+          nothing, wpIndexOut, nothing, nothing, nothing, wpWeightOut, nothing,
+          ncpOut, nothing, nothing, nothing)
     nss[itrial] = thisns[parsed_args["ineurons_to_plot"]]
     timess[itrial] = thistimes[parsed_args["ineurons_to_plot"],:]
     xtotals[itrial] = thisxtotal[:,parsed_args["ineurons_to_plot"]]
