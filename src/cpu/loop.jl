@@ -66,7 +66,10 @@ end
     forwardInputsPPrev .= 0.0
 end
 @static kind == :init && p.K==0 && (synInput .= 0.0)
-@static p.K==0 && (sqrtdt = sqrt(dt))
+@static if p.K==0
+    sqrtdt = sqrt(dt)
+    sqrtinvtau = sqrt.(invtau)
+end
 
 # start the actual training
 for ti=1:Nsteps
@@ -213,7 +216,7 @@ for ti=1:Nsteps
         end
         @static kind == :init && (bias[ci] = mu[ci])
 
-        @static p.K==0 && (v[ci] += sqrtdt*sig[ci]*noise[ci])
+        @static p.K==0 && (v[ci] += sqrtdt*sqrtinvtau[ci]*sig[ci]*noise[ci])
 
         # neuron ci not in refractory period
         if t > (lastSpike[ci] + refrac)  

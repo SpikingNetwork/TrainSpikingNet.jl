@@ -107,7 +107,10 @@ else
 end
 xpdecay .= 0
 forwardInputsPPrev .= 0.0
-@static p.K==0 && (sqrtdt = sqrt(dt))
+@static if p.K==0
+    sqrtdt = sqrt(dt)
+    sqrtinvtau = sqrt.(invtau)
+end
 
 for ti=1:Nsteps
     t = dt*ti;
@@ -179,7 +182,7 @@ for ti=1:Nsteps
 
     @static if p.K==0
         randn!(rng, noise)
-        v .+= sqrtdt.*sig.*noise
+        v .+= sqrtdt.*sqrtinvtau.*sig.*noise
     end
 
     bnotrefrac .= t .> (lastSpike .+ refrac)
