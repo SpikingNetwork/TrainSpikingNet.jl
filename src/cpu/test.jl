@@ -44,10 +44,10 @@ macro maybethread(loop)
   quote $(esc(loop)); end
 end
 
-include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
-include(joinpath(@__DIR__,"rls.jl"))
+include("convertWgtIn2Out.jl")
+include("rls.jl")
 kind=:test
-include(joinpath(@__DIR__,"loop.jl"))
+include("loop.jl")
 
 #----------- load initialization --------------#
 nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0")
@@ -77,7 +77,7 @@ isnothing(p.seed) || Random.seed!(rng, p.seed)
 save(joinpath(parsed_args["data_dir"],"rng-test.jld2"), "rng", rng)
 
 # --- set up variables --- #
-include(joinpath(@__DIR__,"variables.jl"))
+include("variables.jl")
 stim = Array{p.FloatPrecision}(stim);
 nc0 = Array{p.IntPrecision}(nc0)
 ncpOut = Array{p.IntPrecision}(ncpOut);

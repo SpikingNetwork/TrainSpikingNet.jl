@@ -1,4 +1,27 @@
-function genPlasticWeights(p, w0Index, nc0, ns0)
+#=
+return six matrices and two vectors specifying the plastic connectivity.
+
+the first returned matrix (called wpWeightFfwd in the source code) is
+Ncells x Lffwd and contains the (initial) weights of the feed forward
+presynaptic neurons.
+
+the second (wpWeightIn, Ncells columns) and third (wpIndexIn, Ncells rows)
+matrices contain the weights and indices of the recurrent presynaptic neurons.
+
+the fourth matrix (wpIndexOut, Ncells columns) is similar to wpIndexIn but
+contains indices to the recurrent _postsynaptic_ neurons.
+
+the fifth matrix (wpIndexConvert, Ncells rows) specifies how to update
+wpWeightOut given a change in wpWeightIn.  see src/cpu/convertWgtIn2Out.jl
+
+the final two returned variables are vectors of length Ncells which specifiy
+how many presynaptic (ncpIn) and postsynaptic (ncpOut) connections there
+are, respectively.
+=#
+
+function genPlasticWeights(args, w0Index, nc0, ns0)
+    Ncells, frac, Ne, L, Lexc, Linh, Lffwd, wpee, wpie, wpei, wpii, wpffwd = map(x->args[x],
+            [:Ncells, :frac, :Ne, :L, :Lexc, :Linh, :Lffwd, :wpee, :wpie, :wpei, :wpii, :wpffwd])
 
     # rearrange initial weights
     w0 = Dict{Int,Array{Int,1}}()
@@ -44,20 +67,18 @@ function genPlasticWeights(p, w0Index, nc0, ns0)
 
         # initial exc and inh plastic weights
         if postCell <= p.Ne
-            wpee = fill(p.wpee, p.Lexc)
-            wpei = fill(p.wpei, p.Linh)
-            wpWeightIn[:, postCell] = [wpee; wpei]
+            wpWeightIn[1:p.Lexc, postCell] .= wpee
+            wpWeightIn[p.Lexc.+(1:p.Linh), postCell] .= wpei
         else
-            wpie = fill(p.wpie, p.Lexc)
-            wpii = fill(p.wpii, p.Linh)
-            wpWeightIn[:, postCell] = [wpie; wpii]
+            wpWeightIn[1:p.Lexc, postCell] .= wpie
+            wpWeightIn[p.Lexc.+(1:p.Linh), postCell] .= wpii
         end
     end
 
     # define feedforward weights to all neurons
-    #       - wpWeightFfwd = randn(p.Ncells, p.Lffwd) * p.wpffwd
-    #       - initial weights, p.wpffwd = 0
-    wpWeightFfwd = randn(rng, p.Ncells, p.Lffwd) * p.wpffwd
+    #       - wpWeightFfwd = randn(p.Ncells, p.Lffwd) * wpffwd
+    #       - initial weights, wpffwd = 0
+    wpWeightFfwd = randn(rng, p.Ncells, p.Lffwd) * wpffwd
     
     # get indices of postsynaptic cells for each presynaptic cell
     wpIndexConvert = zeros(Int, p.Ncells, p.Lexc+p.Linh)
@@ -69,7 +90,7 @@ function genPlasticWeights(p, w0Index, nc0, ns0)
     for postCell = 1:p.Ncells
         for i = 1:ncpIn[postCell]
             preCell = wpIndexIn[postCell,i]
-            push!(wpIndexOutD[preCell],postCell)
+            push!(wpIndexOutD[preCell], postCell)
             wpIndexConvert[postCell,i] = length(wpIndexOutD[preCell])
         end
     end
@@ -82,6 +103,6 @@ function genPlasticWeights(p, w0Index, nc0, ns0)
     for preCell = 1:p.Ncells
         wpIndexOut[1:ncpOut[preCell],preCell] = wpIndexOutD[preCell]
     end
+
     return wpWeightFfwd, wpWeightIn, wpIndexIn, wpIndexOut, wpIndexConvert, ncpIn, ncpOut
-    
 end

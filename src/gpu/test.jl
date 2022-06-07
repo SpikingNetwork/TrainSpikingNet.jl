@@ -44,11 +44,11 @@ end
 include(joinpath(dirname(@__DIR__),"struct.jl"))
 p = load(joinpath(parsed_args["data_dir"],"param.jld2"), "p")
 
-include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
-include(joinpath(@__DIR__,"rls.jl"))
+include("convertWgtIn2Out.jl")
+include("rls.jl")
 kind=:test
-include(joinpath(@__DIR__,"loop.jl"))
-include(joinpath(@__DIR__,"funRollingAvg.jl"))
+include("loop.jl")
+include("funRollingAvg.jl")
 
 #----------- load initialization --------------#
 nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0")
@@ -72,7 +72,7 @@ wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells)
 wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
 
 # --- set up variables --- #
-include(joinpath(@__DIR__,"variables.jl"))
+include("variables.jl")
 nc0 = CuArray{p.IntPrecision}(nc0)
 stim = CuArray{p.FloatPrecision}(stim);
 w0Index = CuArray{p.IntPrecision}(w0Index);

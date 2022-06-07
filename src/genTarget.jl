@@ -1,6 +1,10 @@
-function genTarget(p,uavg,biasType)
+# return a T x Ncells matrix representing the desired currents that are learned
 
-    sampled_Nsteps = Int((p.train_time - p.stim_off)/p.learn_every)
+function genTarget(args, uavg)
+    train_time, stim_off, learn_every, Ncells, Nsteps, dt, A, period, biasType, mu_ou_bias, b_ou_bias, sig_ou_bias = map(x->args[x],
+         [:train_time, :stim_off, :learn_every, :Ncells, :Nsteps, :dt, :A, :period, :biasType, :mu_ou_bias, :b_ou_bias, :sig_ou_bias])
+
+    sampled_Nsteps = round(Int, (p.train_time - p.stim_off) / p.learn_every)
     utargSampled = Array{Float64}(undef, sampled_Nsteps, p.Ncells)
 
     time = collect(1:p.Nsteps)*p.dt
@@ -14,12 +18,9 @@ function genTarget(p,uavg,biasType)
 
     #----- OU ----#
     if biasType == "ou"
-        mu_ou_bias = 0.0;
-        b_ou_bias = 1/400;
-        sig_ou_bias = 0.02;
         bias[1] = 0
         for i = 1:p.Nsteps-1
-            bias[i+1] = bias[i]+b_ou_bias*(mu_ou_bias-bias[i])*p.dt + sig_ou_bias*sqrt(p.dt)*randn(rng);
+            bias[i+1] = bias[i] + b_ou_bias*(mu_ou_bias-bias[i])*p.dt + sig_ou_bias*sqrt(p.dt)*randn(rng)
         end
     end
 
@@ -32,13 +33,26 @@ function genTarget(p,uavg,biasType)
     end
 
     for j=1:p.Ncells
-        A  = 0.5
-        period = 1000.0;
-        phase = period*rand(rng);
-        fluc = A*sin.((time.-phase).*(2*pi/period)) .+ uavg[j];
-        utargSampled[:,j] = funSample(p,fluc + bias)
+        phase = period*rand(rng)
+        fluc = A*sin.((time.-phase).*(2*pi/period)) .+ uavg[j]
+        utargSampled[:,j] = funSample(Nsteps, dt, stim_off, learn_every, fluc + bias)
     end
 
     return utargSampled 
+end
 
+
+function funSample(Nsteps, dt, stim_off, learn_every, X)
+    timev = collect(1:Nsteps)*dt
+    idx = timev .>= stim_off + learn_every
+
+    if ndims(X) == 1
+        XpostStim = X[idx]
+        Xsampled = XpostStim[1:learn_step:end]
+    elseif ndims(X) == 2
+        XpostStim = X[idx,:]
+        Xsampled = XpostStim[1:learn_step:end,:]
+    end
+
+    return Xsampled
 end

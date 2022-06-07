@@ -37,19 +37,17 @@ macro maybethread(loop)
 end
 
 kind=:init
-include(joinpath(@__DIR__,"genInitialWeights.jl"))
-include(joinpath(@__DIR__,"genPlasticWeights.jl"))
-include(joinpath(@__DIR__,"genFfwdRate.jl"))
-include(joinpath(@__DIR__,"gpu","convertWgtIn2Out.jl"))
-include(joinpath(@__DIR__,"genTarget.jl"))
-include(joinpath(@__DIR__,"genStim.jl"))
-include(joinpath(@__DIR__,"cpu","loop.jl"))
-include(joinpath(@__DIR__,"funSample.jl"))
-include(joinpath(@__DIR__,"rate2synInput.jl"))
+include(p.genInitialWeights_file)
+include(p.genPlasticWeights_file)
+include(p.genFfwdRate_file)
+include(p.genTarget_file)
+include(p.genStim_file)
+include(joinpath("cpu","loop.jl"))
+include("rate2synInput.jl")
 
 #----------- initialization --------------#
-w0Index, w0Weights, nc0 = genInitialWeights(p)
-ffwdRate = genffwdRate(p)
+w0Index, w0Weights, nc0 = genInitialWeights(p.genInitialWeights_args)
+ffwdRate = genFfwdRate(p.genFfwdRate_args)
 
 uavg, ns0, ustd = loop_init(nothing, nothing, p.stim_off, p.train_time, dt,
     p.Nsteps, p.Ncells, p.Ne, nothing, refrac, vre, invtauedecay,
@@ -63,7 +61,7 @@ uavg, ns0, ustd = loop_init(nothing, nothing, p.stim_off, p.train_time, dt,
     utmp, ffwdRate)
 
 wpWeightFfwd, wpWeightIn, wpIndexIn, wpIndexOut, wpIndexConvert, ncpIn, ncpOut =
-    genPlasticWeights(p, w0Index, nc0, ns0)
+    genPlasticWeights(p.genPlasticWeights_args, w0Index, nc0, ns0)
 
 if parsed_args["xtarg_file"] !== nothing
   xtarg_dict = load(parsed_args["xtarg_file"])
@@ -77,9 +75,9 @@ if parsed_args["xtarg_file"] !== nothing
 elseif parsed_args["spikerate_file"] !== nothing
   xtarg = rate2synInput(p, p.K==0 ? sig0 : (ustd / sqrt(p.tauedecay * 1.3))) # factor 1.3 was calibrated manually
 else
-  xtarg = genTarget(p,uavg,"zero")
+  xtarg = genTarget(p.genTarget_args, uavg)
 end
-stim = genStim(p)
+stim = genStim(p.genStim_args)
 
 # --- set up correlation matrix --- #
 pLrec = p.Lexc + p.Linh;

@@ -229,3 +229,25 @@ Pkg.add("MKL")'`.  Then edit "src/cpu/train.jl" and add the line "using MKL"
 just below the line starting with "using LinearAlgebra...".  Alternatively,
 MKL can be automatically used for your other Julia code as well by adding
 "using MKL" to "~/.julia/config/startup.jl" instead.
+
+
+# Plugins #
+
+The network architecture and initialization can be customized through
+user-supplied code.  In the parameters file are five pairs of variables
+which specify the path to .jl files and the arguments required by
+the functions therein.  For example, the `genInitialWeights_file`
+and `genInitialWeights_args` variables are a string and a dictionary,
+respectively.  The former specifies the path to a .jl file containing
+a function called `genInitialWeights()` to which the latter is passed
+when `./tbn.sh init ...` is executed.  `genInitialWeights()` defines and
+returns `w0Index`, `w0Weights`, and `nc0` which together specify the static
+connections between neurons based on the parameters `pree`, `prie`, `prei`,
+`prii`, `jee`, `jie`, `jei`, and `jii`.  Should this default code not do what
+you want, you can create your own file (e.g. `myCustomGenInitialWeights.jl`)
+which defines an alternative function `genInitialWeights()` (must be the
+same name) based on a (possibly) alternative set of parameters.  Simply set
+`genInitialWeights_file` to the full path to your custom function, and
+`getInitialWeights_args` to the required parameters with their values.
+Other code that can be plugged in include `genPlasticWeights()`, `genStim()`,
+`genTarget()`, and `genFfwdRate()`.

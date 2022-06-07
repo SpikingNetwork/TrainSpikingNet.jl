@@ -1,12 +1,17 @@
-function genffwdRate(p)
-    Nsteps = round(Int, (p.train_time - p.stim_off) / p.dt)
-    ffwdRate = p.ffwdRate_mu*ones(Nsteps, p.Lffwd)
+# return a T x Lffwd matrix spiking thresholds of the feed forward neurons
+
+function genFfwdRate(args)
+    train_time, stim_off, dt, Lffwd, mu, bou, sig, wid = map(x->args[x],
+            [:train_time, :stim_off, :dt, :Lffwd, :mu, :bou, :sig, :wid])
+
+    Nsteps = round(Int, (train_time - stim_off) / dt)
+    ffwdRate = mu*ones(Nsteps, Lffwd)
 
     for i = 1:Nsteps-1
-        ffwdRate[i+1,:] = ffwdRate[i,:] + p.ffwdRate_bou*(p.ffwdRate_mu .- ffwdRate[i,:])*p.dt + p.ffwdRate_sig*sqrt(p.dt)*randn(rng, p.Lffwd);
+        ffwdRate[i+1,:] = ffwdRate[i,:] + bou*(mu .- ffwdRate[i,:])*dt + sig*sqrt(dt)*randn(rng, Lffwd);
     end
 
-    ffwdRate = funMovAvg(ffwdRate, 500)
+    ffwdRate = funMovAvg(ffwdRate, wid)
     clamp!(ffwdRate, 0, Inf)
 end
 

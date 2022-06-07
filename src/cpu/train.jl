@@ -50,12 +50,12 @@ macro maybethread(loop)
 end
 
 kind=:train
-include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
-include(joinpath(@__DIR__,"loop.jl"))
-include(joinpath(@__DIR__,"rls.jl"))
+include("convertWgtIn2Out.jl")
+include("loop.jl")
+include("rls.jl")
 if parsed_args["correlation_interval"] <= parsed_args["nloops"]
     kind=:train_test
-    include(joinpath(@__DIR__,"loop.jl"))
+    include("loop.jl")
 end
 
 #----------- load initialization --------------#
@@ -103,7 +103,7 @@ for ci=1:p.Ncells
 end
 
 # --- set up variables --- #
-include(joinpath(@__DIR__,"variables.jl"))
+include("variables.jl")
 Px = Vector{Vector{p.IntPrecision}}(Px);
 PType = typeof(p.PType(p.PPrecision.([1. 2; 3 4])));
 P = Vector{PType}(P);

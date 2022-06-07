@@ -3,7 +3,7 @@ struct paramType
     PScale::Int
     FloatPrecision::DataType
     IntPrecision::DataType
-    PType::UnionAll
+    PType::UnionAll  #
     seed::Union{Nothing,Int}
     rng_func::Dict
     example_neurons::Int
@@ -22,14 +22,9 @@ struct paramType
     Ncells::Int64
     Ne::Int64
     Ni::Int64
-    pree::Float64
-    prei::Float64
-    prie::Float64
-    prii::Float64
     taue::Float64
     taui::Float64
     K::Int64
-    sqrtK::Float64
     L::Int64
     Lffwd::Int64
     Lexc::Int64
@@ -38,18 +33,6 @@ struct paramType
     je::Float64
     ji::Float64
     jx::Float64
-    jee::Float64
-    jei::Float64
-    jie::Float64
-    jii::Float64
-    wpee::Float64
-    wpei::Float64
-    wpie::Float64
-    wpii::Float64
-    wpffwd::Float64
-    ffwdRate_mu::Float64
-    ffwdRate_bou::Float64
-    ffwdRate_sig::Float64
     mu::Vector{Float64}
     vre::Float64
     threshe::Float64
@@ -60,4 +43,14 @@ struct paramType
     taudecay_plastic  #::Union{Float64,Vector{Float64}}
     sig0::Float64
     maxrate::Float64
+    genStim_file::AbstractString
+    genStim_args::AbstractDict
+    genTarget_file::AbstractString
+    genTarget_args::AbstractDict
+    genFfwdRate_file::AbstractString
+    genFfwdRate_args::AbstractDict
+    genInitialWeights_file::AbstractString
+    genInitialWeights_args::AbstractDict
+    genPlasticWeights_file::AbstractString
+    genPlasticWeights_args::AbstractDict
 end

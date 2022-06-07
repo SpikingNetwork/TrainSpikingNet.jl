@@ -37,13 +37,13 @@ include(joinpath(dirname(@__DIR__),"struct.jl"))
 p = load(joinpath(parsed_args["data_dir"],"param.jld2"), "p")
 
 kind=:train
-include(joinpath(@__DIR__,"convertWgtIn2Out.jl"))
-include(joinpath(@__DIR__,"loop.jl"))
-include(joinpath(@__DIR__,"rls.jl"))
+include("convertWgtIn2Out.jl")
+include("loop.jl")
+include("rls.jl")
 if parsed_args["correlation_interval"] <= parsed_args["nloops"]
     kind=:train_test
-    include(joinpath(@__DIR__,"loop.jl"))
-    include(joinpath(@__DIR__,"funRollingAvg.jl"))
+    include("loop.jl")
+    include("funRollingAvg.jl")
 end
 
 #----------- load initialization --------------#
@@ -84,7 +84,7 @@ save(joinpath(parsed_args["data_dir"],"rng-train.jld2"), "rng",rng)
 Px = wpIndexIn'; # neurons presynaptic to ci
 
 # --- set up variables --- #
-include(joinpath(@__DIR__,"variables.jl"))
+include("variables.jl")
 Px = CuArray{p.IntPrecision}(Px);
 P = CuArray{p.PPrecision}(P);
 nc0 = CuArray{p.IntPrecision}(nc0);
