@@ -1,22 +1,14 @@
 #=
-return six matrices and two vectors specifying the plastic connectivity.
+return three matrices and a vector specifying the plastic connectivity.
 
 the first returned matrix (called wpWeightFfwd in the source code) is
 Ncells x Lffwd and contains the (initial) weights of the feed forward
 presynaptic neurons.
 
 the second (wpWeightIn, Ncells columns) and third (wpIndexIn, Ncells rows)
-matrices contain the weights and indices of the recurrent presynaptic neurons.
-
-the fourth matrix (wpIndexOut, Ncells columns) is similar to wpIndexIn but
-contains indices to the recurrent _postsynaptic_ neurons.
-
-the fifth matrix (wpIndexConvert, Ncells rows) specifies how to update
-wpWeightOut given a change in wpWeightIn.  see src/cpu/convertWgtIn2Out.jl
-
-the final two returned variables are vectors of length Ncells which specifiy
-how many presynaptic (ncpIn) and postsynaptic (ncpOut) connections there
-are, respectively.
+matrices contain the weights and indices of the recurrent presynaptic
+neurons.  the final returned variable is a vector of length Ncells (ncpIn)
+which specifies how many presynaptic connections each neuron has.
 =#
 
 function genPlasticWeights(args, w0Index, nc0, ns0)
@@ -80,29 +72,5 @@ function genPlasticWeights(args, w0Index, nc0, ns0)
     #       - initial weights, wpffwd = 0
     wpWeightFfwd = randn(rng, p.Ncells, p.Lffwd) * wpffwd
     
-    # get indices of postsynaptic cells for each presynaptic cell
-    wpIndexConvert = zeros(Int, p.Ncells, p.Lexc+p.Linh)
-    wpIndexOutD = Dict{Int,Array{Int,1}}()
-    ncpOut = Array{Int}(undef, p.Ncells)
-    for i = 1:p.Ncells
-        wpIndexOutD[i] = []
-    end
-    for postCell = 1:p.Ncells
-        for i = 1:ncpIn[postCell]
-            preCell = wpIndexIn[postCell,i]
-            push!(wpIndexOutD[preCell], postCell)
-            wpIndexConvert[postCell,i] = length(wpIndexOutD[preCell])
-        end
-    end
-    for preCell = 1:p.Ncells
-        ncpOut[preCell] = length(wpIndexOutD[preCell])
-    end
-
-    # get weight, index of outgoing connections
-    wpIndexOut = zeros(Int, maximum(ncpOut),p.Ncells)
-    for preCell = 1:p.Ncells
-        wpIndexOut[1:ncpOut[preCell],preCell] = wpIndexOutD[preCell]
-    end
-
-    return wpWeightFfwd, wpWeightIn, wpIndexIn, wpIndexOut, wpIndexConvert, ncpIn, ncpOut
+    return wpWeightFfwd, wpWeightIn, wpIndexIn, ncpIn
 end

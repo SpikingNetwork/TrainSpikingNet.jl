@@ -60,8 +60,32 @@ uavg, ns0, ustd = loop_init(nothing, nothing, p.stim_off, p.train_time, dt,
     nothing, nothing, nothing, nothing, nothing, nothing, nothing, uavg,
     utmp, ffwdRate)
 
-wpWeightFfwd, wpWeightIn, wpIndexIn, wpIndexOut, wpIndexConvert, ncpIn, ncpOut =
+wpWeightFfwd, wpWeightIn, wpIndexIn, ncpIn =
     genPlasticWeights(p.genPlasticWeights_args, w0Index, nc0, ns0)
+
+# get indices of postsynaptic cells for each presynaptic cell
+wpIndexConvert = zeros(Int, p.Ncells, p.Lexc+p.Linh)
+wpIndexOutD = Dict{Int,Array{Int,1}}()
+ncpOut = Array{Int}(undef, p.Ncells)
+for i = 1:p.Ncells
+    wpIndexOutD[i] = []
+end
+for postCell = 1:p.Ncells
+    for i = 1:ncpIn[postCell]
+        preCell = wpIndexIn[postCell,i]
+        push!(wpIndexOutD[preCell], postCell)
+        wpIndexConvert[postCell,i] = length(wpIndexOutD[preCell])
+    end
+end
+for preCell = 1:p.Ncells
+    ncpOut[preCell] = length(wpIndexOutD[preCell])
+end
+
+# get weight, index of outgoing connections
+wpIndexOut = zeros(Int, maximum(ncpOut),p.Ncells)
+for preCell = 1:p.Ncells
+    wpIndexOut[1:ncpOut[preCell],preCell] = wpIndexOutD[preCell]
+end
 
 if parsed_args["xtarg_file"] !== nothing
   xtarg_dict = load(parsed_args["xtarg_file"])
