@@ -91,7 +91,7 @@ if parsed_args["xtarg_file"] !== nothing
   xtarg_dict = load(parsed_args["xtarg_file"])
   xtarg = xtarg_dict[first(keys(xtarg_dict))]
   Ntime = floor(Int, (p.train_time-p.stim_off)/p.learn_every)
-  if size(xtarg,1)==Ntime
+  if size(xtarg,1) != Ntime
      error(parsed_args["xtarg_file"],
            " should have (train_time-stim_off)/learn_every = ",
            Ntime, " rows")
