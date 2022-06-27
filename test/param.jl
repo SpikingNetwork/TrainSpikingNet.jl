@@ -22,12 +22,6 @@ Ncells = 1024
 Ne = floor(Int, Ncells*0.5)
 Ni = ceil(Int, Ncells*0.5)
 
-if Ncells == typemax(IntPrecision)
-  @warn "IntPrecision is too small for GPU (but fine for CPU)"
-elseif Ncells > typemax(IntPrecision)
-  @error "IntPrecision is too small"
-end
-
 # innate, train, test time (ms)
 train_duration = 1000.0
 stim_on        = 800.0

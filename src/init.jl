@@ -24,6 +24,12 @@ include(joinpath(@__DIR__,"struct.jl"))
 include(joinpath(parsed_args["data_dir"],"param.jl"))
 include(joinpath(@__DIR__,"cpu","variables.jl"))
 
+if Ncells == typemax(IntPrecision)
+  @warn "IntPrecision is too small for GPU (but fine for CPU)"
+elseif Ncells > typemax(IntPrecision)
+  @error "IntPrecision is too small"
+end
+
 # --- load code --- #
 macro maybethread(loop)
   if Threads.nthreads()>1
