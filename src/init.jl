@@ -37,7 +37,7 @@ macro maybethread(loop)
 end
 
 kind=:init
-include(p.genInitialWeights_file)
+include(p.genStaticWeights_file)
 include(p.genPlasticWeights_file)
 include(p.genFfwdRate_file)
 include(p.genTarget_file)
@@ -46,7 +46,7 @@ include(joinpath("cpu","loop.jl"))
 include("rate2synInput.jl")
 
 #----------- initialization --------------#
-w0Index, w0Weights, nc0 = genInitialWeights(p.genInitialWeights_args)
+w0Index, w0Weights, nc0 = genStaticWeights(p.genStaticWeights_args)
 ffwdRate = genFfwdRate(p.genFfwdRate_args)
 
 uavg, ns0, ustd = loop_init(nothing, nothing, p.stim_off, p.train_time, dt,

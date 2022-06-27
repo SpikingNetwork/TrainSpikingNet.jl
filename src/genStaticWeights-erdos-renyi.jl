@@ -4,7 +4,7 @@
 # and the second (w0Weights) contains the synaptic weight.  the vector (nc0)
 # specifies the number of postsynaptic neurons
 
-function genInitialWeights(args)
+function genStaticWeights(args)
     Ncells, Ne, pree, prie, prei, prii, jee, jie, jei, jii = map(x->args[x],
             [:Ncells, :Ne, :pree, :prie, :prei, :prii, :jee, :jie, :jei, :jii])
 

@@ -74,8 +74,8 @@ end
     mkdir(joinpath(@__DIR__, "cpu-K0-Array"))
     open(joinpath(@__DIR__, "cpu-K0-Array", "param.jl"), "w") do fileout 
         for line in readlines(joinpath(@__DIR__,"cpu-Array","param.jl"))
-            if startswith(line, "pree")
-                println(fileout, "pree = 0.0")
+            if contains(line, ":pree => 0.1")
+                println(fileout, replace(line, ":pree => 0.1"=>":pree => 0.0"))
             elseif startswith(line, "L = ")
                 println(fileout, "L = 14")
             else

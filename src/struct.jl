@@ -49,8 +49,8 @@ struct paramType
     genTarget_args::AbstractDict
     genFfwdRate_file::AbstractString
     genFfwdRate_args::AbstractDict
-    genInitialWeights_file::AbstractString
-    genInitialWeights_args::AbstractDict
+    genStaticWeights_file::AbstractString
+    genStaticWeights_args::AbstractDict
     genPlasticWeights_file::AbstractString
     genPlasticWeights_args::AbstractDict
 end

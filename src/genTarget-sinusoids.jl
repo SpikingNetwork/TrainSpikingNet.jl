@@ -1,4 +1,4 @@
-# return a T x Ncells matrix representing the desired currents that are learned
+# return a T x Ncells matrix representing the desired currents to be learned
 
 function genTarget(args, uavg)
     train_time, stim_off, learn_every, Ncells, Nsteps, dt, A, period, biasType, mu_ou_bias, b_ou_bias, sig_ou_bias = map(x->args[x],
