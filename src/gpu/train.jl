@@ -43,7 +43,6 @@ include("rls.jl")
 if parsed_args["correlation_interval"] <= parsed_args["nloops"]
     kind=:train_test
     include("loop.jl")
-    include("funRollingAvg.jl")
 end
 
 #----------- load initialization --------------#

@@ -48,7 +48,6 @@ include("convertWgtIn2Out.jl")
 include("rls.jl")
 kind=:test
 include("loop.jl")
-include("funRollingAvg.jl")
 
 #----------- load initialization --------------#
 nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0")

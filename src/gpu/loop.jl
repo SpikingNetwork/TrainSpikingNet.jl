@@ -1,3 +1,8 @@
+function funRollingAvg(startInd,endInd,movavg,cnt,x)
+    movavg[startInd:endInd,:] .+= transpose(x)
+    cnt[startInd:endInd,:] .+= 1
+end
+
 function update_forwardInputs(bspike,
                               w0Index, w0Weights, forwardInputsE, forwardInputsI,
                               wpIndexOut, wpWeightOut, forwardInputsP)
