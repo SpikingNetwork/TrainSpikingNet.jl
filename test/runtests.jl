@@ -74,15 +74,15 @@ end
     @test isapprox(dcpu["timess"], dgpu["timess"])
 end
 
-@testset "pree=$pree, sig0=$sig0" for pree in [0.1, 0.0], sig0 in [0.65, 0.0]
-    kind = string("pree", pree, "-sig0", sig0)
+@testset "pree=$pree, sig=$sig" for pree in [0.1, 0.0], sig in [0.65, 0.0]
+    kind = string("pree", pree, "-sig", sig)
     mkdir(joinpath(@__DIR__, "cpu-$kind"))
     open(joinpath(@__DIR__, "cpu-$kind", "param.jl"), "w") do fileout 
         for line in readlines(joinpath(@__DIR__,"param.jl"))
             if contains(line, ":pree => 0.1")
                 println(fileout, replace(line, ":pree => 0.1" => ":pree => $pree"))
-            elseif startswith(line, "sig0 =")
-                println(fileout, "sig0 = $sig0")
+            elseif startswith(line, "sig =")
+                println(fileout, "sig = $sig")
             elseif startswith(line, "L = ") && pree==0.0
                 println(fileout, "L = 14")
             else

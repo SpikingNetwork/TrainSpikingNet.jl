@@ -59,7 +59,7 @@ k = Matrix{p.FloatPrecision}(undef, p.Lexc+p.Linh+p.Lffwd, Threads.nthreads())
 delta = Matrix{p.FloatPrecision}(undef, p.Lexc+p.Linh+p.Lffwd, Threads.nthreads())
 v = Vector{p.FloatPrecision}(undef, p.Ncells)
 noise = Vector{p.FloatPrecision}(undef, p.Ncells)
-sig = fill(p.FloatPrecision(p.sig0), p.Ncells)
+sig = fill(p.FloatPrecision(p.sig), p.Ncells)
 
 rndFfwd = Vector{p.FloatPrecision}(undef, p.Lffwd)
 

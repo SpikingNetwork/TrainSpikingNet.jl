@@ -110,7 +110,7 @@ randn!(rng, v)
 end
 xpdecay .= 0
 forwardInputsPPrev .= 0.0
-@static if p.sig0>0
+@static if p.sig>0
     @static if p.noise_model==:voltage 
         sqrtdt = sqrt(dt)
         sqrtinvtau = sqrt.(1 ./ tau)
@@ -133,7 +133,7 @@ for ti=1:Nsteps
         learn_seq += 1
     end
 
-    @static p.sig0>0 && randn!(rng, noise)
+    @static p.sig>0 && randn!(rng, noise)
 
     @static if p.K>0
         axpby!(invtauedecay, (@view forwardInputsEPrev[2:end]),
@@ -149,7 +149,7 @@ for ti=1:Nsteps
     end
 
     @static p.K>0 && (synInputBalanced .+= xedecay .+ xidecay)
-    @static if p.sig0>0 && p.noise_model==:current
+    @static if p.sig>0 && p.noise_model==:current
         synInputBalanced .+= invsqrtdt .* sqrttau .* sig .* noise
     end
     synInput .= synInputBalanced .+ xpdecay
@@ -191,7 +191,7 @@ for ti=1:Nsteps
         bias .= mu
     end
 
-    @static p.sig0>0 && p.noise_model==:voltage && (v .+= sqrtdt .* sqrtinvtau .* sig .* noise)
+    @static p.sig>0 && p.noise_model==:voltage && (v .+= sqrtdt .* sqrtinvtau .* sig .* noise)
 
     bnotrefrac .= t .> (lastSpike .+ refrac)
     v .+= bnotrefrac .* dt .* invtau .* (bias .- v .+ synInput)

@@ -63,7 +63,7 @@ end
     xpdecay .= 0
     forwardInputsPPrev .= 0.0
 end
-@static if p.sig0>0
+@static if p.sig>0
     @static if p.noise_model==:voltage
         sqrtdt = sqrt(dt)
         sqrtinvtau = sqrt.(1 ./ tau)
@@ -132,7 +132,7 @@ for ti=1:Nsteps
         xplasticcnt[startInd:endInd] .+= 1
     end
 
-    @static p.sig0>0 && randn!(rng, noise)
+    @static p.sig>0 && randn!(rng, noise)
 
     # update network activities:
     #   - synaptic currents (xedecay, xidecay, xpdecay)
@@ -155,7 +155,7 @@ for ti=1:Nsteps
         end
 
         @static p.K>0 && (synInputBalanced[ci] += xedecay[ci] + xidecay[ci])
-        @static if p.sig0>0 && p.noise_model==:current
+        @static if p.sig>0 && p.noise_model==:current
             synInputBalanced[ci] += invsqrtdt * sqrttau[ci] * sig[ci] * noise[ci]
         end
         synInput[ci] = synInputBalanced[ci]
@@ -217,7 +217,7 @@ for ti=1:Nsteps
         end
         @static kind == :init && (bias[ci] = mu[ci])
 
-        @static if p.sig0>0 && p.noise_model==:voltage
+        @static if p.sig>0 && p.noise_model==:voltage
             v[ci] += sqrtdt * sqrtinvtau[ci] * sig[ci] * noise[ci]
         end
 

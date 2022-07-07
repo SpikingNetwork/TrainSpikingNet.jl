@@ -60,7 +60,7 @@ e = CuArray{p.FloatPrecision}(undef, p.Ncells)
 delta = CuArray{p.FloatPrecision}(undef, p.Lexc+p.Linh+p.Lffwd, p.Ncells)
 v = CuVector{p.FloatPrecision}(undef, p.Ncells)
 noise = CuArray{p.FloatPrecision}(undef, p.Ncells)
-sig = CUDA.fill(p.FloatPrecision(p.sig0), p.Ncells)
+sig = CUDA.fill(p.FloatPrecision(p.sig), p.Ncells)
 
 rndFfwd = CuArray{p.FloatPrecision}(undef, p.Lffwd)
 bspike_ffwd = CuVector{Bool}(undef, p.Lffwd)
