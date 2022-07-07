@@ -12,9 +12,9 @@ thresh = Vector{p.FloatPrecision}(undef, p.Ncells)
 thresh[1:p.Ne] .= p.threshe
 thresh[(1+p.Ne):p.Ncells] .= p.threshi
 
-invtau = Vector{p.FloatPrecision}(undef, p.Ncells)
-invtau[1:p.Ne] .= 1/p.taue
-invtau[(1+p.Ne):p.Ncells] .= 1/p.taui
+tau = Vector{p.FloatPrecision}(undef, p.Ncells)
+tau[1:p.Ne] .= p.taue
+tau[(1+p.Ne):p.Ncells] .= p.taui
 
 maxTimes = round(Int,p.maxrate*p.train_time/1000)
 times = Array{Float64}(undef, p.Ncells, maxTimes)

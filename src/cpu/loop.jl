@@ -1,6 +1,6 @@
 @eval function $(Symbol("loop_",kind))(learn_every, stim_on, stim_off,
     train_time, dt, Nsteps, Ncells, Ne, Lei, refrac, vre, invtauedecay,
-    invtauidecay, invtaudecay_plastic, mu, thresh, invtau, maxTimes, times,
+    invtauidecay, invtaudecay_plastic, mu, thresh, tau, maxTimes, times,
     ns, times_ffwd, ns_ffwd, forwardInputsE, forwardInputsI, forwardInputsP,
     forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev, forwardSpike,
     forwardSpikePrev, xedecay, xidecay, xpdecay, synInputBalanced, synInput,
@@ -58,18 +58,21 @@ randn!(rng, v)
 @static if p.K>0
     xedecay .= xidecay .= 0
     forwardInputsEPrev .= forwardInputsIPrev .= 0.0
-elseif kind in [:train, :test, :train_test]
-    synInputBalanced .= 0.0
 end
 @static if kind in [:train, :test, :train_test]
     xpdecay .= 0
     forwardInputsPPrev .= 0.0
 end
-@static kind == :init && p.K==0 && (synInput .= 0.0)
-@static if p.K==0
-    sqrtdt = sqrt(dt)
-    sqrtinvtau = sqrt.(invtau)
+@static if p.sig0>0
+    @static if p.noise_model==:voltage
+        sqrtdt = sqrt(dt)
+        sqrtinvtau = sqrt.(1 ./ tau)
+    elseif p.noise_model==:current
+        invsqrtdt = 1/sqrt(dt)
+        sqrttau = sqrt.(tau)
+    end
 end
+invtau = 1 ./ tau
 
 # start the actual training
 for ti=1:Nsteps
@@ -78,6 +81,7 @@ for ti=1:Nsteps
     # reset spiking activities from the previous time step
     @static p.K>0 && (forwardInputsE .= forwardInputsI .= 0.0)
     @static kind in [:train, :test, :train_test] && (forwardInputsP .= 0.0)
+    synInputBalanced .= 0.0
     @static if kind in [:train, :train_test]
         forwardSpike .= 0.0
         @static p.Lffwd>0 && (ffwdSpike .= 0.0)
@@ -128,7 +132,7 @@ for ti=1:Nsteps
         xplasticcnt[startInd:endInd] .+= 1
     end
 
-    @static p.K==0 && randn!(rng, noise)
+    @static p.sig0>0 && randn!(rng, noise)
 
     # update network activities:
     #   - synaptic currents (xedecay, xidecay, xpdecay)
@@ -150,16 +154,13 @@ for ti=1:Nsteps
             end
         end
 
-        @static if kind in [:train, :test, :train_test]
-            @static if p.K>0
-                synInputBalanced[ci] = xedecay[ci] + xidecay[ci]
-                synInput[ci] = synInputBalanced[ci] + xpdecay[ci]
-            else
-                synInput[ci] = xpdecay[ci]
-            end
+        @static p.K>0 && (synInputBalanced[ci] += xedecay[ci] + xidecay[ci])
+        @static if p.sig0>0 && p.noise_model==:current
+            synInputBalanced[ci] += invsqrtdt * sqrttau[ci] * sig[ci] * noise[ci]
         end
-        @static if kind == :init && p.K>0
-            synInput[ci] = xedecay[ci] + xidecay[ci]
+        synInput[ci] = synInputBalanced[ci]
+        @static if kind in [:train, :test, :train_test]
+            synInput[ci] += xpdecay[ci]
         end
 
         @static if kind == :init
@@ -197,9 +198,9 @@ for ti=1:Nsteps
         # if training, compute synapse-filtered spike trains
         @static if kind in [:train, :train_test]
             @static if typeof(p.taudecay_plastic)<:Number
-                r[ci] += (-dt*r[ci] + forwardSpikePrev[ci])*invtaudecay_plastic
+                r[ci] += (-dt*r[ci] + forwardSpikePrev[ci]) * invtaudecay_plastic
             else
-                r[ci] += (-dt*r[ci] + forwardSpikePrev[ci])*invtaudecay_plastic[ci]
+                r[ci] += (-dt*r[ci] + forwardSpikePrev[ci]) * invtaudecay_plastic[ci]
             end
         end
 
@@ -216,12 +217,14 @@ for ti=1:Nsteps
         end
         @static kind == :init && (bias[ci] = mu[ci])
 
-        @static p.K==0 && (v[ci] += sqrtdt*sqrtinvtau[ci]*sig[ci]*noise[ci])
+        @static if p.sig0>0 && p.noise_model==:voltage
+            v[ci] += sqrtdt * sqrtinvtau[ci] * sig[ci] * noise[ci]
+        end
 
         # neuron ci not in refractory period
         if t > (lastSpike[ci] + refrac)  
             # update membrane potential
-            v[ci] += dt*invtau[ci]*(bias[ci]-v[ci] + synInput[ci])
+            v[ci] += dt * invtau[ci] * (bias[ci] - v[ci] + synInput[ci])
 
             #spike occurred
             if v[ci] > thresh[ci]                      

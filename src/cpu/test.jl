@@ -103,7 +103,7 @@ Threads.@threads for itrial=1:parsed_args["ntrials"]
     t = @elapsed thisns, thistimes, _, _, thisxtotal, _ = loop_test(
           p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
           p.Nsteps, p.Ncells, nothing, nothing, p.refrac, vre, invtauedecay,
-          invtauidecay, invtaudecay_plastic, mu, thresh, invtau, maxTimes,
+          invtauidecay, invtaudecay_plastic, mu, thresh, tau, maxTimes,
           copy_times[Threads.threadid()],
           copy_ns[Threads.threadid()],
           copy_times_ffwd[Threads.threadid()],

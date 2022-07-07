@@ -89,7 +89,7 @@ timess = Vector{Any}(undef, parsed_args["ntrials"]);
 xtotals = Vector{Any}(undef, parsed_args["ntrials"]);
 copy_rng = [typeof(rng)() for _=1:ndevices()];
 isnothing(p.seed) || Random.seed!.(copy_rng, p.seed)
-for var in [:times, :ns, :times_ffwd, :ns_ffwd, :stim, :nc0, :thresh, :invtau,
+for var in [:times, :ns, :times_ffwd, :ns_ffwd, :stim, :nc0, :thresh, :tau,
             :w0Index, :w0Weights, :wpWeightFfwd, :wpIndexOut, :wpWeightOut, :mu,
             :forwardInputsE, :forwardInputsI, :forwardInputsP,
             :forwardInputsEPrev, :forwardInputsIPrev, :forwardInputsPPrev,
@@ -113,7 +113,7 @@ Threads.@threads for itrial=1:parsed_args["ntrials"]
           typeof(p.taudecay_plastic)<:Number ? invtaudecay_plastic : copy_invtaudecay_plastic[idevice],
           copy_mu[idevice],
           copy_thresh[idevice],
-          copy_invtau[idevice],
+          copy_tau[idevice],
           maxTimes,
           copy_times[idevice],
           copy_ns[idevice],

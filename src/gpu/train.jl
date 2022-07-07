@@ -146,7 +146,7 @@ for iloop = R.+(1:parsed_args["nloops"])
         loop_train(
             p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
             p.Nsteps, p.Ncells, p.L, nothing, p.Lexc+p.Linh, p.refrac, vre, invtauedecay,
-            invtauidecay, invtaudecay_plastic, mu, thresh, invtau, nothing,
+            invtauidecay, invtaudecay_plastic, mu, thresh, tau, nothing,
             nothing, ns, nothing, ns_ffwd, forwardInputsE, forwardInputsI, forwardInputsP,
             forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
             forwardSpike, forwardSpikePrev, xedecay, xidecay, xpdecay,
@@ -159,7 +159,7 @@ for iloop = R.+(1:parsed_args["nloops"])
         _, _, _, _, xtotal, _ = loop_train_test(
             p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
             p.Nsteps, p.Ncells, p.L, nothing, p.Lexc+p.Linh, p.refrac, vre, invtauedecay,
-            invtauidecay, invtaudecay_plastic, mu, thresh, invtau, maxTimes,
+            invtauidecay, invtaudecay_plastic, mu, thresh, tau, maxTimes,
             times, ns, times_ffwd, ns_ffwd, forwardInputsE, forwardInputsI, forwardInputsP,
             forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
             forwardSpike, forwardSpikePrev, xedecay, xidecay, xpdecay,

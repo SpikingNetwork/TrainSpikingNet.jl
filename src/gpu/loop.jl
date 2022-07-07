@@ -51,7 +51,7 @@ end
 
 @eval function $(Symbol("loop_",kind))(learn_every, stim_on, stim_off,
     train_time, dt, Nsteps, Ncells, L, Ne, Lei, refrac, vre, invtauedecay,
-    invtauidecay, invtaudecay_plastic, mu, thresh, invtau, maxTimes, times,
+    invtauidecay, invtaudecay_plastic, mu, thresh, tau, maxTimes, times,
     ns, times_ffwd, ns_ffwd, forwardInputsE, forwardInputsI, forwardInputsP,
     forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev, forwardSpike,
     forwardSpikePrev, xedecay, xidecay, xpdecay, synInputBalanced, synInput,
@@ -107,26 +107,33 @@ randn!(rng, v)
 @static if p.K>0
     xedecay .= xidecay .= 0
     forwardInputsEPrev .= forwardInputsIPrev .= 0.0
-else
-    synInputBalanced .= 0.0
 end
 xpdecay .= 0
 forwardInputsPPrev .= 0.0
-@static if p.K==0
-    sqrtdt = sqrt(dt)
-    sqrtinvtau = sqrt.(invtau)
+@static if p.sig0>0
+    @static if p.noise_model==:voltage 
+        sqrtdt = sqrt(dt)
+        sqrtinvtau = sqrt.(1 ./ tau)
+    elseif p.noise_model==:current
+        invsqrtdt = 1/sqrt(dt)
+        sqrttau = sqrt.(tau)
+    end
 end
+invtau = 1 ./ tau
 
 for ti=1:Nsteps
     t = dt*ti;
 
     @static p.K>0 && (forwardInputsE .= forwardInputsI .= 0.0)
     forwardInputsP .= 0.0
+    synInputBalanced .= 0.0
 
     @static kind in [:train, :train_test] && if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
         wpWeightIn, wpWeightOut = rls(raug, k, den, e, delta, L, Ncells, Lei, r, s, Px, P, synInputBalanced, xtarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightFfwd, wpWeightIn, wpWeightOut, plusone, minusone, exactlyzero)
         learn_seq += 1
     end
+
+    @static p.sig0>0 && randn!(rng, noise)
 
     @static if p.K>0
         axpby!(invtauedecay, (@view forwardInputsEPrev[2:end]),
@@ -141,12 +148,11 @@ for ti=1:Nsteps
         xpdecay .+= (-dt.*xpdecay .+ (@view forwardInputsPPrev[2:end])) .* invtaudecay_plastic
     end
 
-    @static if p.K>0
-        synInputBalanced .= xedecay .+ xidecay
-        synInput .= synInputBalanced .+ xpdecay
-    else
-        synInput .= xpdecay
+    @static p.K>0 && (synInputBalanced .+= xedecay .+ xidecay)
+    @static if p.sig0>0 && p.noise_model==:current
+        synInputBalanced .+= invsqrtdt .* sqrttau .* sig .* noise
     end
+    synInput .= synInputBalanced .+ xpdecay
 
     @static if kind in [:test, :train_test]
         # saved for visualization
@@ -185,13 +191,10 @@ for ti=1:Nsteps
         bias .= mu
     end
 
-    @static if p.K==0
-        randn!(rng, noise)
-        v .+= sqrtdt.*sqrtinvtau.*sig.*noise
-    end
+    @static p.sig0>0 && p.noise_model==:voltage && (v .+= sqrtdt .* sqrtinvtau .* sig .* noise)
 
     bnotrefrac .= t .> (lastSpike .+ refrac)
-    v .+= bnotrefrac.*dt.*invtau.*(bias .- v .+ synInput)
+    v .+= bnotrefrac .* dt .* invtau .* (bias .- v .+ synInput)
 
     bspike .= bnotrefrac .& (v .> thresh)
     @static kind in [:train, :train_test] && (forwardSpike .= bspike)

@@ -101,11 +101,12 @@ genPlasticWeights_args = Dict(:Ncells => Ncells, :frac => frac, :Ne => Ne, :L =>
                               :wpii => -2.0 * taue * g / wpscale,
                               :wpffwd => 0)
 
-sig0 = 0.65
+noise_model=:current  # or :voltage
+sig0 = 0  # 0.65
 
 maxrate = 500 #(Hz) maximum average firing rate.  if the average firing rate across the simulation for any neuron exceeds this value, some of that neuron's spikes will not be saved
 
 
 p = paramType(PPrecision,PScale,FloatPrecision,IntPrecision,PType,seed,rng_func,example_neurons,wid,train_duration,penlambda,penlamFF,penmu,frac,learn_every,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,taue,taui,K,L,Lffwd,Lexc,Linh,wpscale,
-je,ji,jx,mu,vre,threshe,threshi,refrac,tauedecay,tauidecay,taudecay_plastic,sig0,maxrate,
+je,ji,jx,mu,vre,threshe,threshi,refrac,tauedecay,tauidecay,taudecay_plastic,noise_model,sig0,maxrate,
 genStim_file, genStim_args, genTarget_file, genTarget_args, genFfwdRate_file, genFfwdRate_args, genStaticWeights_file, genStaticWeights_args, genPlasticWeights_file, genPlasticWeights_args)
