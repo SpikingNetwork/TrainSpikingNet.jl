@@ -64,7 +64,7 @@ end
                   $(joinpath(@__DIR__, "..", "src", "cpu", "test.jl"))
                   $(joinpath(@__DIR__, "scratch", "cpu-Array"))`, stdout=devnull))
 
-    run(pipeline(`$(Base.julia_cmd())
+    run(pipeline(`$(Base.julia_cmd()) -t 1
                   $(joinpath(@__DIR__, "..", "src", "gpu", "test.jl"))
                   $(joinpath(@__DIR__, "scratch", "gpu-Array"))`, stdout=devnull))
 
