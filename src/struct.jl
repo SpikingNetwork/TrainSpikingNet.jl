@@ -43,6 +43,7 @@ struct paramType
     taudecay_plastic  #::Union{Float64,Vector{Float64}}
     noise_model::Symbol
     sig::Float64
+    correlation_var::Symbol
     maxrate::Float64
     genStim_file::AbstractString
     genStim_args::AbstractDict

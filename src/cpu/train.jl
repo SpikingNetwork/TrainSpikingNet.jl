@@ -167,7 +167,7 @@ for iloop = R.+(1:parsed_args["nloops"])
             wpIndexConvert, wpWeightFfwd, wpWeightIn, wpWeightOut, ncpIn,
             ncpOut, nothing, nothing, ffwdRate)
     else
-        _, _, _, _, xtotal, _ = loop_train_test(
+        _, _, _, _, xtotal, _, _, xplastic, _ = loop_train_test(
             p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
             p.Nsteps, p.Ncells, nothing, p.Lexc+p.Linh, p.refrac,
             vre, invtauedecay, invtauidecay, invtaudecay_plastic,
@@ -181,11 +181,18 @@ for iloop = R.+(1:parsed_args["nloops"])
             wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightFfwd, wpWeightIn,
             wpWeightOut, ncpIn, ncpOut, nothing, nothing, ffwdRate)
 
+        if p.correlation_var == :xtotal
+            xlearned = xtotal
+        elseif p.correlation_var == :xplastic
+            xlearned = xplastic
+        else
+            error("invalid value for correlation_var parameter")
+        end
         pcor = zeros(p.Ncells)
         for (index, ci) in enumerate(1:p.Ncells)
             xtarg_slice = @view xtarg[:,ci]
-            xtotal_slice = @view xtotal[:,ci]
-            pcor[index] = cor(xtarg_slice,xtotal_slice)
+            xlearned_slice = @view xlearned[:,ci]
+            pcor[index] = cor(xtarg_slice,xlearned_slice)
         end
 
         bnotnan = .!isnan.(pcor)
