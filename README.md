@@ -1,11 +1,11 @@
-trainBalancedNet.jl uses recursive least squares to train fluctation-driven
+TrainSpikingNet.jl uses recursive least squares to train fluctation-driven
 spiking recurrent neural networks to recapitulate arbitrary activity patterns.
-See Arthur, Kim, Preibisch, and Darshan (2022) for further details.
+See Arthur, Kim, Preibisch, and Darshan (2022, in prep) for further details.
 
 
 # Requirements #
 
-The CPU version of trainBalancedNet.jl can run on any machine.
+The CPU version of TrainSpikingNet.jl can run on any machine.
 To use a GPU you'll need Linux or Windows as the code (currently)
 requires CUDA, and Nvidia does not support Macs.
 
@@ -16,12 +16,12 @@ Install Julia with [juliaup](https://github.com/JuliaLang/juliaup)
 or by manually downloading the latest version from
 [julialang.org](https://julialang.org/).
 
-Download the trainBalancedNet.jl repository with either the ZIP link on
+Download the TrainSpikingNet.jl repository with either the ZIP link on
 github.com or by using git-clone:
 
 ```
-$ git clone --depth 1 https://github.com/JaneliaSciComp/trainBalancedNet.git
-Cloning into 'trainBalancedNet'...
+$ git clone --depth 1 https://github.com/SpikingNetwork/TrainSpikingNet.jl.git
+Cloning into 'TrainSpikingNet.jl'...
 remote: Enumerating objects: 44, done.
 remote: Counting objects: 100% (44/44), done.
 remote: Compressing objects: 100% (43/43), done.
@@ -33,35 +33,45 @@ Modify the unix PATH environment variable to include the path to the Julia
 executable as well as this respository:
 
 ```
-$ echo "export PATH=$PATH:~/bin/julia-1.7.1/bin:~/bin/trainBalancedNet" >> ~/.bashrc
+$ echo "export PATH=$PATH:~/bin/julia-1.7.1/bin:~/bin/TrainSpikingNet.jl" >> ~/.bashrc
 ```
 
 Download all of the required packages:
 
 ```
-$ tbn.sh install
-  Activating project at `~/trainBalancedNet`
-  Activating project at `~/trainBalancedNet/test`
+$ tsn.sh install
+  Activating project at `~/TrainSpikingNet.jl`
+  Activating project at `~/TrainSpikingNet.jl/test`
 ```
 
-Finally, test that everything works:
+Finally, (and optionally) test that everything works:
 
 ```
-$ tbn.sh unittest
+$ tsn.sh unittest
 Test Summary: | Pass  Total
-Array         |    5      5
+Array         |    6      6
 Test Summary: | Pass  Total
-Symmetric     |    6      6
+Symmetric     |    7      7
 Test Summary:   | Pass  Total
-SymmetricPacked |    6      6
+SymmetricPacked |    7      7
 Test Summary: | Pass  Total
 test          |    4      4
-Test Summary: | Pass  Total
-K=0           |    5      5
+Test Summary:      | Pass  Total
+pree=0.1, sig=0.65 |    6      6
+Test Summary:     | Pass  Total
+pree=0.1, sig=0.0 |    6      6
+Test Summary:      | Pass  Total
+pree=0.0, sig=0.65 |    6      6
+Test Summary:     | Pass  Total
+pree=0.0, sig=0.0 |    6      6
+Test Summary:       | Pass  Total
+voltage noise model |    6      6
 Test Summary: | Pass  Total
 Ricciardi     |    7      7
 Test Summary: | Pass  Total
 Int16         |    3      3
+Test Summary: | Pass  Total
+feed forward  |    6      6
 ```
 
 # Basic Usage #
@@ -101,7 +111,7 @@ Phys. Rev. E).  In all cases, the synaptic targets are stored in "xtarg.jld2",
 which can be subsquently referenced using `-x`.
 
 ```
-$ tbn.sh init -t auto ~/data
+$ tsn.sh init -t auto ~/data
 mean excitatory firing rate: 3.427978515625 Hz
 mean inhibitory firing rate: 6.153564453125 Hz
 
@@ -118,7 +128,7 @@ Use the `-t` flag to thread the CPU version of train.jl; it has no effect
 on the GPU:
 
 ```
-$ tbn.sh train gpu -n100 ~/data
+$ tsn.sh train gpu -n100 ~/data
 Loop no. 1
 correlation: -0.023547219725048148
 elapsed time: 41.81254005432129 sec
@@ -157,7 +167,7 @@ Finally, plot the trainined activities.  The underlying data is stored in
 "test.jld2":
 
 ```
-$ tbn.sh test gpu -n50 ~/data
+$ tsn.sh test gpu -n50 ~/data
 trial #1, 53.0 sec
 trial #2, 9.34 sec
 trial #3, 9.24 sec
@@ -180,7 +190,7 @@ Additional options for all of these scripts can be displayed with `-h` or
 `--help`:
 
 ```
-$ tbn.sh train gpu -h
+$ tsn.sh train gpu -h
 usage: train.jl [-n NLOOPS] [-c CORRELATION_INTERVAL] [-s]
                 [-r RESTORE_FROM_CHECKPOINT]
                 [-m MONITOR_RESOURCES_USED] [-h] data_dir
@@ -224,7 +234,7 @@ browser.
 
 The CPU code can be sped up by about 10% on Intel machines using the
 drop-in MKL package to replace the default OpenBLAS.  To install it,
-change into the trainBalancedNet directory and execute `julia -e 'using Pkg;
+change into the TrainSpikingNet.jl directory and execute `julia -e 'using Pkg;
 Pkg.add("MKL")'`.  Then edit "src/cpu/train.jl" and add the line "using MKL"
 just below the line starting with "using LinearAlgebra...".  Alternatively,
 MKL can be automatically used for your other Julia code as well by adding
@@ -240,7 +250,7 @@ the functions therein.  For example, the `genStaticWeights_file`
 and `genStaticWeights_args` variables are a string and a dictionary,
 respectively.  The former specifies the path to a .jl file containing
 a function called `genStaticWeights()` to which the latter is passed
-when `./tbn.sh init ...` is executed.  `genStaticWeights()` defines and
+when `./tsn.sh init ...` is executed.  `genStaticWeights()` defines and
 returns `w0Index`, `w0Weights`, and `nc0` which together specify the static
 connections between neurons based on the parameters `pree`, `prie`, `prei`,
 `prii`, `jee`, `jie`, `jei`, and `jii`.  Should the default code, contained

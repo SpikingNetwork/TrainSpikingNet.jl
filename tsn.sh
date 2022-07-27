@@ -42,5 +42,5 @@ elif [[ "$1" == "plot" ]] ; then
   julia --project=$DIR ${DIR}/src/plot.jl "${@:2}"
 
 else
-  echo tbn.sh: first argument must be either install, unittest, init, train, test, or plot
+  echo tsn.sh: first argument must be either install, unittest, init, train, test, or plot
 fi
