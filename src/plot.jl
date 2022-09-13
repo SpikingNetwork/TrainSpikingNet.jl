@@ -71,6 +71,7 @@ else
 end
 
 using Gadfly, Compose, DataFrames, StatsBase, Statistics
+import Cairo, Fontconfig
 
 ntrials = length(nss)
 nneurons = length(nss[1])
@@ -99,7 +100,7 @@ for ci=1:nneurons
 end
 append!(ps, fill(Compose.context(), nrows*ncols-nneurons))
 gridstack(permutedims(reshape(ps, ncols, nrows), (2,1))) |>
-        SVGJS(string(output_prefix, "-syninput.svg"), 8cm*ncols, 6.5cm*nrows)
+        PDF(string(output_prefix, "-syninput.pdf"), 8cm*ncols, 6.5cm*nrows)
 
 timess_cat = hcat(timess...)
 ps = Union{Plot,Context}[]
@@ -126,4 +127,4 @@ for ci=1:nneurons
 end
 append!(ps, fill(Compose.context(), nrows*ncols-nneurons))
 gridstack(permutedims(reshape(ps, ncols, nrows), (2,1))) |>
-        SVGJS(string(output_prefix , "-psth.svg"), 8cm*ncols, 6.5cm*nrows)
+        PDF(string(output_prefix , "-psth.pdf"), 8cm*ncols, 6.5cm*nrows)
