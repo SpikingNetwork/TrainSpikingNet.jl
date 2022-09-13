@@ -1,4 +1,4 @@
-using LinearAlgebra, Random, JLD2, ArgParse
+using LinearAlgebra, LinearAlgebra.BLAS, Random, JLD2, ArgParse
 
 import ArgParse: parse_item
 

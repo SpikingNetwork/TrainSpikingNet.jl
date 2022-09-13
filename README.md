@@ -33,7 +33,7 @@ Modify the unix PATH environment variable to include the path to the Julia
 executable as well as this respository:
 
 ```
-$ echo "export PATH=$PATH:~/bin/julia-1.7.1/bin:~/bin/TrainSpikingNet.jl" >> ~/.bashrc
+$ echo "export PATH=$PATH:~/bin/julia-1.8.1/bin:~/bin/TrainSpikingNet.jl" >> ~/.bashrc
 ```
 
 Download all of the required packages:

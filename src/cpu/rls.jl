@@ -9,11 +9,11 @@ function rls(raug, k, delta, Ncells, Lei, r, s, Px, P, synInputBalanced, xtarg, 
         @static if p.PType == Array
             # k_tid .= P[ci] * raug / PScale
             # mul!(k_tid, P[ci], raug, 1.0/PScale, exactlyzero)
-            BLAS.gemv!('N', plusone/PScale, P[ci], raug_tid, exactlyzero, k_tid)
+            gemv!('N', plusone/PScale, P[ci], raug_tid, exactlyzero, k_tid)
         elseif p.PType == Symmetric
-            BLAS.symv!('U', plusone/PScale, P[ci].data, raug_tid, exactlyzero, k_tid)
+            symv!('U', plusone/PScale, P[ci].data, raug_tid, exactlyzero, k_tid)
         elseif p.PType == SymmetricPacked
-            BLAS.spmv!('U', plusone/PScale, P[ci].tri, raug_tid, exactlyzero, k_tid)
+            spmv!('U', plusone/PScale, P[ci].tri, raug_tid, exactlyzero, k_tid)
         end
 
         vPv = raug_tid'*k_tid
@@ -24,11 +24,11 @@ function rls(raug, k, delta, Ncells, Lei, r, s, Px, P, synInputBalanced, xtarg, 
             # P[ci] .-= round.(PPrecision, clamp.(den*k_tid*k_tid' * PScale,
             #                                     typemin(PPrecision), typemax(PPrecision)))
             # mul!(P[ci], k_tid, transpose(k_tid), -den*PScale, plusone)
-            BLAS.ger!(-den*PScale, k_tid, k_tid, P[ci])
+            ger!(-den*PScale, k_tid, k_tid, P[ci])
         elseif p.PType == Symmetric
-            BLAS.syr!('U', -den*PScale, k_tid, P[ci].data)
+            syr!('U', -den*PScale, k_tid, P[ci].data)
         elseif p.PType == SymmetricPacked
-            SymmetricFormats.spr!('U', -den*PScale, k_tid, P[ci].tri)
+            spr!('U', -den*PScale, k_tid, P[ci].tri)
         end
 
         delta_tid = @view delta[:,Threads.threadid()]

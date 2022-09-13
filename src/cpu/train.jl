@@ -1,4 +1,4 @@
-using LinearAlgebra, Random, JLD2, Statistics, ArgParse, SymmetricFormats
+using LinearAlgebra, LinearAlgebra.BLAS, Random, JLD2, Statistics, ArgParse, SymmetricFormats
 
 aps = ArgParseSettings()
 

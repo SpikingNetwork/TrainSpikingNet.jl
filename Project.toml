@@ -13,5 +13,5 @@ SymmetricFormats = "a91e544d-b3d6-4431-ae28-0549b1291c16"
 
 [compat]
 CUDA = "3.4"
-NNlib = "0.7.28"
+NNlib = "0.7.28, 0.8"
 julia = "1.7"
