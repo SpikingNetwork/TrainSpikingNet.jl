@@ -71,7 +71,7 @@ end
     dcpu = load(joinpath(@__DIR__, "scratch", "cpu-Array", "test.jld2"))
     dgpu = load(joinpath(@__DIR__, "scratch", "gpu-Array", "test.jld2"))
     @test dcpu["nss"] == dgpu["nss"]
-    @test dcpu["ineurons_to_plot"] == dgpu["ineurons_to_plot"]
+    @test dcpu["ineurons_to_test"] == dgpu["ineurons_to_test"]
     @test isapprox(dcpu["xtotals"], dgpu["xtotals"])
     @test isapprox(dcpu["timess"], dgpu["timess"])
 end

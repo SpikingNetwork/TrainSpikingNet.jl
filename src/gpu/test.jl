@@ -14,8 +14,8 @@ s = ArgParseSettings()
         arg_type = Int
         default = 1
         range_tester = x->x>0
-    "--ineurons_to_plot", "-i"
-        help = "which neurons to plot"
+    "--ineurons_to_test", "-i"
+        help = "which neurons to test"
         arg_type = Vector{Int}
         default = collect(1:16)
         range_tester = x->all(x.>0)
@@ -156,14 +156,14 @@ Threads.@threads for itrial=1:parsed_args["ntrials"]
           nothing, nothing,
           copy_wpWeightOut[idevice],
           nothing, nothing, nothing);
-    nss[itrial] = Array(thisns[parsed_args["ineurons_to_plot"]])
-    timess[itrial] = Array(thistimes[parsed_args["ineurons_to_plot"],:])
-    xtotals[itrial] = Array(thisxtotal[:,parsed_args["ineurons_to_plot"]])
+    nss[itrial] = Array(thisns[parsed_args["ineurons_to_test"]])
+    timess[itrial] = Array(thistimes[parsed_args["ineurons_to_test"],:])
+    xtotals[itrial] = Array(thisxtotal[:,parsed_args["ineurons_to_test"]])
     println("trial #", itrial, ", ", round(t, sigdigits=3), " sec")
 end
 
 save(joinpath(parsed_args["data_dir"], "test.jld2"),
-     "ineurons_to_plot", parsed_args["ineurons_to_plot"],
+     "ineurons_to_test", parsed_args["ineurons_to_test"],
      "nss", nss, "timess", timess, "xtotals", xtotals)
 
 parsed_args["no-plot"] || include(joinpath(dirname(@__DIR__),"plot.jl"))

@@ -1,9 +1,18 @@
 using ArgParse, JLD2, Random, LinearAlgebra
 
+import ArgParse: parse_item
+
+function ArgParse.parse_item(::Type{Vector{Int}}, x::AbstractString)
+    return eval(Meta.parse(x))
+end
+
 if !(@isdefined nss)
     s = ArgParseSettings()
 
     @add_arg_table! s begin
+        "--ineurons_to_plot", "-i"
+            help = "which neurons to plot.  must be the same or a subset of ineurons_to_test used in test.jl"
+            arg_type = Vector{Int}
         "test_file"
             help = "full path to the JLD file output by test.jl.  this same directory needs to contain the parameters in param.jld2, the synaptic targets in xtarg.jld2, and (optionally) the spike rate in rate.jld2"
             required = true
@@ -12,10 +21,30 @@ if !(@isdefined nss)
     parsed_args = parse_args(s)
 
     d = load(parsed_args["test_file"])
-    ineurons_to_plot = d["ineurons_to_plot"]
-    nss = d["nss"]
-    timess = d["timess"]
-    xtotals = d["xtotals"]
+    ineurons_to_test = d["ineurons_to_test"]
+
+    ineurons_to_plot = something(parsed_args["ineurons_to_plot"], ineurons_to_test)
+
+    all(in.(ineurons_to_plot,[ineurons_to_test])) || error("ineurons_to_plot must be the same or a subset of ineurons_to_test in test.jl")
+
+    if all(in.(ineurons_to_test,[ineurons_to_plot]))
+        nss = d["nss"]
+        timess = d["timess"]
+        xtotals = d["xtotals"]
+    else
+        itest = []
+        for iplot in ineurons_to_plot
+            push!(itest, findfirst(iplot .== ineurons_to_test))
+        end
+        nss = []
+        timess = []
+        xtotals = []
+        for i in eachindex(d["nss"])
+            push!(nss, d["nss"][i][itest])
+            push!(timess, d["timess"][i][itest,:])
+            push!(xtotals, d["xtotals"][i][:,itest])
+        end
+    end
 
     include(joinpath(@__DIR__,"struct.jl"))
     p = load(joinpath(dirname(parsed_args["test_file"]),"param.jld2"), "p")
@@ -29,7 +58,7 @@ if !(@isdefined nss)
 
     output_prefix = splitext(parsed_args["test_file"])[1]
 else
-    ineurons_to_plot = parsed_args["ineurons_to_plot"]
+    ineurons_to_plot = parsed_args["ineurons_to_test"]
 
     xtarg = load(joinpath(parsed_args["data_dir"],"xtarg.jld2"), "xtarg")
     if isfile(joinpath(parsed_args["data_dir"],"rate.jld2"))
