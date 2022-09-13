@@ -15,18 +15,6 @@ function genPlasticWeights(args, w0Index, nc0, ns0)
     Ncells, frac, Ne, L, Lexc, Linh, Lffwd, wpee, wpie, wpei, wpii, wpffwd = map(x->args[x],
             [:Ncells, :frac, :Ne, :L, :Lexc, :Linh, :Lffwd, :wpee, :wpie, :wpei, :wpii, :wpffwd])
 
-    # rearrange initial weights
-    w0 = Dict{Int,Array{Int,1}}()
-    for i = 1:p.Ncells
-        w0[i] = []
-    end
-    for preCell = 1:p.Ncells
-        for i = 1:nc0[preCell]
-            postCell = w0Index[i,preCell]
-            push!(w0[postCell],preCell)
-        end
-    end
-
     # order neurons by their firing rate
     frac_neurons_selected = p.frac
     frac_cells = round(Int, frac_neurons_selected*p.Ne)
