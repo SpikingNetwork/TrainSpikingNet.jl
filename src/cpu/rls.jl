@@ -1,4 +1,4 @@
-function rls(raug, k, delta, Ncells, Lei, r, s, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightFfwd, wpWeightIn, wpWeightOut, plusone, exactlyzero)
+function rls(itask, raug, k, delta, Ncells, Lei, r, s, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightFfwd, wpWeightIn, wpWeightOut, plusone, exactlyzero)
 
     @maybethread for ci = 1:Ncells
         raug_tid = @view raug[:,Threads.threadid()]
@@ -33,7 +33,7 @@ function rls(raug, k, delta, Ncells, Lei, r, s, Px, P, synInputBalanced, xtarg, 
 
         delta_tid = @view delta[:,Threads.threadid()]
         wpWeightInci = @view wpWeightIn[:,ci]
-        e = wpWeightInci'*view(raug_tid, 1:Lei) + synInputBalanced[ci] - xtarg[learn_seq,ci]
+        e = wpWeightInci'*view(raug_tid, 1:Lei) + synInputBalanced[ci] - xtarg[learn_seq,ci,itask]
         @static if p.Lffwd>0
               wpWeightFfwdci = @view wpWeightFfwd[ci,:]
               e += wpWeightFfwdci'*s

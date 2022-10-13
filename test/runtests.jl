@@ -1,9 +1,11 @@
 using Test, JLD2, SymmetricFormats
 
-function compare_cpu_to_gpu(kind)
+function compare_cpu_to_gpu(kind; ntasks=1, nloops=1)
     init_out = readlines(`$(Base.julia_cmd()) -t 2
                           $(joinpath(@__DIR__, "..", "src", "init.jl"))
+                          --itasks 1:$ntasks
                           $(joinpath(@__DIR__, "scratch", "cpu-$kind"))`)
+    write(joinpath(@__DIR__, "scratch", "cpu-$kind", "init.log"), join(init_out, '\n'))
     for iHz in findall(contains("Hz"), init_out)
         @test 0 < parse(Float64, match(r"([.0-9]+) Hz", init_out[iHz]).captures[1]) < 15
     end
@@ -11,25 +13,29 @@ function compare_cpu_to_gpu(kind)
     cp(joinpath(@__DIR__, "scratch", "cpu-$kind"), joinpath(@__DIR__, "scratch", "gpu-$kind"))
     cpu_out = readlines(`$(Base.julia_cmd()) -t 2
                          $(joinpath(@__DIR__, "..", "src", "cpu", "train.jl"))
+                         --nloops $nloops
                          $(joinpath(@__DIR__, "scratch", "cpu-$kind"))`)
+    write(joinpath(@__DIR__, "scratch", "cpu-$kind", "train.log"), join(cpu_out, '\n'))
     gpu_out = readlines(`$(Base.julia_cmd())
                          $(joinpath(@__DIR__, "..", "src", "gpu", "train.jl"))
+                         --nloops $nloops
                          $(joinpath(@__DIR__, "scratch", "gpu-$kind"))`)
+    write(joinpath(@__DIR__, "scratch", "gpu-$kind", "train.log"), join(gpu_out, '\n'))
 
     iHz = findlast(contains("Hz"), cpu_out)
     @test 0 < parse(Float64, match(r"([.0-9]+) Hz", cpu_out[iHz]).captures[1]) < 15
     iHz = findlast(contains("Hz"), gpu_out)
     @test 0 < parse(Float64, match(r"([.0-9]+) Hz", gpu_out[iHz]).captures[1]) < 15
 
-    cpu_P = load(joinpath(@__DIR__, "scratch", "cpu-$kind", "P-ckpt1.jld2"), "P")
-    gpu_P = load(joinpath(@__DIR__, "scratch", "gpu-$kind", "P-ckpt1.jld2"), "P")
+    cpu_P = load(joinpath(@__DIR__, "scratch", "cpu-$kind", "P-ckpt$nloops.jld2"), "P")
+    gpu_P = load(joinpath(@__DIR__, "scratch", "gpu-$kind", "P-ckpt$nloops.jld2"), "P")
     @test isapprox(kind=="SymmetricPacked" ? cat((x.tri for x in cpu_P)..., dims=2) :
                                              cat(cpu_P..., dims=3),
                    gpu_P)
 
-    cpu_wpWeightIn = load(joinpath(@__DIR__, "scratch", "cpu-$kind", "wpWeightIn-ckpt1.jld2"),
+    cpu_wpWeightIn = load(joinpath(@__DIR__, "scratch", "cpu-$kind", "wpWeightIn-ckpt$nloops.jld2"),
                           "wpWeightIn")
-    gpu_wpWeightIn = load(joinpath(@__DIR__, "scratch", "gpu-$kind", "wpWeightIn-ckpt1.jld2"),
+    gpu_wpWeightIn = load(joinpath(@__DIR__, "scratch", "gpu-$kind", "wpWeightIn-ckpt$nloops.jld2"),
                           "wpWeightIn")
     @test isapprox(cpu_wpWeightIn, gpu_wpWeightIn)
 end
@@ -57,23 +63,6 @@ mkpath(joinpath(@__DIR__, "scratch"))
                                    "wpWeightIn")
         @test isapprox(cpu_wpWeightIn_Array, cpu_wpWeightIn_kind)
     end
-end
-
-@testset "test" begin
-    run(pipeline(`$(Base.julia_cmd())
-                  $(joinpath(@__DIR__, "..", "src", "cpu", "test.jl"))
-                  $(joinpath(@__DIR__, "scratch", "cpu-Array"))`, stdout=devnull))
-
-    run(pipeline(`$(Base.julia_cmd()) -t 1
-                  $(joinpath(@__DIR__, "..", "src", "gpu", "test.jl"))
-                  $(joinpath(@__DIR__, "scratch", "gpu-Array"))`, stdout=devnull))
-
-    dcpu = load(joinpath(@__DIR__, "scratch", "cpu-Array", "test.jld2"))
-    dgpu = load(joinpath(@__DIR__, "scratch", "gpu-Array", "test.jld2"))
-    @test dcpu["nss"] == dgpu["nss"]
-    @test dcpu["ineurons_to_test"] == dgpu["ineurons_to_test"]
-    @test isapprox(dcpu["xtotals"], dgpu["xtotals"])
-    @test isapprox(dcpu["timess"], dgpu["timess"])
 end
 
 @testset "pree=$pree, sig=$sig" for pree in [0.1, 0.0], sig in [0.65, 0.0]
@@ -126,6 +115,7 @@ end
                                    $(joinpath(@__DIR__, "..", "src", "init.jl"))
                                    -s $(joinpath(@__DIR__, "scratch", "ricciardi", "spikerates.jld2"))
                                    $(joinpath(@__DIR__, "scratch", "ricciardi"))`))
+    write(joinpath(@__DIR__, "scratch", "ricciardi", "init.log"), join(init_out, '\n'))
     xtarg = load(joinpath(@__DIR__, "scratch", "ricciardi", "xtarg.jld2"))["xtarg"]
     dx = diff(xtarg, dims=1)
     @test all(dx[:,1].>0)
@@ -154,6 +144,7 @@ end
     init_out = readlines(pipeline(`$(Base.julia_cmd()) -t 2
                                    $(joinpath(@__DIR__, "..", "src", "init.jl"))
                                    $(joinpath(@__DIR__, "scratch", "Int16"))`))
+    write(joinpath(@__DIR__, "scratch", "Int16", "init.log"), join(init_out, '\n'))
     for iHz in findall(contains("Hz"), init_out)
       @test 0 < parse(Float64, match(r"([.0-9]+) Hz", init_out[iHz]).captures[1]) < 10
     end
@@ -161,6 +152,7 @@ end
     gpu_out = readlines(pipeline(`$(Base.julia_cmd())
                                   $(joinpath(@__DIR__, "..", "src", "gpu", "train.jl"))
                                   $(joinpath(@__DIR__, "scratch", "Int16"))`))
+    write(joinpath(@__DIR__, "scratch", "Int16", "train.log"), join(gpu_out, '\n'))
     iHz = findlast(contains("Hz"), gpu_out)
     @test 0 < parse(Float64, match(r"([.0-9]+) Hz", gpu_out[iHz]).captures[1]) < 10
 end
@@ -177,4 +169,28 @@ end
         end
     end
     compare_cpu_to_gpu("Lffwd")
+end
+
+@testset "multiple tasks" begin
+    mkdir(joinpath(@__DIR__, "scratch", "cpu-twotasks"))
+    cp(joinpath(@__DIR__, "param.jl"),
+       joinpath(@__DIR__, "scratch", "cpu-twotasks", "param.jl"));
+    compare_cpu_to_gpu("twotasks", ntasks=2, nloops=2)
+end
+
+@testset "test" begin
+    run(pipeline(`$(Base.julia_cmd())
+                  $(joinpath(@__DIR__, "..", "src", "cpu", "test.jl"))
+                  $(joinpath(@__DIR__, "scratch", "cpu-twotasks"))`, stdout=devnull))
+
+    run(pipeline(`$(Base.julia_cmd()) -t 1
+                  $(joinpath(@__DIR__, "..", "src", "gpu", "test.jl"))
+                  $(joinpath(@__DIR__, "scratch", "gpu-twotasks"))`, stdout=devnull))
+
+    dcpu = load(joinpath(@__DIR__, "scratch", "cpu-twotasks", "test.jld2"))
+    dgpu = load(joinpath(@__DIR__, "scratch", "gpu-twotasks", "test.jld2"))
+    @test dcpu["nss"] == dgpu["nss"]
+    @test dcpu["ineurons_to_test"] == dgpu["ineurons_to_test"]
+    @test isapprox(dcpu["xtotals"], dgpu["xtotals"])
+    @test isapprox(dcpu["timess"], dgpu["timess"])
 end

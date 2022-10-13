@@ -1,11 +1,20 @@
 using LinearAlgebra, Random, JLD2, Statistics, StatsBase, ArgParse, SymmetricFormats
 
+function ArgParse.parse_item(::Type{Vector{Int}}, x::AbstractString)
+    return eval(Meta.parse(x))
+end
+
 aps = ArgParseSettings()
 
 @add_arg_table! aps begin
     "data_dir"
         help = "full path to the directory containing the parameters file"
         required = true
+    "--itasks", "-t"
+        help = "a vector specifying which tasks to learn"
+        arg_type = Vector{Int}
+        default = [1]
+        range_tester = x->all(x.>0)
 end
 
 add_arg_group!(aps, "mutually exclusive arguments.  if neither is specified, sinusoids\nwill be generated for synpatic inputs", exclusive = true);
@@ -24,9 +33,9 @@ include(joinpath(@__DIR__,"struct.jl"))
 include(joinpath(parsed_args["data_dir"],"param.jl"))
 include(joinpath(@__DIR__,"cpu","variables.jl"))
 
-if Ncells == typemax(IntPrecision)
+if p.Ncells == typemax(IntPrecision)
   @warn "IntPrecision is too small for GPU (but fine for CPU)"
-elseif Ncells > typemax(IntPrecision)
+elseif p.Ncells > typemax(IntPrecision)
   @error "IntPrecision is too small"
 end
 
@@ -55,7 +64,8 @@ include("rate2synInput.jl")
 w0Index, w0Weights, nc0 = genStaticWeights(p.genStaticWeights_args)
 ffwdRate = genFfwdRate(p.genFfwdRate_args)
 
-uavg, ns0, ustd = loop_init(nothing, nothing, p.stim_off, p.train_time, dt,
+itask = 1
+uavg, ns0, ustd = loop_init(itask, nothing, nothing, p.stim_off, p.train_time, dt,
     p.Nsteps, p.Ncells, p.Ne, nothing, refrac, vre, invtauedecay,
     invtauidecay, nothing, mu, thresh, tau, nothing, nothing, ns, nothing,
     ns_ffwd, forwardInputsE, forwardInputsI, nothing, forwardInputsEPrev,
@@ -93,21 +103,34 @@ for preCell = 1:p.Ncells
     wpIndexOut[1:ncpOut[preCell],preCell] = wpIndexOutD[preCell]
 end
 
+Ntime = floor(Int, (p.train_time-p.stim_off)/p.learn_every)
 if parsed_args["xtarg_file"] !== nothing
-  xtarg_dict = load(parsed_args["xtarg_file"])
-  xtarg = xtarg_dict[first(keys(xtarg_dict))]
-  Ntime = floor(Int, (p.train_time-p.stim_off)/p.learn_every)
-  if size(xtarg,1) != Ntime
-     error(parsed_args["xtarg_file"],
-           " should have (train_time-stim_off)/learn_every = ",
-           Ntime, " rows")
-  end
+    xtarg_dict = load(parsed_args["xtarg_file"])
+    xtarg = xtarg_dict[first(keys(xtarg_dict))]
+    if size(xtarg,1) != Ntime
+        error(parsed_args["xtarg_file"],
+              " should have (train_time-stim_off)/learn_every = ",
+              Ntime, " rows")
+    end
+    ndims(xtarg)==2 && (xtarg = xtarg[:,:,[CartesianIndex()]])
+    if any(parsed_args["itasks"] .> size(xtarg,3))
+        error("an element of --itasks exceeds the size of the third dimension of ",
+              parsed_args["xtarg_file"])
+    end
+    xtarg = xtarg[:,:,parsed_args["itasks"]]
 elseif parsed_args["spikerate_file"] !== nothing
-  xtarg = rate2synInput(p, p.K==0 ? sig : (ustd / sqrt(p.tauedecay * 1.3))) # factor 1.3 was calibrated manually
+    xtarg = rate2synInput(p, p.K==0 ? sig : (ustd / sqrt(p.tauedecay * 1.3))) # factor 1.3 was calibrated manually
 else
-  xtarg = genTarget(p.genTarget_args, uavg)
+    xtarg = Array{Float64}(undef, Ntime, p.Ncells, length(parsed_args["itasks"]))
+    for itask = 1:length(parsed_args["itasks"])
+        xtarg[:,:,itask] = genTarget(p.genTarget_args, uavg)
+    end
 end
-stim = genStim(p.genStim_args)
+timeSteps = round(Int, (p.stim_off - p.stim_on) / dt)
+stim = Array{Float64}(undef, timeSteps, p.Ncells, length(parsed_args["itasks"]))
+for itask = 1:length(parsed_args["itasks"])
+    stim[:,:,itask] = genStim(p.genStim_args)
+end
 
 # --- set up correlation matrix --- #
 pLrec = p.Lexc + p.Linh;

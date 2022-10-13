@@ -36,13 +36,13 @@ if !(@isdefined nss)
         for iplot in ineurons_to_plot
             push!(itest, findfirst(iplot .== ineurons_to_test))
         end
-        nss = []
-        timess = []
-        xtotals = []
-        for i in eachindex(d["nss"])
-            push!(nss, d["nss"][i][itest])
-            push!(timess, d["timess"][i][itest,:])
-            push!(xtotals, d["xtotals"][i][:,itest])
+        nss = similar(d["nss"])
+        timess = similar(d["timess"])
+        xtotals = similar(d["xtotals"])
+        for ij in eachindex(d["nss"])
+            nss[ij] = d["nss"][ij][itest]
+            timess[ij] = d["timess"][ij][itest,:]
+            xtotals[ij] = d["xtotals"][ij][:,itest]
         end
     end
 
@@ -73,17 +73,20 @@ end
 using Gadfly, Compose, DataFrames, StatsBase, Statistics
 import Cairo, Fontconfig
 
-ntrials = length(nss)
+ntrials = size(nss,1)
+ntasks = size(nss,2)
 nneurons = length(nss[1])
 nrows = isqrt(nneurons)
 ncols = cld(nneurons, nrows)
 
+for itask = 1:ntasks
+
 ps = Union{Plot,Context}[]
 for ci=1:nneurons
     df = DataFrame((t = (1:size(xtarg,1)).*p.learn_every/1000,
-                    xtarg = xtarg[:,ineurons_to_plot[ci]],
-                    xtotal1 = xtotals[1][:,ci]))
-    xtotal_ci = hcat((x[:,ci] for x in xtotals)...)
+                    xtarg = xtarg[:,ineurons_to_plot[ci],itask],
+                    xtotal1 = xtotals[1,itask][:,ci]))
+    xtotal_ci = hcat((x[:,ci] for x in xtotals[:,itask])...)
     df[!,:xtotal_mean] = dropdims(mean(xtotal_ci, dims=2), dims=2)
     df[!,:xtotal_std] = dropdims(std(xtotal_ci, dims=2), dims=2)
     transform!(df, [:xtotal_mean, :xtotal_std] => ByRow((mu,sigma)->mu+sigma) => :xtotal_upper)
@@ -100,9 +103,9 @@ for ci=1:nneurons
 end
 append!(ps, fill(Compose.context(), nrows*ncols-nneurons))
 gridstack(permutedims(reshape(ps, ncols, nrows), (2,1))) |>
-        PDF(string(output_prefix, "-syninput.pdf"), 8cm*ncols, 6.5cm*nrows)
+        PDF(string(output_prefix, "-syninput-task$itask.pdf"), 8cm*ncols, 6.5cm*nrows)
 
-timess_cat = hcat(timess...)
+timess_cat = hcat(timess[:,itask]...)
 ps = Union{Plot,Context}[]
 for ci=1:nneurons
     psth = fit(Histogram, vec(timess_cat[ci,:]), p.stim_off : p.learn_every : p.train_time)
@@ -127,4 +130,6 @@ for ci=1:nneurons
 end
 append!(ps, fill(Compose.context(), nrows*ncols-nneurons))
 gridstack(permutedims(reshape(ps, ncols, nrows), (2,1))) |>
-        PDF(string(output_prefix , "-psth.pdf"), 8cm*ncols, 6.5cm*nrows)
+        PDF(string(output_prefix , "-psth-task$itask.pdf"), 8cm*ncols, 6.5cm*nrows)
+
+end

@@ -96,6 +96,9 @@ rng = eval(p.rng_func["cpu"])
 isnothing(p.seed) || Random.seed!(rng, p.seed)
 save(joinpath(parsed_args["data_dir"],"rng-train.jld2"), "rng", rng)
 
+choose_task = eval(p.choose_task_func)
+ntasks = size(xtarg,3)
+
 # --- set up correlation matrix --- #
 Px = Vector{Array{Int64,1}}();
 for ci=1:p.Ncells
@@ -147,13 +150,14 @@ end
 #----------- train the network --------------#
 maxcor = -Inf
 for iloop = R.+(1:parsed_args["nloops"])
-    println("Loop no. ",iloop) 
+    itask = choose_task(iloop, ntasks)
+    println("Loop no. ", iloop, " task no. ", itask) 
 
     start_time = time()
 
     if mod(iloop, parsed_args["correlation_interval"]) != 0
 
-        loop_train(
+        loop_train(itask,
             p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
             p.Nsteps, p.Ncells, nothing, p.Lexc+p.Linh, p.refrac, vre,
             invtauedecay, invtauidecay, invtaudecay_plastic, mu, thresh,
@@ -167,7 +171,7 @@ for iloop = R.+(1:parsed_args["nloops"])
             wpIndexConvert, wpWeightFfwd, wpWeightIn, wpWeightOut, ncpIn,
             ncpOut, nothing, nothing, ffwdRate)
     else
-        _, _, _, _, xtotal, _, _, xplastic, _ = loop_train_test(
+        _, _, _, _, xtotal, _, _, xplastic, _ = loop_train_test(itask,
             p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
             p.Nsteps, p.Ncells, nothing, p.Lexc+p.Linh, p.refrac,
             vre, invtauedecay, invtauidecay, invtaudecay_plastic,
@@ -188,17 +192,18 @@ for iloop = R.+(1:parsed_args["nloops"])
         else
             error("invalid value for correlation_var parameter")
         end
-        pcor = zeros(p.Ncells)
-        for (index, ci) in enumerate(1:p.Ncells)
-            xtarg_slice = @view xtarg[:,ci]
+        pcor = Array{Float64}(undef, p.Ncells)
+        for ci in 1:p.Ncells
+            xtarg_slice = @view xtarg[:,ci, itask]
             xlearned_slice = @view xlearned[:,ci]
-            pcor[index] = cor(xtarg_slice,xlearned_slice)
+            pcor[ci] = cor(xtarg_slice,xlearned_slice)
         end
 
         bnotnan = .!isnan.(pcor)
         thiscor = mean(pcor[bnotnan])
         println("correlation: ", thiscor,
                 all(bnotnan) ? "" : string(" (", length(pcor)-count(bnotnan)," are NaN)"))
+
         if parsed_args["save_best_checkpoint"] && thiscor>maxcor && all(bnotnan)
             suffix = string("ckpt", iloop, "-cor", round(thiscor, digits=3))
             save(joinpath(parsed_args["data_dir"], "wpWeightIn-$suffix.jld2"),

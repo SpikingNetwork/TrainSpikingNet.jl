@@ -30,6 +30,8 @@ train_time     = stim_off + train_duration
 
 Nsteps = round(Int, train_time/dt)
 
+choose_task_func = :((iloop, ntasks) -> iloop % ntasks + 1)   # or rand(1:ntasks)
+
 genStim_file = "genStim-random.jl"
 genStim_args = Dict(:stim_on => stim_on, :stim_off => stim_off, :dt => dt, :Ncells => Ncells,
                     :mu => 0.0, :b => 1/20, :sig => 0.2)
@@ -111,4 +113,5 @@ maxrate = 500 #(Hz) maximum average firing rate.  if the average firing rate acr
 
 p = paramType(PPrecision,PScale,FloatPrecision,IntPrecision,PType,seed,rng_func,example_neurons,wid,train_duration,penlambda,penlamFF,penmu,frac,learn_every,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,taue,taui,K,L,Lffwd,Lexc,Linh,wpscale,
 je,ji,jx,mu,vre,threshe,threshi,refrac,tauedecay,tauidecay,taudecay_plastic,noise_model,sig,correlation_var,maxrate,
-genStim_file, genStim_args, genTarget_file, genTarget_args, genFfwdRate_file, genFfwdRate_args, genStaticWeights_file, genStaticWeights_args, genPlasticWeights_file, genPlasticWeights_args)
+genStim_file, genStim_args, genTarget_file, genTarget_args, genFfwdRate_file, genFfwdRate_args, genStaticWeights_file, genStaticWeights_args, genPlasticWeights_file, genPlasticWeights_args,
+choose_task_func)

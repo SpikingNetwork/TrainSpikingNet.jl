@@ -84,9 +84,11 @@ isnothing(p.seed) || Random.seed!(rng, p.seed)
 save(joinpath(parsed_args["data_dir"],"rng-test.jld2"), "rng", rng)
 
 #----------- test the network --------------#
-nss = Vector{Any}(undef, parsed_args["ntrials"]);
-timess = Vector{Any}(undef, parsed_args["ntrials"]);
-xtotals = Vector{Any}(undef, parsed_args["ntrials"]);
+ntrials = parsed_args["ntrials"]
+ntasks = size(stim,3)
+nss = Array{Any}(undef, ntrials, ntasks);
+timess = Array{Any}(undef, ntrials, ntasks);
+xtotals = Array{Any}(undef, ntrials, ntasks);
 copy_rng = [typeof(rng)() for _=1:ndevices()];
 isnothing(p.seed) || Random.seed!.(copy_rng, p.seed)
 for var in [:times, :ns, :times_ffwd, :ns_ffwd, :stim, :nc0, :thresh, :tau,
@@ -103,63 +105,65 @@ if typeof(p.taudecay_plastic)<:AbstractArray
   copy_invtaudecay_plastic = [(device!(idevice-1); CuArray(tmp)) for idevice=1:ndevices()];
 end
 synchronize()
-Threads.@threads for itrial=1:parsed_args["ntrials"]
+Threads.@threads for itrial=1:ntrials
     idevice = Threads.threadid()
     device!(idevice-1)
-    t = @elapsed thisns, thistimes, _, _, thisxtotal, _ = loop_test(
-          p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
-          p.Nsteps, p.Ncells, p.L, nothing, nothing, p.refrac, vre, invtauedecay,
-          invtauidecay,
-          typeof(p.taudecay_plastic)<:Number ? invtaudecay_plastic : copy_invtaudecay_plastic[idevice],
-          copy_mu[idevice],
-          copy_thresh[idevice],
-          copy_tau[idevice],
-          maxTimes,
-          copy_times[idevice],
-          copy_ns[idevice],
-          copy_times_ffwd[idevice],
-          copy_ns_ffwd[idevice],
-          copy_forwardInputsE[idevice],
-          copy_forwardInputsI[idevice],
-          copy_forwardInputsP[idevice],
-          copy_forwardInputsEPrev[idevice],
-          copy_forwardInputsIPrev[idevice],
-          copy_forwardInputsPPrev[idevice],
-          nothing, nothing,
-          copy_xedecay[idevice],
-          copy_xidecay[idevice],
-          copy_xpdecay[idevice],
-          copy_synInputBalanced[idevice],
-          copy_synInput[idevice],
-          nothing, nothing,
-          copy_bias[idevice],
-          p.wid, p.example_neurons,
-          copy_lastSpike[idevice],
-          copy_bnotrefrac[idevice],
-          copy_bspike[idevice],
-          plusone,
-          nothing, nothing, nothing, nothing, nothing, nothing, nothing,
-          copy_v[idevice],
-          copy_rng[idevice],
-          copy_noise[idevice],
-          nothing,
-          copy_sig[idevice],
-          nothing, nothing,
-          copy_w0Index[idevice],
-          copy_w0Weights[idevice],
-          copy_nc0[idevice],
-          copy_stim[idevice],
-          nothing,
-          copy_wpWeightFfwd[idevice],
-          nothing,
-          copy_wpIndexOut[idevice],
-          nothing, nothing,
-          copy_wpWeightOut[idevice],
-          nothing, nothing, nothing);
-    nss[itrial] = Array(thisns[parsed_args["ineurons_to_test"]])
-    timess[itrial] = Array(thistimes[parsed_args["ineurons_to_test"],:])
-    xtotals[itrial] = Array(thisxtotal[:,parsed_args["ineurons_to_test"]])
-    println("trial #", itrial, ", ", round(t, sigdigits=3), " sec")
+    for itask = 1:ntasks
+        t = @elapsed thisns, thistimes, _, _, thisxtotal, _ = loop_test(itask,
+              p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
+              p.Nsteps, p.Ncells, p.L, nothing, nothing, p.refrac, vre, invtauedecay,
+              invtauidecay,
+              typeof(p.taudecay_plastic)<:Number ? invtaudecay_plastic : copy_invtaudecay_plastic[idevice],
+              copy_mu[idevice],
+              copy_thresh[idevice],
+              copy_tau[idevice],
+              maxTimes,
+              copy_times[idevice],
+              copy_ns[idevice],
+              copy_times_ffwd[idevice],
+              copy_ns_ffwd[idevice],
+              copy_forwardInputsE[idevice],
+              copy_forwardInputsI[idevice],
+              copy_forwardInputsP[idevice],
+              copy_forwardInputsEPrev[idevice],
+              copy_forwardInputsIPrev[idevice],
+              copy_forwardInputsPPrev[idevice],
+              nothing, nothing,
+              copy_xedecay[idevice],
+              copy_xidecay[idevice],
+              copy_xpdecay[idevice],
+              copy_synInputBalanced[idevice],
+              copy_synInput[idevice],
+              nothing, nothing,
+              copy_bias[idevice],
+              p.wid, p.example_neurons,
+              copy_lastSpike[idevice],
+              copy_bnotrefrac[idevice],
+              copy_bspike[idevice],
+              plusone,
+              nothing, nothing, nothing, nothing, nothing, nothing, nothing,
+              copy_v[idevice],
+              copy_rng[idevice],
+              copy_noise[idevice],
+              nothing,
+              copy_sig[idevice],
+              nothing, nothing,
+              copy_w0Index[idevice],
+              copy_w0Weights[idevice],
+              copy_nc0[idevice],
+              copy_stim[idevice],
+              nothing,
+              copy_wpWeightFfwd[idevice],
+              nothing,
+              copy_wpIndexOut[idevice],
+              nothing, nothing,
+              copy_wpWeightOut[idevice],
+              nothing, nothing, nothing);
+        nss[itrial, itask] = Array(thisns[parsed_args["ineurons_to_test"]])
+        timess[itrial, itask] = Array(thistimes[parsed_args["ineurons_to_test"],:])
+        xtotals[itrial, itask] = Array(thisxtotal[:,parsed_args["ineurons_to_test"]])
+        println("trial #", itrial, ", task #", itask, ": ",round(t, sigdigits=3), " sec")
+    end
 end
 
 save(joinpath(parsed_args["data_dir"], "test.jld2"),

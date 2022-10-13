@@ -233,12 +233,13 @@ browser.
 # Intel Math Kernel Library #
 
 The CPU code can be sped up by about 10% on Intel machines using the
-drop-in MKL package to replace the default OpenBLAS.  To install it,
-change into the TrainSpikingNet.jl directory and execute `julia -e 'using Pkg;
-Pkg.add("MKL")'`.  Then edit "src/cpu/train.jl" and add the line "using MKL"
-just below the line starting with "using LinearAlgebra...".  Alternatively,
-MKL can be automatically used for your other Julia code as well by adding
-"using MKL" to "~/.julia/config/startup.jl" instead.
+drop-in MKL package to replace the default OpenBLAS.  To install it, change
+into the TrainSpikingNet.jl directory and execute `julia -e 'using Pkg;
+Pkg.add("MKL")'`.  Then edit "src/init.jl" and "src/cpu/{train,test}.jl"
+and add the line "using MKL" just above the line starting with "using
+LinearAlgebra...".  Alternatively, MKL can be automatically used for your
+other Julia code as well by adding "using MKL" to "~/.julia/config/startup.jl"
+instead.
 
 
 # Plugins #

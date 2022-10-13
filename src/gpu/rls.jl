@@ -1,4 +1,4 @@
-function rls(raug, k, den, e, delta, L, Ncells, Lei, r, s, Px, P, synInputBalanced, xtarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightFfwd, wpWeightIn, wpWeightOut, plusone, minusone, exactlyzero)
+function rls(itask, raug, k, den, e, delta, L, Ncells, Lei, r, s, Px, P, synInputBalanced, xtarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightFfwd, wpWeightIn, wpWeightOut, plusone, minusone, exactlyzero)
     raug[1:Lei,:] = @view r[Px]
     raug[Lei+1:end,:] .= s
 
@@ -22,7 +22,7 @@ function rls(raug, k, den, e, delta, L, Ncells, Lei, r, s, Px, P, synInputBalanc
     end
 
     batched_dot!(e, wpWeightIn, raug[1:Lei,:])
-    e .+= synInputBalanced .- @view xtarg[learn_seq,:]
+    e .+= synInputBalanced .- @view xtarg[learn_seq,:,itask]
     @static p.Lffwd>0 && (e .+= wpWeightFfwd*s)
     delta .= e' .* k .* den'
     wpWeightIn .-= @view delta[1:Lei,:]

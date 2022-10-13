@@ -49,7 +49,7 @@ function update_forwardInputs(bspike,
            threads=(xthreads,ythreads), blocks=(xblocks<<2,yblocks<<2))
 end
 
-@eval function $(Symbol("loop_",kind))(learn_every, stim_on, stim_off,
+@eval function $(Symbol("loop_",kind))(itask, learn_every, stim_on, stim_off,
     train_time, dt, Nsteps, Ncells, L, Ne, Lei, refrac, vre, invtauedecay,
     invtauidecay, invtaudecay_plastic, mu, thresh, tau, maxTimes, times,
     ns, times_ffwd, ns_ffwd, forwardInputsE, forwardInputsI, forwardInputsP,
@@ -129,7 +129,7 @@ for ti=1:Nsteps
     synInputBalanced .= 0.0
 
     @static kind in [:train, :train_test] && if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
-        wpWeightIn, wpWeightOut = rls(raug, k, den, e, delta, L, Ncells, Lei, r, s, Px, P, synInputBalanced, xtarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightFfwd, wpWeightIn, wpWeightOut, plusone, minusone, exactlyzero)
+        wpWeightIn, wpWeightOut = rls(itask, raug, k, den, e, delta, L, Ncells, Lei, r, s, Px, P, synInputBalanced, xtarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightFfwd, wpWeightIn, wpWeightOut, plusone, minusone, exactlyzero)
         learn_seq += 1
     end
 
@@ -186,7 +186,7 @@ for ti=1:Nsteps
     end
 
     if t > stim_on && t < stim_off
-        bias .= mu .+ stim[ti-round(Int,stim_on/dt),:]
+        bias .= mu .+ stim[ti-round(Int,stim_on/dt),:,itask]
     else
         bias .= mu
     end

@@ -1,4 +1,4 @@
-@eval function $(Symbol("loop_",kind))(learn_every, stim_on, stim_off,
+@eval function $(Symbol("loop_",kind))(itask, learn_every, stim_on, stim_off,
     train_time, dt, Nsteps, Ncells, Ne, Lei, refrac, vre, invtauedecay,
     invtauidecay, invtaudecay_plastic, mu, thresh, tau, maxTimes, times,
     ns, times_ffwd, ns_ffwd, forwardInputsE, forwardInputsI, forwardInputsP,
@@ -118,7 +118,7 @@ for ti=1:Nsteps
     #                  - Fixed throughout the simulation. Used to compute forwardInputsP (see line 221)
 
     @static kind in [:train, :train_test] && if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
-        wpWeightIn, wpWeightOut = rls(raug, k, delta, Ncells, Lei, r, s, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightFfwd, wpWeightIn, wpWeightOut, plusone, exactlyzero)
+        wpWeightIn, wpWeightOut = rls(itask, raug, k, delta, Ncells, Lei, r, s, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightFfwd, wpWeightIn, wpWeightOut, plusone, exactlyzero)
         learn_seq += 1
     end
 
@@ -210,7 +210,7 @@ for ti=1:Nsteps
         #         : applied within the time interval [stim_on, stim_off]
         @static if kind in [:train, :test, :train_test]
             if t > stim_on && t < stim_off
-                bias[ci] = mu[ci] + stim[ti-round(Int,stim_on/dt),ci]
+                bias[ci] = mu[ci] + stim[ti-round(Int,stim_on/dt),ci,itask]
             else
                 bias[ci] = mu[ci]
             end

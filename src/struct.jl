@@ -55,4 +55,5 @@ struct paramType
     genStaticWeights_args::AbstractDict
     genPlasticWeights_file::AbstractString
     genPlasticWeights_args::AbstractDict
+    choose_task_func::Expr
 end

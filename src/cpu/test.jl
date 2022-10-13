@@ -87,9 +87,11 @@ wpIndexOut = Array{p.IntPrecision}(wpIndexOut);
 wpWeightOut = Array{p.FloatPrecision}(wpWeightOut);
 
 #----------- test the network --------------#
-nss = Vector{Any}(undef, parsed_args["ntrials"]);
-timess = Vector{Any}(undef, parsed_args["ntrials"]);
-xtotals = Vector{Any}(undef, parsed_args["ntrials"]);
+ntrials = parsed_args["ntrials"]
+ntasks = size(stim,3)
+nss = Array{Any}(undef, ntrials, ntasks);
+timess = Array{Any}(undef, ntrials, ntasks);
+xtotals = Array{Any}(undef, ntrials, ntasks);
 copy_rng = [typeof(rng)() for _=1:Threads.nthreads()];
 isnothing(p.seed) || Random.seed!.(copy_rng, p.seed)
 for var in [:times, :ns, :times_ffwd, :ns_ffwd,
@@ -99,42 +101,44 @@ for var in [:times, :ns, :times_ffwd, :ns_ffwd,
             :bias, :lastSpike, :v, :noise]
   @eval $(Symbol("copy_",var)) = [deepcopy($var) for _=1:Threads.nthreads()];
 end
-Threads.@threads for itrial=1:parsed_args["ntrials"]
-    t = @elapsed thisns, thistimes, _, _, thisxtotal, _ = loop_test(
-          p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
-          p.Nsteps, p.Ncells, nothing, nothing, p.refrac, vre, invtauedecay,
-          invtauidecay, invtaudecay_plastic, mu, thresh, tau, maxTimes,
-          copy_times[Threads.threadid()],
-          copy_ns[Threads.threadid()],
-          copy_times_ffwd[Threads.threadid()],
-          copy_ns_ffwd[Threads.threadid()],
-          copy_forwardInputsE[Threads.threadid()],
-          copy_forwardInputsI[Threads.threadid()],
-          copy_forwardInputsP[Threads.threadid()],
-          copy_forwardInputsEPrev[Threads.threadid()],
-          copy_forwardInputsIPrev[Threads.threadid()],
-          copy_forwardInputsPPrev[Threads.threadid()],
-          nothing, nothing,
-          copy_xedecay[Threads.threadid()],
-          copy_xidecay[Threads.threadid()],
-          copy_xpdecay[Threads.threadid()],
-          copy_synInputBalanced[Threads.threadid()],
-          copy_synInput[Threads.threadid()],
-          nothing, nothing,
-          copy_bias[Threads.threadid()],
-          p.wid, p.example_neurons,
-          copy_lastSpike[Threads.threadid()],
-          nothing, nothing, nothing, nothing, nothing,
-          copy_v[Threads.threadid()],
-          copy_rng[Threads.threadid()],
-          copy_noise[Threads.threadid()],
-          nothing, sig, nothing, nothing, w0Index, w0Weights, nc0, stim, nothing,
-          nothing, wpIndexOut, nothing, nothing, nothing, wpWeightOut, nothing,
-          ncpOut, nothing, nothing, nothing)
-    nss[itrial] = thisns[parsed_args["ineurons_to_test"]]
-    timess[itrial] = thistimes[parsed_args["ineurons_to_test"],:]
-    xtotals[itrial] = thisxtotal[:,parsed_args["ineurons_to_test"]]
-    println("trial #", itrial, ", ", round(t, sigdigits=3), " sec")
+Threads.@threads for itrial=1:ntrials
+    for itask = 1:ntasks
+        t = @elapsed thisns, thistimes, _, _, thisxtotal, _ = loop_test(itask,
+              p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
+              p.Nsteps, p.Ncells, nothing, nothing, p.refrac, vre, invtauedecay,
+              invtauidecay, invtaudecay_plastic, mu, thresh, tau, maxTimes,
+              copy_times[Threads.threadid()],
+              copy_ns[Threads.threadid()],
+              copy_times_ffwd[Threads.threadid()],
+              copy_ns_ffwd[Threads.threadid()],
+              copy_forwardInputsE[Threads.threadid()],
+              copy_forwardInputsI[Threads.threadid()],
+              copy_forwardInputsP[Threads.threadid()],
+              copy_forwardInputsEPrev[Threads.threadid()],
+              copy_forwardInputsIPrev[Threads.threadid()],
+              copy_forwardInputsPPrev[Threads.threadid()],
+              nothing, nothing,
+              copy_xedecay[Threads.threadid()],
+              copy_xidecay[Threads.threadid()],
+              copy_xpdecay[Threads.threadid()],
+              copy_synInputBalanced[Threads.threadid()],
+              copy_synInput[Threads.threadid()],
+              nothing, nothing,
+              copy_bias[Threads.threadid()],
+              p.wid, p.example_neurons,
+              copy_lastSpike[Threads.threadid()],
+              nothing, nothing, nothing, nothing, nothing,
+              copy_v[Threads.threadid()],
+              copy_rng[Threads.threadid()],
+              copy_noise[Threads.threadid()],
+              nothing, sig, nothing, nothing, w0Index, w0Weights, nc0, stim, nothing,
+              nothing, wpIndexOut, nothing, nothing, nothing, wpWeightOut, nothing,
+              ncpOut, nothing, nothing, nothing)
+        nss[itrial, itask] = thisns[parsed_args["ineurons_to_test"]]
+        timess[itrial, itask] = thistimes[parsed_args["ineurons_to_test"],:]
+        xtotals[itrial, itask] = thisxtotal[:,parsed_args["ineurons_to_test"]]
+        println("trial #", itrial, ", task #", itask, ": ",round(t, sigdigits=3), " sec")
+    end
 end
 
 save(joinpath(parsed_args["data_dir"],"test.jld2"),

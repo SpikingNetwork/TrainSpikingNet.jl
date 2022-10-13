@@ -4,11 +4,17 @@ function rate2synInput(p, sigma)
     targetRate_dict = load(parsed_args["spikerate_file"])
     targetRate = targetRate_dict[first(keys(targetRate_dict))]
     Ntime = floor(Int, (p.train_time-p.stim_off)/p.learn_every)
-    if size(targetRate,1)!=Ntime
+    if size(targetRate,1) != Ntime
         error(parsed_args["spikerate_file"],
               " should have (train_time-stim_off)/learn_every = ",
               Ntime, " rows")
     end
+    ndims(targetRate)==2 && (targetRate = targetRate[:,:,[CartesianIndex()]])
+    if any(parsed_args["itasks"] .> size(targetRate,3))
+        error("an element of --itask exceeds the size of the third dimension of ",
+              parsed_args["xtarg_file"])
+    end
+    targetRate = targetRate[:,:,parsed_args["itasks"]]
     replace!(targetRate, 0.0=>0.1)
     xtarg = similar(targetRate)
 
@@ -18,9 +24,11 @@ function rate2synInput(p, sigma)
     VT = p.threshe
     Vr = p.vre
 
-    Threads.@threads for nid in 1:size(targetRate, 2)
+    Threads.@threads for ict in CartesianIndices(targetRate[1,:,:])
+        icell, itask = ict[1], ict[2]
+        
         #---------- Solve Ricciardi ----------#
-        xtarg[:,nid] .= solveRicci(targetRate[:,nid], initial_mu, sigma, invtau, VT, Vr)
+        xtarg[:,icell,itask] .= solveRicci(targetRate[:,icell,itask], initial_mu, sigma, invtau, VT, Vr)
     end
 
     return xtarg
