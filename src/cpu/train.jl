@@ -1,3 +1,5 @@
+using Pkg;  Pkg.activate(dirname(dirname(@__DIR__)))
+
 using LinearAlgebra, LinearAlgebra.BLAS, Random, JLD2, Statistics, ArgParse, SymmetricFormats
 
 aps = ArgParseSettings()

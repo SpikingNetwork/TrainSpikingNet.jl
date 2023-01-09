@@ -1,3 +1,5 @@
+using Pkg;  Pkg.activate(dirname(dirname(@__DIR__)))
+
 using LinearAlgebra, Random, JLD2, CUDA, NNlib, NNlibCUDA, ArgParse
 
 import ArgParse: parse_item

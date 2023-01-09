@@ -1,3 +1,5 @@
+using Pkg;  Pkg.activate(dirname(@__DIR__))
+
 using ArgParse, JLD2, Random, LinearAlgebra
 
 import ArgParse: parse_item

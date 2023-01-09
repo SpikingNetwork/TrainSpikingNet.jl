@@ -1,3 +1,5 @@
+using Pkg;  Pkg.activate(dirname(dirname(@__DIR__)))
+
 using LinearAlgebra, Random, JLD2, Statistics, CUDA, NNlib, NNlibCUDA, ArgParse, SymmetricFormats, BatchedBLAS
 
 s = ArgParseSettings()

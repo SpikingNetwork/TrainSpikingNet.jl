@@ -16,38 +16,49 @@ Install Julia with [juliaup](https://github.com/JuliaLang/juliaup)
 or by manually downloading the latest version from
 [julialang.org](https://julialang.org/).
 
-Download the TrainSpikingNet.jl repository with either the ZIP link on
-github.com or by using git-clone:
+If downloaded manually, modify the PATH environment variable to include
+the path to the Julia executable.  Like this on Linux:
+
+```
+$ echo "export PATH=$PWD/julia-1.8.3/bin:$PATH" >> ~/.bashrc
+```
+
+Download the TrainSpikingNet.jl repository with either the [ZIP
+link](https://github.com/SpikingNetwork/TrainSpikingNet.jl/archive/refs/heads/master.zip)
+on github.com or by using git-clone:
 
 ```
 $ git clone --depth 1 https://github.com/SpikingNetwork/TrainSpikingNet.jl.git
-Cloning into 'TrainSpikingNet.jl'...
-remote: Enumerating objects: 44, done.
-remote: Counting objects: 100% (44/44), done.
-remote: Compressing objects: 100% (43/43), done.
-remote: Total 44 (delta 5), reused 17 (delta 1), pack-reused 0
-Unpacking objects: 100% (44/44), done.
 ```
 
-Modify the unix PATH environment variable to include the path to the Julia
-executable as well as this respository:
+For convenience, add a new environment variable which contains the full
+path to the just downloaded TrainSpikingNet directory.  Like this on Linux:
 
 ```
-$ echo "export PATH=$PATH:~/bin/julia-1.8.1/bin:~/bin/TrainSpikingNet.jl" >> ~/.bashrc
+$ echo "export TSN_DIR=$PWD/TrainSpikingNet" >> ~/.bashrc
 ```
 
-Download all of the required packages:
+Install all of the required packages:
 
 ```
-$ tsn.sh install
-  Activating project at `~/TrainSpikingNet.jl`
-  Activating project at `~/TrainSpikingNet.jl/test`
+cd $TSN_DIR
+julia --project=@.
+      -e 'using Pkg;
+          Pkg.activate(".");
+          Pkg.instantiate();
+          Pkg.activate("test");
+          Pkg.instantiate()'
 ```
+
+[Note that on Windows the double-quotes above need to be escaped by preceeding
+them with a backslash.]
 
 Finally, (and optionally) test that everything works:
 
 ```
-$ tsn.sh unittest
+cd $TSN_DIR/test
+julia --project=@. runtests.jl
+
 Test Summary: | Pass  Total
 Array         |    6      6
 Test Summary: | Pass  Total
@@ -111,7 +122,7 @@ Phys. Rev. E).  In all cases, the synaptic targets are stored in "xtarg.jld2",
 which can be subsquently referenced using `-x`.
 
 ```
-$ tsn.sh init -t auto ~/data
+$ julia $TSN_DIR/src/init.jl -t auto ~/data
 mean excitatory firing rate: 3.427978515625 Hz
 mean inhibitory firing rate: 6.153564453125 Hz
 
@@ -128,7 +139,7 @@ Use the `-t` flag to thread the CPU version of train.jl; it has no effect
 on the GPU:
 
 ```
-$ tsn.sh train gpu -n100 ~/data
+$ julia $TSN_DIR/src/gpu/train.jl -n100 ~/data
 Loop no. 1
 correlation: -0.023547219725048148
 elapsed time: 41.81254005432129 sec
@@ -167,7 +178,7 @@ Finally, plot the trainined activities.  The underlying data is stored in
 "test.jld2":
 
 ```
-$ tsn.sh test gpu -n50 ~/data
+$ julia $TSN_DIR/src/gpu/test.jl -n50 ~/data
 trial #1, 53.0 sec
 trial #2, 9.34 sec
 trial #3, 9.24 sec
@@ -190,7 +201,7 @@ Additional options for all of these scripts can be displayed with `-h` or
 `--help`:
 
 ```
-$ tsn.sh train gpu -h
+$ julia $TSN_DIR/src/gpu/train.jl -h
 usage: train.jl [-n NLOOPS] [-c CORRELATION_INTERVAL] [-s]
                 [-r RESTORE_FROM_CHECKPOINT]
                 [-m MONITOR_RESOURCES_USED] [-h] data_dir
@@ -251,7 +262,7 @@ the functions therein.  For example, the `genStaticWeights_file`
 and `genStaticWeights_args` variables are a string and a dictionary,
 respectively.  The former specifies the path to a .jl file containing
 a function called `genStaticWeights()` to which the latter is passed
-when `./tsn.sh init ...` is executed.  `genStaticWeights()` defines and
+when `init.jl ...` is executed.  `genStaticWeights()` defines and
 returns `w0Index`, `w0Weights`, and `nc0` which together specify the static
 connections between neurons based on the parameters `pree`, `prie`, `prei`,
 `prii`, `jee`, `jie`, `jei`, and `jii`.  Should the default code, contained

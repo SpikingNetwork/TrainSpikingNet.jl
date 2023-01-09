@@ -1,3 +1,5 @@
+using Pkg;  Pkg.activate(dirname(@__DIR__))
+
 using LinearAlgebra, Random, JLD2, Statistics, StatsBase, ArgParse, SymmetricFormats
 
 function ArgParse.parse_item(::Type{Vector{Int}}, x::AbstractString)
