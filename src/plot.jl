@@ -16,6 +16,8 @@ if !(@isdefined nss)
         "--ineurons_to_plot", "-i"
             help = "which neurons to plot.  must be the same or a subset of ineurons_to_test used in test.jl"
             arg_type = Vector{Int}
+            default = collect(1:16)
+            range_tester = x->all(x.>0)
         "test_file"
             help = "full path to the JLD file output by test.jl.  this same directory needs to contain the parameters in param.jld2, the synaptic targets in xtarg.jld2, and (optionally) the spike rate in rate.jld2"
             required = true
