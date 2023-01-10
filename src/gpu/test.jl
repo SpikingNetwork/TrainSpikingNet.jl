@@ -161,7 +161,7 @@ Threads.@threads for itrial=1:ntrials
               copy_wpIndexOut[idevice],
               nothing, nothing,
               copy_wpWeightOut[idevice],
-              nothing, nothing, nothing);
+              nothing);
         nss[itrial, itask] = Array(thisns[parsed_args["ineurons_to_test"]])
         timess[itrial, itask] = Array(thistimes[parsed_args["ineurons_to_test"],:])
         xtotals[itrial, itask] = Array(thisxtotal[:,parsed_args["ineurons_to_test"]])

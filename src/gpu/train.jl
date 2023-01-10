@@ -161,7 +161,7 @@ for iloop = R.+(1:parsed_args["nloops"])
             bnotrefrac, bspike, plusone, minusone, PScale, raug, k, den, e, delta, v,
             rng, noise, rndFfwd, sig, P, Px, w0Index, w0Weights, nc0, stim, xtarg,
             wpWeightFfwd, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
-            nothing, nothing, ffwdRate)
+            ffwdRate)
     else
         _, _, _, _, xtotal, _, _, xplastic, _ = loop_train_test(itask,
             p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
@@ -174,7 +174,7 @@ for iloop = R.+(1:parsed_args["nloops"])
             lastSpike, bnotrefrac, bspike, plusone, minusone, PScale, raug, k, den, e,
             delta, v, rng, noise, rndFfwd, sig, P, Px, w0Index, w0Weights, nc0,
             stim, xtarg, wpWeightFfwd, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn,
-            wpWeightOut, nothing, nothing, ffwdRate)
+            wpWeightOut, ffwdRate)
 
         if p.correlation_var == :xtotal
             xlearned = xtotal

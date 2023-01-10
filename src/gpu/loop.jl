@@ -58,7 +58,7 @@ end
     r, s, bias, wid, example_neurons, lastSpike, bnotrefrac, bspike, plusone,
     minusone, PScale, raug, k, den, e, delta, v, rng, noise, rndFfwd, sig,
     P, Px, w0Index, w0Weights, nc0, stim, xtarg, wpWeightFfwd, wpIndexIn,
-    wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, uavg, utmp, ffwdRate)
+    wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, ffwdRate)
 
 @static kind in [:train, :train_test] && p.Lffwd>0 && (ffwdRate /= round(Int, 1000/dt))
 
