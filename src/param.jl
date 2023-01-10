@@ -53,7 +53,7 @@ taui = 10
 threshe = 1.0 # spike threshold
 threshi = 1.0   
 refrac = 0.1 # refractory period
-vre = 0.0
+vre = 0.0   # reset voltage
 
 genStaticWeights_file = "genStaticWeights-erdos-renyi.jl"
 genStaticWeights_args = Dict(:Ncells => Ncells, :Ne => Ne,
@@ -104,7 +104,7 @@ genPlasticWeights_args = Dict(:Ncells => Ncells, :frac => frac, :Ne => Ne, :L =>
                               :wpffwd => 0)
 
 noise_model=:current  # or :voltage
-sig = 0  # 0.65
+sig = 0  # std dev of the Gaussian noise
 
 correlation_var = K>0 ? :xtotal : :xplastic
 

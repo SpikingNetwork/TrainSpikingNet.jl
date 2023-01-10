@@ -2,6 +2,7 @@ using Pkg;  Pkg.activate(dirname(dirname(@__DIR__)))
 
 using LinearAlgebra, Random, JLD2, Statistics, CUDA, NNlib, NNlibCUDA, ArgParse, SymmetricFormats, BatchedBLAS
 
+# --- define command line arguments --- #
 s = ArgParseSettings()
 
 @add_arg_table! s begin
@@ -47,7 +48,7 @@ if parsed_args["correlation_interval"] <= parsed_args["nloops"]
     include("loop.jl")
 end
 
-#----------- load initialization --------------#
+# --- load initialization --- #
 w0Index = load(joinpath(parsed_args["data_dir"],"w0Index.jld2"), "w0Index");
 w0Weights = load(joinpath(parsed_args["data_dir"],"w0Weights.jld2"), "w0Weights");
 nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0");
@@ -84,7 +85,7 @@ save(joinpath(parsed_args["data_dir"],"rng-train.jld2"), "rng",rng)
 choose_task = eval(p.choose_task_func)
 ntasks = size(xtarg,3)
 
-#--- set up correlation matrix ---#
+#--- set up correlation matrix --- #
 Px = wpIndexIn'; # neurons presynaptic to ci
 
 # --- set up variables --- #
@@ -104,7 +105,7 @@ wpWeightIn = CuArray{p.FloatPrecision}(wpWeightIn);
 wpWeightOut = CuArray{p.FloatPrecision}(wpWeightOut);
 ffwdRate = CuArray{p.FloatPrecision}(ffwdRate);
 
-# --- monitor resources used ---#
+# --- monitor resources used --- #
 function monitor_resources(c::Channel)
   while true
     isopen(c) || break
@@ -132,7 +133,7 @@ if !isnothing(parsed_args["monitor_resources_used"])
   sleep(60)
 end
 
-#----------- train the network --------------#
+# --- train the network --- #
 function make_symmetric(A::Array)
     for i=1:size(A,1), j=i+1:size(A,2)
         A[j,i,:] = A[i,j,:]

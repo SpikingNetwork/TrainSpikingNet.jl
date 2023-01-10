@@ -2,6 +2,7 @@ using Pkg;  Pkg.activate(dirname(dirname(@__DIR__)))
 
 using LinearAlgebra, Random, JLD2, CUDA, NNlib, NNlibCUDA, ArgParse
 
+# --- define command line arguments --- #
 import ArgParse: parse_item
 
 function ArgParse.parse_item(::Type{Vector{Int}}, x::AbstractString)
@@ -51,7 +52,7 @@ include("rls.jl")
 kind=:test
 include("loop.jl")
 
-#----------- load initialization --------------#
+# --- load initialization --- #
 nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0")
 stim = load(joinpath(parsed_args["data_dir"],"stim.jld2"), "stim")
 w0Index = load(joinpath(parsed_args["data_dir"],"w0Index.jld2"), "w0Index")
@@ -85,7 +86,7 @@ rng = eval(p.rng_func["gpu"])
 isnothing(p.seed) || Random.seed!(rng, p.seed)
 save(joinpath(parsed_args["data_dir"],"rng-test.jld2"), "rng", rng)
 
-#----------- test the network --------------#
+# --- test the network --- #
 ntrials = parsed_args["ntrials"]
 ntasks = size(stim,3)
 nss = Array{Any}(undef, ntrials, ntasks);

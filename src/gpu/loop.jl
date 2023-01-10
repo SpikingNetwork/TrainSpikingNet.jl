@@ -121,13 +121,16 @@ forwardInputsPPrev .= 0.0
 end
 invtau = 1 ./ tau
 
+# start the actual training
 for ti=1:Nsteps
     t = dt*ti;
 
+    # reset spiking activities from the previous time step
     @static p.K>0 && (forwardInputsE .= forwardInputsI .= 0.0)
     forwardInputsP .= 0.0
     synInputBalanced .= 0.0
 
+    # modify the plastic weights when the stimulus is turned off 
     @static kind in [:train, :train_test] && if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
         wpWeightIn, wpWeightOut = rls(itask, raug, k, den, e, delta, L, Ncells, Lei, r, s, Px, P, synInputBalanced, xtarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightFfwd, wpWeightIn, wpWeightOut, plusone, minusone, exactlyzero)
         learn_seq += 1
@@ -135,6 +138,7 @@ for ti=1:Nsteps
 
     @static p.sig>0 && randn!(rng, noise)
 
+    # update network activities
     @static if p.K>0
         axpby!(invtauedecay, (@view forwardInputsEPrev[2:end]),
                plusone-dt*invtauedecay, xedecay)
@@ -177,6 +181,7 @@ for ti=1:Nsteps
         end
     end
 
+    # compute synapse-filtered spike trains
     @static if kind in [:train, :train_test]
         @static if typeof(p.taudecay_plastic)<:Number
             axpby!(invtaudecay_plastic, forwardSpikePrev, plusone-dt*invtaudecay_plastic, r)
@@ -185,6 +190,7 @@ for ti=1:Nsteps
         end
     end
 
+    # apply external inputs
     if t > stim_on && t < stim_off
         bias .= mu .+ stim[ti-round(Int,stim_on/dt),:,itask]
     else
@@ -193,9 +199,11 @@ for ti=1:Nsteps
 
     @static p.sig>0 && p.noise_model==:voltage && (v .+= sqrtdt .* sqrtinvtau .* sig .* noise)
 
+    # not in refractory period
     bnotrefrac .= t .> (lastSpike .+ refrac)
     v .+= bnotrefrac .* dt .* invtau .* (bias .- v .+ synInput)
 
+    # spike occurred
     bspike .= bnotrefrac .& (v .> thresh)
     @static kind in [:train, :train_test] && (forwardSpike .= bspike)
     ns .+= bspike
@@ -205,10 +213,12 @@ for ti=1:Nsteps
         times[ CartesianIndex.(1:Ncells, min.(maxTimes, bspike.*ns) .+ 1) ] .= t
     end
 
+    # accumulate the contribution of spikes to postsynaptic currents
     update_forwardInputs(bspike,
                          w0Index, w0Weights, forwardInputsE, forwardInputsI,
                          wpIndexOut, wpWeightOut, forwardInputsP)
 
+    # external input to trained excitatory neurons
     @static p.Lffwd>0 && if t > stim_off
         @static if kind in [:train, :train_test]
             @static if typeof(p.taudecay_plastic)<:Number
@@ -220,6 +230,7 @@ for ti=1:Nsteps
 
         tidx = ti - round(Int, stim_off/dt)
         rand!(rng, rndFfwd)
+        # feed-forward neuron spiked
         bspike_ffwd .= rndFfwd .< @view ffwdRate[tidx,:]
         @static kind in [:train, :train_test] && (ffwdSpike .= bspike_ffwd)
         ns_ffwd .+= bspike_ffwd
@@ -229,6 +240,7 @@ for ti=1:Nsteps
         forwardInputsP[2:end] .+= dropdims(sum(view(wpWeightFfwd,:,bspike_ffwd), dims=2), dims=2)
     end
 
+    # save spiking activities produced at the current time step
     @static if p.K>0
         forwardInputsEPrev .= forwardInputsE
         forwardInputsIPrev .= forwardInputsI

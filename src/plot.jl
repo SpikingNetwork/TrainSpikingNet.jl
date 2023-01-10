@@ -1,14 +1,15 @@
 using Pkg;  Pkg.activate(dirname(@__DIR__))
 
-using ArgParse, JLD2, Random, LinearAlgebra
-
-import ArgParse: parse_item
-
-function ArgParse.parse_item(::Type{Vector{Int}}, x::AbstractString)
-    return eval(Meta.parse(x))
-end
+using JLD2, Random, LinearAlgebra
 
 if !(@isdefined nss)
+    using ArgParse
+
+    # --- define command line arguments --- #
+    function ArgParse.parse_item(::Type{Vector{Int}}, x::AbstractString)
+        return eval(Meta.parse(x))
+    end
+
     s = ArgParseSettings()
 
     @add_arg_table! s begin

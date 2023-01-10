@@ -2,6 +2,7 @@ using Pkg;  Pkg.activate(dirname(dirname(@__DIR__)))
 
 using LinearAlgebra, LinearAlgebra.BLAS, Random, JLD2, ArgParse
 
+# --- define command line arguments --- #
 import ArgParse: parse_item
 
 function ArgParse.parse_item(::Type{Vector{Int}}, x::AbstractString)
@@ -51,7 +52,7 @@ include("rls.jl")
 kind=:test
 include("loop.jl")
 
-#----------- load initialization --------------#
+# --- load initialization --- #
 nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0")
 ncpIn = load(joinpath(parsed_args["data_dir"],"ncpIn.jld2"), "ncpIn")
 ncpOut = load(joinpath(parsed_args["data_dir"],"ncpOut.jld2"), "ncpOut")
@@ -88,7 +89,7 @@ w0Weights = Array{p.FloatPrecision}(w0Weights);
 wpIndexOut = Array{p.IntPrecision}(wpIndexOut);
 wpWeightOut = Array{p.FloatPrecision}(wpWeightOut);
 
-#----------- test the network --------------#
+# --- test the network --- #
 ntrials = parsed_args["ntrials"]
 ntasks = size(stim,3)
 nss = Array{Any}(undef, ntrials, ntasks);

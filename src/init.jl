@@ -2,6 +2,7 @@ using Pkg;  Pkg.activate(dirname(@__DIR__))
 
 using LinearAlgebra, Random, JLD2, Statistics, StatsBase, ArgParse, SymmetricFormats
 
+# --- define command line arguments --- #
 function ArgParse.parse_item(::Type{Vector{Int}}, x::AbstractString)
     return eval(Meta.parse(x))
 end
@@ -62,7 +63,7 @@ include(p.genStim_file)
 include(joinpath("cpu","loop.jl"))
 include("rate2synInput.jl")
 
-#----------- initialization --------------#
+# --- initialization --- #
 w0Index, w0Weights, nc0 = genStaticWeights(p.genStaticWeights_args)
 ffwdRate = genFfwdRate(p.genFfwdRate_args)
 

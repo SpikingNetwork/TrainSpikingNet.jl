@@ -2,6 +2,7 @@ using Pkg;  Pkg.activate(dirname(dirname(@__DIR__)))
 
 using LinearAlgebra, LinearAlgebra.BLAS, Random, JLD2, Statistics, ArgParse, SymmetricFormats
 
+# --- define command line arguments --- #
 aps = ArgParseSettings()
 
 @add_arg_table! aps begin
@@ -60,7 +61,7 @@ if parsed_args["correlation_interval"] <= parsed_args["nloops"]
     include("loop.jl")
 end
 
-#----------- load initialization --------------#
+# --- load initialization --- #
 w0Index = load(joinpath(parsed_args["data_dir"],"w0Index.jld2"), "w0Index");
 w0Weights = load(joinpath(parsed_args["data_dir"],"w0Weights.jld2"), "w0Weights");
 nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0");
@@ -127,7 +128,7 @@ wpWeightFfwd = Array{p.FloatPrecision}(wpWeightFfwd);
 wpWeightOut = Array{p.FloatPrecision}(wpWeightOut);
 ffwdRate = Array{p.FloatPrecision}(ffwdRate);
 
-# --- monitor resources used ---#
+# --- monitor resources used --- #
 function monitor_resources(c::Channel)
   while true
     isopen(c) || break
@@ -149,7 +150,7 @@ if !isnothing(parsed_args["monitor_resources_used"])
   sleep(60)
 end
 
-#----------- train the network --------------#
+# --- train the network --- #
 maxcor = -Inf
 for iloop = R.+(1:parsed_args["nloops"])
     itask = choose_task(iloop, ntasks)

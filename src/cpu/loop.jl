@@ -87,21 +87,20 @@ for ti=1:Nsteps
         @static p.Lffwd>0 && (ffwdSpike .= 0.0)
     end
 
-    # start training the plastic weights when the stimulus is turned off 
+    # modify the plastic weights when the stimulus is turned off 
     #   - training occurs within the time interval [stim_off, train_time]
     #   - we need two versions of the plastic connectivity: 
     #       * one for learning (wpWeightIn) and 
     #       * the other for simulating network activity (wpWeightOut)
     #       * wpWeightIn and wpWeightOut represent the same underlying plastic connectivity
-    #   - wpWeightIn is updated every learn_every (=10ms) by the recursive least squares algorithm
-    #   - convertWgtIn2Out() converts wpWeightIn to wpWeightOut at the end of rls
-    #   - wpWeightOut is used for simulating the network activity
+    #   - wpWeightIn is updated every learn_every milliseconds by the recursive least squares algorithm
+    #   - convertWgtIn2Out() converts wpWeightIn to wpWeightOut at the end of rls()
     #
-    # wpWeightIn: - plastic weights used for and modified by the rls training algorithm 
+    # wpWeightIn: - plastic weights used for and modified by the RLS training algorithm 
     #             - Kin x Ncell matrix where Kin = Lexc + Linh is the number of incoming plastic synapses to each neuron
     #             - ith col, wpWeightIn[:,i]:
     #                 - weights of the incoming connections to neuron i
-    #                 - each row of wpWeightIn will be updated independently by the rls algorithm. (see line 153)
+    #                 - each row of wpWeightIn will be updated independently by the RLS algorithm. (see line 153)
     # wpIndexIn:  - Ncell x Kin matrix where Kin = Lexc + Linh
     #             - ith row, wpIndexIn[i,:]:
     #                 - Indices of presynaptic neurons that connect to neuron i
@@ -195,7 +194,7 @@ for ti=1:Nsteps
             end
         end
 
-        # if training, compute synapse-filtered spike trains
+        # compute synapse-filtered spike trains
         @static if kind in [:train, :train_test]
             @static if typeof(p.taudecay_plastic)<:Number
                 r[ci] += (-dt*r[ci] + forwardSpikePrev[ci]) * invtaudecay_plastic
@@ -204,10 +203,10 @@ for ti=1:Nsteps
             end
         end
 
-        # external inputs
+        # apply external inputs
         #   - mu: default inputs to maintain the balanced state
         #   - stim: inputs that trigger the learned responses
-        #         : applied within the time interval [stim_on, stim_off]
+        #   - applied within the time interval [stim_on, stim_off]
         @static if kind in [:train, :test, :train_test]
             if t > stim_on && t < stim_off
                 bias[ci] = mu[ci] + stim[ti-round(Int,stim_on/dt),ci,itask]
@@ -221,7 +220,7 @@ for ti=1:Nsteps
             v[ci] += sqrtdt * sqrtinvtau[ci] * sig[ci] * noise[ci]
         end
 
-        # neuron ci not in refractory period
+        # not in refractory period
         if t > (lastSpike[ci] + refrac)  
             # update membrane potential
             v[ci] += dt * invtau[ci] * (bias[ci] - v[ci] + synInput[ci])
@@ -239,10 +238,10 @@ for ti=1:Nsteps
         end #end not in refractory period
     end #end loop over neurons
 
+    # accumulate the contribution of spikes to postsynaptic currents
     for ci = 1:Ncells
         if lastSpike[ci] == t
-            # Accumulate the contribution of spikes to postsynaptic currents
-            # Network connectivity is divided into two parts:
+            # network connectivity is divided into two parts:
             #   - balanced connections (static) 
             #   - plastic connections
 
@@ -269,14 +268,13 @@ for ti=1:Nsteps
         end
     end #end loop over neurons
 
-    # s : filtered spike trains of ffwd spikes
-    # ffwdRate : pre-defined spiking rate of external neurons
-    # ffwdSpike
-    # ffwdSpikePrev
+    # external input to trained excitatory neurons
+    #   - s : filtered spike trains of ffwd spikes
+    #   - ffwdRate : pre-defined spiking rate of external neurons
+    #   - ffwdSpike
+    #   - ffwdSpikePrev
     # (1) simulation: ffwd spikes are added to forwardInputsP
     # (2) training: ffwdSpikePrev computes the filtered ffwd spikes, s
-
-    # External input to trained excitatory neurons
     @static p.Lffwd>0 && if t > stim_off
         @static if kind in [:train, :train_test]
             for ci = 1:p.Lffwd
@@ -292,7 +290,7 @@ for ti=1:Nsteps
         tidx = ti - round(Int, stim_off/dt)
         rand!(rng, rndFfwd)
         for ci = 1:p.Lffwd
-            # if Poisson neuron spiked
+            # feed-forward neuron spiked
             if rndFfwd[ci] < ffwdRate[tidx,ci]
                 @static kind in [:train, :train_test] && (ffwdSpike[ci] = 1)
                 ns_ffwd[ci] += 1
