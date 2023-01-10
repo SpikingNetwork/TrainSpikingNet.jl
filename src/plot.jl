@@ -92,12 +92,12 @@ for ci=1:nneurons
                     xtarg = xtarg[:,ineurons_to_plot[ci],itask],
                     xtotal1 = xtotals[1,itask][:,ci]))
     xtotal_ci = hcat((x[:,ci] for x in xtotals[:,itask])...)
-    df[!,:xtotal_mean] = dropdims(mean(xtotal_ci, dims=2), dims=2)
-    df[!,:xtotal_std] = dropdims(std(xtotal_ci, dims=2), dims=2)
-    transform!(df, [:xtotal_mean, :xtotal_std] => ByRow((mu,sigma)->mu+sigma) => :xtotal_upper)
-    transform!(df, [:xtotal_mean, :xtotal_std] => ByRow((mu,sigma)->mu-sigma) => :xtotal_lower)
-    push!(ps, plot(df, x=:t, y=Col.value(:xtarg, :xtotal_mean, :xtotal1),
-                   color=Col.index(:xtarg, :xtotal_mean, :xtotal1),
+    df[!,:xtotal_ave] = dropdims(median(xtotal_ci, dims=2), dims=2)
+    df[!,:xtotal_disp] = dropdims(mapslices(mad, xtotal_ci, dims=2), dims=2)
+    transform!(df, [:xtotal_ave, :xtotal_disp] => ByRow((mu,sigma)->mu+sigma) => :xtotal_upper)
+    transform!(df, [:xtotal_ave, :xtotal_disp] => ByRow((mu,sigma)->mu-sigma) => :xtotal_lower)
+    push!(ps, plot(df, x=:t, y=Col.value(:xtarg, :xtotal_ave, :xtotal1),
+                   color=Col.index(:xtarg, :xtotal_ave, :xtotal1),
                    ymax=Col.value(:xtotal_upper), ymin=Col.value(:xtotal_lower),
                    Geom.line, Geom.ribbon,
                    Guide.colorkey(title="", labels=["data","model","model1"]),
