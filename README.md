@@ -1,6 +1,8 @@
 TrainSpikingNet.jl uses recursive least squares to train fluctation-driven
-spiking recurrent neural networks to recapitulate arbitrary activity patterns.
-See Arthur, Kim, Preibisch, and Darshan (2022, in prep) for further details.
+spiking recurrent neural networks to recapitulate arbitrary
+activity patterns.  See [Arthur, Kim, Chen, Preibisch, and Darshan
+(2022)](https://www.biorxiv.org/content/10.1101/2022.09.26.509578v1.full)
+for further details.
 
 
 # Requirements #
