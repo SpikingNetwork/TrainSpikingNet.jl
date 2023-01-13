@@ -1,4 +1,4 @@
-using Pkg;  Pkg.activate(dirname(@__DIR__))
+using Pkg;  Pkg.activate(dirname(@__DIR__), io=devnull)
 
 using JLD2, Random, LinearAlgebra
 
