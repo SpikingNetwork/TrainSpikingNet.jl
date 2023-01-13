@@ -128,7 +128,6 @@ end
         # reset spiking activities from the previous time step
         @static p.K>0 && (forwardInputsE .= forwardInputsI .= 0.0)
         forwardInputsP .= 0.0
-        synInputBalanced .= 0.0
 
         # modify the plastic weights when the stimulus is turned off 
         @static kind in [:train, :train_test] && if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
@@ -137,6 +136,7 @@ end
         end
 
         @static p.sig>0 && randn!(rng, noise)
+        synInputBalanced .= 0.0
 
         # update network activities
         @static if p.K>0

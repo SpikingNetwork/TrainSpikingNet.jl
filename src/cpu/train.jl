@@ -154,7 +154,7 @@ end
 maxcor = -Inf
 for iloop = R.+(1:parsed_args["nloops"])
     itask = choose_task(iloop, ntasks)
-    println("Loop no. ", iloop, " task no. ", itask) 
+    println("Loop no. ", iloop, ", task no. ", itask) 
 
     start_time = time()
 

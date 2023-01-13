@@ -111,10 +111,10 @@ end
     end
     psth = Float64[1:100 100:-1:1 vcat(1:50,50:-1:1) (25 .+ 25*sin.(range(0,2*pi,100)))]
     save(joinpath(@__DIR__, "scratch", "ricciardi", "spikerates.jld2"), "psth", psth)
-    init_out = readlines(pipeline(`$(Base.julia_cmd()) -t 2
-                                   $(joinpath(@__DIR__, "..", "src", "init.jl"))
-                                   -s $(joinpath(@__DIR__, "scratch", "ricciardi", "spikerates.jld2"))
-                                   $(joinpath(@__DIR__, "scratch", "ricciardi"))`))
+    init_out = readlines(`$(Base.julia_cmd()) -t 2
+                         $(joinpath(@__DIR__, "..", "src", "init.jl"))
+                         -s $(joinpath(@__DIR__, "scratch", "ricciardi", "spikerates.jld2"))
+                         $(joinpath(@__DIR__, "scratch", "ricciardi"))`)
     write(joinpath(@__DIR__, "scratch", "ricciardi", "init.log"), join(init_out, '\n'))
     xtarg = load(joinpath(@__DIR__, "scratch", "ricciardi", "xtarg.jld2"))["xtarg"]
     dx = diff(xtarg, dims=1)
@@ -141,17 +141,17 @@ end
         end
     end
 
-    init_out = readlines(pipeline(`$(Base.julia_cmd()) -t 2
-                                   $(joinpath(@__DIR__, "..", "src", "init.jl"))
-                                   $(joinpath(@__DIR__, "scratch", "Int16"))`))
+    init_out = readlines(`$(Base.julia_cmd()) -t 2
+                          $(joinpath(@__DIR__, "..", "src", "init.jl"))
+                          $(joinpath(@__DIR__, "scratch", "Int16"))`)
     write(joinpath(@__DIR__, "scratch", "Int16", "init.log"), join(init_out, '\n'))
     for iHz in findall(contains("Hz"), init_out)
       @test 0 < parse(Float64, match(r"([.0-9]+) Hz", init_out[iHz]).captures[1]) < 10
     end
 
-    gpu_out = readlines(pipeline(`$(Base.julia_cmd())
-                                  $(joinpath(@__DIR__, "..", "src", "gpu", "train.jl"))
-                                  $(joinpath(@__DIR__, "scratch", "Int16"))`))
+    gpu_out = readlines(`$(Base.julia_cmd())
+                         $(joinpath(@__DIR__, "..", "src", "gpu", "train.jl"))
+                         $(joinpath(@__DIR__, "scratch", "Int16"))`)
     write(joinpath(@__DIR__, "scratch", "Int16", "train.log"), join(gpu_out, '\n'))
     iHz = findlast(contains("Hz"), gpu_out)
     @test 0 < parse(Float64, match(r"([.0-9]+) Hz", gpu_out[iHz]).captures[1]) < 10
@@ -193,4 +193,39 @@ end
     @test dcpu["ineurons_to_test"] == dgpu["ineurons_to_test"]
     @test isapprox(dcpu["xtotals"], dgpu["xtotals"])
     @test isapprox(dcpu["timess"], dgpu["timess"])
+end
+
+@testset "learns" begin
+    mkdir(joinpath(@__DIR__,  "scratch", "cpu-learns"))
+    open(joinpath(@__DIR__,  "scratch", "cpu-learns", "param.jl"), "w") do fileout 
+        for line in readlines(joinpath(@__DIR__, "..", "src", "param.jl"))
+            if startswith(line, "seed=")
+                println(fileout, "seed=1")
+            else
+                println(fileout, line)
+            end
+        end
+    end
+
+    init_out = readlines(`$(Base.julia_cmd()) -t 2
+                          $(joinpath(@__DIR__, "..", "src", "init.jl"))
+                          $(joinpath(@__DIR__, "scratch", "cpu-learns"))`)
+    write(joinpath(@__DIR__, "scratch", "cpu-learns", "init.log"), join(init_out, '\n'))
+
+    cp(joinpath(@__DIR__, "scratch", "cpu-learns"), joinpath(@__DIR__, "scratch", "gpu-learns"))
+    cpu_out = readlines(`$(Base.julia_cmd()) -t 4
+                         $(joinpath(@__DIR__, "..", "src", "cpu", "train.jl"))
+                         --nloops 100 --correlation_interval 100
+                         $(joinpath(@__DIR__, "scratch", "cpu-learns"))`)
+    write(joinpath(@__DIR__, "scratch", "cpu-learns", "train.log"), join(cpu_out, '\n'))
+    gpu_out = readlines(`$(Base.julia_cmd())
+                         $(joinpath(@__DIR__, "..", "src", "gpu", "train.jl"))
+                         --nloops 100 --correlation_interval 100
+                         $(joinpath(@__DIR__, "scratch", "gpu-learns"))`)
+    write(joinpath(@__DIR__, "scratch", "gpu-learns", "train.log"), join(gpu_out, '\n'))
+
+    icor = findlast(contains("correlation"), cpu_out)
+    @test parse(Float64, match(r"correlation: ([.0-9]+)", cpu_out[icor]).captures[1]) > 0.6
+    icor = findlast(contains("correlation"), gpu_out)
+    @test parse(Float64, match(r"correlation: ([.0-9]+)", gpu_out[icor]).captures[1]) > 0.6
 end

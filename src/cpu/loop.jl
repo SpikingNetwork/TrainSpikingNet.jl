@@ -81,7 +81,6 @@
         # reset spiking activities from the previous time step
         @static p.K>0 && (forwardInputsE .= forwardInputsI .= 0.0)
         @static kind in [:train, :test, :train_test] && (forwardInputsP .= 0.0)
-        synInputBalanced .= 0.0
         @static if kind in [:train, :train_test]
             forwardSpike .= 0.0
             @static p.Lffwd>0 && (ffwdSpike .= 0.0)
@@ -132,6 +131,7 @@
         end
 
         @static p.sig>0 && randn!(rng, noise)
+        synInputBalanced .= 0.0
 
         # update network activities:
         #   - synaptic currents (xedecay, xidecay, xpdecay)
