@@ -1,6 +1,6 @@
-PPrecision = Float32  # can be <:Integer on GPUs
+PPrecision = Float64  # can be <:Integer on GPUs
 PScale = 1  # if PPrecision<:Integer then PScale should be e.g. 2^(nbits-2)
-FloatPrecision = Float32
+FloatPrecision = Float64
 IntPrecision = UInt16
 PType=Symmetric  # or SymmetricPacked for large models
 seed=1

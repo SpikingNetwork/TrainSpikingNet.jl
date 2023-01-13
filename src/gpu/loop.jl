@@ -197,7 +197,9 @@ end
             bias .= mu
         end
 
-        @static p.sig>0 && p.noise_model==:voltage && (v .+= sqrtdt .* sqrtinvtau .* sig .* noise)
+        @static if p.sig>0 && p.noise_model==:voltage
+            v .+= sqrtdt .* sqrtinvtau .* sig .* noise
+        end
 
         # not in refractory period
         bnotrefrac .= t .> (lastSpike .+ refrac)
