@@ -44,8 +44,10 @@ frac           = 1.0
 learn_every    = 10.0 # (ms)
 
 genTarget_file = "genTarget-sinusoids.jl"
-genTarget_args = Dict(:train_time => train_time, :stim_off => stim_off, :learn_every => learn_every, :Ncells => Ncells, :Nsteps => Nsteps, :dt => dt,
-                      :A => 0.5, :period => 1000.0, :biasType => "zero", :mu_ou_bias => 0.0, :b_ou_bias => 1/400, :sig_ou_bias => 0.02)
+genTarget_args = Dict(:train_time => train_time, :stim_off => stim_off, :learn_every => learn_every,
+                      :Ncells => Ncells, :Nsteps => Nsteps, :dt => dt,
+                      :A => 0.5, :period => 1000.0, :biasType => :zero,
+                      :mu_ou_bias => 0.0, :b_ou_bias => 1/400, :sig_ou_bias => 0.02)
 
 # neuron param      
 taue = 10 #membrane time constant for exc. neurons (ms)
@@ -76,8 +78,8 @@ Lexc = L # excitatory L
 Linh = L # inhibitory L
 
 genFfwdRate_file = "genFfwdRate-random.jl"
-genFfwdRate_args = Dict(:train_time => train_time, :stim_off => stim_off, :dt => dt, :Lffwd => Lffwd,
-                        :mu => 5, :bou => 1/400, :sig => 0.2, :wid => 500)
+genFfwdRate_args = Dict(:train_time => train_time, :stim_off => stim_off, :dt => dt,
+                        :Lffwd => Lffwd, :mu => 5, :bou => 1/400, :sig => 0.2, :wid => 500)
 
 #synaptic time constants (ms) 
 tauedecay = 3
@@ -96,7 +98,8 @@ mu[(Ne+1):Ncells] = (muimax-muimin)*rand(rng, Ni) .+ muimin
 wpscale = sqrt(L) * 2.0
 
 genPlasticWeights_file = "genPlasticWeights-erdos-renyi.jl"
-genPlasticWeights_args = Dict(:Ncells => Ncells, :frac => frac, :Ne => Ne, :L => L, :Lexc => Lexc, :Linh => Linh, :Lffwd => Lffwd,
+genPlasticWeights_args = Dict(:Ncells => Ncells, :frac => frac, :Ne => Ne,
+                              :L => L, :Lexc => Lexc, :Linh => Linh, :Lffwd => Lffwd,
                               :wpee => 2.0 * taue * g / wpscale,
                               :wpie => 2.0 * taue * g / wpscale,
                               :wpei => -2.0 * taue * g / wpscale,

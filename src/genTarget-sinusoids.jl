@@ -1,38 +1,37 @@
 # return a T x Ncells matrix representing the desired currents to be learned
 
 function genTarget(args, uavg)
-    train_time, stim_off, learn_every, Ncells, Nsteps, dt, A, period, biasType, mu_ou_bias, b_ou_bias, sig_ou_bias = map(x->args[x],
-         [:train_time, :stim_off, :learn_every, :Ncells, :Nsteps, :dt, :A, :period, :biasType, :mu_ou_bias, :b_ou_bias, :sig_ou_bias])
+    @unpack train_time, stim_off, learn_every, Ncells, Nsteps, dt, A, period, biasType, mu_ou_bias, b_ou_bias, sig_ou_bias = args
 
-    sampled_Nsteps = round(Int, (p.train_time - p.stim_off) / p.learn_every)
-    utargSampled = Array{Float64}(undef, sampled_Nsteps, p.Ncells)
+    sampled_Nsteps = round(Int, (train_time - stim_off) / learn_every)
+    utargSampled = Array{Float64}(undef, sampled_Nsteps, Ncells)
 
-    time = collect(1:p.Nsteps)*p.dt
-    bias = Array{Float64}(undef, p.Nsteps)
+    time = collect(1:Nsteps)*dt
+    bias = Array{Float64}(undef, Nsteps)
 
 
     #----- ZERO ----#
-    if biasType == "zero"
+    if biasType == :zero
         bias .= 0
     end
 
     #----- OU ----#
-    if biasType == "ou"
+    if biasType == :ou
         bias[1] = 0
-        for i = 1:p.Nsteps-1
-            bias[i+1] = bias[i] + b_ou_bias*(mu_ou_bias-bias[i])*p.dt + sig_ou_bias*sqrt(p.dt)*randn(rng)
+        for i = 1:Nsteps-1
+            bias[i+1] = bias[i] + b_ou_bias*(mu_ou_bias-bias[i])*dt + sig_ou_bias*sqrt(dt)*randn(rng)
         end
     end
 
     #----- RAMPING ----#
-    if biasType == "ramping"
-        Nstart = round(Int, p.stim_off/p.dt)
+    if biasType == :ramping
+        Nstart = round(Int, stim_off/dt)
         bias[1:Nstart-1] .= 0
-        bias[Nstart:p.Nsteps] = 0.25/(p.Nsteps-Nstart)*collect(0:p.Nsteps-Nstart)
-        bias[p.Nsteps+1:end] .= 0
+        bias[Nstart:Nsteps] = 0.25/(Nsteps-Nstart)*collect(0:Nsteps-Nstart)
+        bias[Nsteps+1:end] .= 0
     end
 
-    for j=1:p.Ncells
+    for j=1:Ncells
         phase = period*rand(rng)
         fluc = A*sin.((time.-phase).*(2*pi/period)) .+ uavg[j]
         utargSampled[:,j] = funSample(Nsteps, dt, stim_off, learn_every, fluc + bias)

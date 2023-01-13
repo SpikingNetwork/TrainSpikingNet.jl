@@ -1,6 +1,6 @@
 using Pkg;  Pkg.activate(dirname(@__DIR__))
 
-using LinearAlgebra, Random, JLD2, Statistics, StatsBase, ArgParse, SymmetricFormats
+using LinearAlgebra, Random, JLD2, Statistics, StatsBase, ArgParse, SymmetricFormats, UnPack
 
 # --- define command line arguments --- #
 function ArgParse.parse_item(::Type{Vector{Int}}, x::AbstractString)
@@ -80,7 +80,7 @@ uavg, ns0, ustd = loop_init(itask, nothing, nothing, p.stim_off, p.train_time, d
     utmp, ffwdRate)
 
 wpWeightFfwd, wpWeightIn, wpIndexIn, ncpIn =
-    genPlasticWeights(p.genPlasticWeights_args, w0Index, nc0, ns0)
+    genPlasticWeights(p.genPlasticWeights_args, ns0)
 
 # get indices of postsynaptic cells for each presynaptic cell
 wpIndexConvert = zeros(Int, p.Ncells, p.Lexc+p.Linh)

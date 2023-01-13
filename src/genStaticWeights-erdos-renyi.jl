@@ -5,8 +5,7 @@
 # specifies the number of postsynaptic neurons
 
 function genStaticWeights(args)
-    Ncells, Ne, pree, prie, prei, prii, jee, jie, jei, jii = map(x->args[x],
-            [:Ncells, :Ne, :pree, :prie, :prei, :prii, :jee, :jie, :jei, :jii])
+    @unpack Ncells, Ne, pree, jee, jie, jei, jii = args
 
     nc0Max = round(Int, Ncells*pree) # outdegree
     nc0 = fill(nc0Max, Ncells)

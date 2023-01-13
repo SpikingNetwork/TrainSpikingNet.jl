@@ -1,8 +1,7 @@
 # return a T x Lffwd matrix spiking thresholds of the feed forward neurons
 
 function genFfwdRate(args)
-    train_time, stim_off, dt, Lffwd, mu, bou, sig, wid = map(x->args[x],
-            [:train_time, :stim_off, :dt, :Lffwd, :mu, :bou, :sig, :wid])
+    @unpack train_time, stim_off, dt, Lffwd, mu, bou, sig, wid = args
 
     Nsteps = round(Int, (train_time - stim_off) / dt)
     ffwdRate = mu*ones(Nsteps, Lffwd)

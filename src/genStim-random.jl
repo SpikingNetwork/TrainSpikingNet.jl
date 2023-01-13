@@ -2,8 +2,7 @@
 # responses within the time interval [stim_on, stim_off]
 
 function genStim(args)
-    stim_on, stim_off, dt, Ncells, mu, b, sig = map(x->args[x],
-            [:stim_on, :stim_off, :dt, :Ncells, :mu, :b, :sig])
+    @unpack stim_on, stim_off, dt, Ncells, mu, b, sig = args
 
     timeSteps = round(Int, (stim_off - stim_on) / dt)
     stim = zeros(timeSteps, Ncells)
