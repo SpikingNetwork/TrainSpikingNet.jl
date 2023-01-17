@@ -1,5 +1,5 @@
 TrainSpikingNet.jl uses recursive least squares to train fluctation-driven
-spiking recurrent neural networks to recapitulate arbitrary
+spiking recurrent neural networks to recapitulate arbitrary temporal
 activity patterns.  See [Arthur, Kim, Chen, Preibisch, and Darshan
 (2022)](https://www.biorxiv.org/content/10.1101/2022.09.26.509578v1.full)
 for further details.
@@ -43,13 +43,13 @@ $ echo "export TSN_DIR=$PWD/TrainSpikingNet" >> ~/.bashrc
 Install all of the required packages:
 
 ```
-cd $TSN_DIR
-julia --project=@.
-      -e 'using Pkg;
-          Pkg.activate(".");
-          Pkg.instantiate();
-          Pkg.activate("test");
-          Pkg.instantiate()'
+$ cd $TSN_DIR
+$ julia --project=@.
+        -e 'using Pkg;
+            Pkg.activate(".");
+            Pkg.instantiate();
+            Pkg.activate("test");
+            Pkg.instantiate()'
 ```
 
 [Note that on Windows the double-quotes above need to be escaped by preceeding
@@ -60,150 +60,207 @@ Finally, (and optionally) test that everything works:
 ```
 cd $TSN_DIR/test
 julia --project=@. runtests.jl
-
-Test Summary: | Pass  Total
-Array         |    6      6
-Test Summary: | Pass  Total
-Symmetric     |    7      7
-Test Summary:   | Pass  Total
-SymmetricPacked |    7      7
-Test Summary: | Pass  Total
-test          |    4      4
-Test Summary:      | Pass  Total
-pree=0.1, sig=0.65 |    6      6
-Test Summary:     | Pass  Total
-pree=0.1, sig=0.0 |    6      6
-Test Summary:      | Pass  Total
-pree=0.0, sig=0.65 |    6      6
-Test Summary:     | Pass  Total
-pree=0.0, sig=0.0 |    6      6
-Test Summary:       | Pass  Total
-voltage noise model |    6      6
-Test Summary: | Pass  Total
-Ricciardi     |    7      7
-Test Summary: | Pass  Total
-Int16         |    3      3
-Test Summary: | Pass  Total
-feed forward  |    6      6
 ```
 
-# Basic Usage #
+# Tutorial #
 
-Edit "src/param.jl" to set your network size, connectivity, stimulus
-pattern, etc.  Optionally, make a copy of it:
+Here we walk through how to train a default network with 4096 neurons to
+learn dummy sinusoidal activity patterns with identical frequencies but
+different phases.
+
+First, make a copy of the parameters file.  Like this on Linux:
 
 ```
 $ mkdir ~/data
-
 $ cp src/param.jl ~/data
-
-$ vi ~/data/param.jl
-
-$ grep -A11 -m1 innate ~/data/param.jl 
-# innate, train, test time (ms)
-train_duration = 1000.0
-stim_on        = 800.0
-stim_off       = 1000.0
-train_time     = stim_off + train_duration
-
-Nsteps = round(Int, train_time/dt)
-
-# network size
-Ncells = 4096
-Ne = floor(Int, Ncells*0.5)
-Ni = ceil(Int, Ncells*0.5)
 ```
 
-Initialize a model with random weights.  By default, artificial synaptic
-targets will be generated consisting of sinusoids.  Optionally, specify the
-full path to a JLD2 file containing either the desired synaptic targets or
-the corresponding spike rates using the `-x` and `-s` flags, respectively
-(but not both!).  Spike rates will be converted to synptic currents using
-the method of Ricciardi (Brunel 2000, J. Comput. Neurosci; Richardson 2007,
-Phys. Rev. E).  In all cases, the synaptic targets are stored in "xtarg.jld2",
-which can be subsquently referenced using `-x`.
+Now use `init.jl` to pick random synaptic weights and generate artificial
+synaptic current targets of sinusoids.
 
 ```
-$ julia $TSN_DIR/src/init.jl -t auto ~/data
+$ julia --threads 4 $TSN_DIR/src/init.jl ~/data
 mean excitatory firing rate: 3.427978515625 Hz
 mean inhibitory firing rate: 6.153564453125 Hz
+```
 
+The `--threads` flag, which must come immediately after the `julia` command,
+specifies how many CPU threads to use-- here we use only four as this is
+a relatively small model.  The argument after `init.jl`, `~/data` here,
+is the full (not relative) path to the desired `params.jl` file.
+
+Printed to the terminal are the initial (i.e. the unlearned) firing rates.
+And saved to disk are several files containing the matrices which define
+the neural connectivity:
+
+```
 $ ls -t ~/data
-P.jld2       wpWeightIn.jld2      wpIndexIn.jld2  nc0.jld2        param.jld2
-ncpOut.jld2  wpIndexConvert.jld2  xtarg.jld2      w0Weights.jld2  rng-init.jld2
-ncpIn.jld2   wpIndexOut.jld2      stim.jld2       w0Index.jld2    param.jl*
+ffwdRate.jld2  wpWeightIn.jld2      wpIndexIn.jld2  w0Weights.jld2  param.jl
+P.jld2         wpWeightFfwd.jld2    xtarg.jld2      w0Index.jld2
+ncpOut.jld2    wpIndexConvert.jld2  stim.jld2       param.jld2
+ncpIn.jld2     wpIndexOut.jld2      nc0.jld2        rng-init.jld2
 ```
 
-Now, Train a model by iteratively updating the weights with sequential
-presentations of the stimulus.  The trained weights are stored in additional
-JLD2 files and the correlations to the targets dumped to the standard output.
-Use the `-t` flag to thread the CPU version of train.jl; it has no effect
-on the GPU:
+To highlight just a few:  "wpWeightIn.jld2" stores the plastic synaptic
+weights, "w0Weights.jld2" stores the static synaptic weights, and "xtarg.jld2"
+stores the target synaptic currents (sinusoidal in this case).  See the
+comments in the code for more details.
+
+Now use `train.jl` to iteratively update the plastic weights with sequential
+presentations of the stimulus:
 
 ```
-$ julia $TSN_DIR/src/gpu/train.jl -n100 ~/data
-Loop no. 1
-correlation: -0.023547219725048148
-elapsed time: 41.81254005432129 sec
-firing rate: 4.606689453125 Hz
-Loop no. 2
-correlation: -0.019123938089304755
-elapsed time: 5.6806960105896 sec
-firing rate: 4.608642578125 Hz
-Loop no. 3
-correlation: -0.014787908839497654
-elapsed time: 5.547835111618042 sec
-firing rate: 4.6173095703125 Hz
-Loop no. 4
-correlation: 0.007915293563043593
-elapsed time: 5.602427959442139 sec
-firing rate: 4.59765625 Hz
-Loop no. 5
-correlation: 0.010099408049965756
-elapsed time: 5.525408029556274 sec
-firing rate: 4.60498046875 Hz
+$ julia $TSN_DIR/src/gpu/train.jl --nloops 100 ~/data
+Loop no. 1, task no. 1
+correlation: -0.03810218983457164
+elapsed time: 64.27813005447388 sec
+firing rate: 4.238525390625 Hz
+Loop no. 2, task no. 1
+correlation: -0.009730533926830837
+elapsed time: 11.158457040786743 sec
+firing rate: 3.5748291015625 Hz
+Loop no. 3, task no. 1
+correlation: 0.019285263967765184
+elapsed time: 10.458786010742188 sec
+firing rate: 3.177490234375 Hz
+Loop no. 4, task no. 1
+correlation: 0.04037737332828045
+elapsed time: 10.786484003067017 sec
+firing rate: 2.952392578125 Hz
+Loop no. 5, task no. 1
+correlation: 0.06431122625571872
+elapsed time: 10.612313032150269 sec
+firing rate: 2.79833984375 Hz
 <SNIP>
-Loop no. 100
-correlation: 0.7823279444123159
-elapsed time: 10.06592607498169 sec
-firing rate: 5.996826171875 Hz
+Loop no. 100, task no. 1
+correlation: 0.7138109340783079
+elapsed time: 14.510313034057617 sec
+firing rate: 2.1953125 Hz
+```
 
+The `--nloops` flag, which must come after `train.jl`, specifies how many iterations
+of the training loop to perform.  The `--threads` flag is not used here as we are using
+the GPU version of `train.jl`.
+
+The correlations to the targets are printed to the terminal, and the
+trained weights are stored in additional JLD2 files suffixed with "-ckpt"
+for "checkpoint":
+
+```
 $ ls -t ~/data
-P-ckpt100.jld2           ncpIn.jld2           xtarg.jld2      param.jld2
-wpWeightIn-ckpt100.jld2  wpWeightIn.jld2      stim.jld2       rng-init.jld2
-rng-train.jld2           wpIndexConvert.jld2  nc0.jld2        param.jl*
-P.jld2                   wpIndexOut.jld2      w0Weights.jld2
-ncpOut.jld2              wpIndexIn.jld2       w0Index.jld2
+P-ckpt100.jld2             P.jld2             wpIndexConvert.jld2  nc0.jld2        param.jl
+wpWeightIn-ckpt100.jld2    ncpOut.jld2        wpIndexOut.jld2      w0Weights.jld2
+wpWeightFfwd-ckpt100.jld2  ncpIn.jld2         wpIndexIn.jld2       w0Index.jld2
+rng-train.jld2             wpWeightIn.jld2    xtarg.jld2           param.jld2
+ffwdRate.jld2              wpWeightFfwd.jld2  stim.jld2            rng-init.jld2
 ```
 
-Finally, plot the trainined activities.  The underlying data is stored in
-"test.jld2":
+Finally, use `test.jl` to plot the trained activities:
 
 ```
-$ julia $TSN_DIR/src/gpu/test.jl -n50 ~/data
-trial #1, 53.0 sec
-trial #2, 9.34 sec
-trial #3, 9.24 sec
+$ julia $TSN_DIR/src/gpu/test.jl --ntrials 100 ~/data
+trial #1, task #1: 50.6 sec
+trial #2, task #1: 8.94 sec
+trial #3, task #1: 8.64 sec
 <SNIP>
-trial #50, 9.24 sec
+trial #100, task #1: 8.29 sec
+```
 
+The `--ntrials ` flag specifies how many iterations to perform, but this time
+there is no learning.  We perform multiple iterations so that peri-stimulus
+time histograms (PSTHs) with low firing rate neurons can be averaged over
+many trials.
+
+![synpatic inputs](/test-syninput.pdf)
+![PSTH](/test-psth.pdf)
+
+The figures above are saved to "test-{syninput,psth}-task1.pdf" and the
+underlying data is stored in "test.jld2":
+
+```
 $ ls -t ~/data
-test-psth.svg            rng-train.jld2       wpIndexOut.jld2  w0Index.jld2
-test-syninput.svg        P.jld2               wpIndexIn.jld2   param.jld2
-test.jld2                ncpOut.jld2          xtarg.jld2       rng-init.jld2
-rng-test.jld2            ncpIn.jld2           stim.jld2        param.jl*
-P-ckpt100.jld2           wpWeightIn.jld2      nc0.jld2
-wpWeightIn-ckpt100.jld2  wpIndexConvert.jld2  w0Weights.jld2
+test-psth-task1.pdf        rng-train.jld2     wpIndexConvert.jld2  w0Index.jld2
+test-syninput-task1.pdf    ffwdRate.jld2      wpIndexOut.jld2      param.jld2
+test.jld2                  P.jld2             wpIndexIn.jld2       rng-init.jld2
+rng-test.jld2              ncpOut.jld2        xtarg.jld2           param.jl
+P-ckpt100.jld2             ncpIn.jld2         stim.jld2
+wpWeightIn-ckpt100.jld2    wpWeightIn.jld2    nc0.jld2
+wpWeightFfwd-ckpt100.jld2  wpWeightFfwd.jld2  w0Weights.jld2
 ```
 
-![synpatic inputs](/test-syninput.svg)
-![PSTH](/test-psth.svg)
+# Custom Usage #
 
-Additional options for all of these scripts can be displayed with `-h` or
-`--help`:
+To train a network for your own purpose you need to specify the neural
+architecture, its target activity, and various simulation parameters.
+These are done, respectively, through a set of plugin modules that define
+adjacency matrices, by supplying a file with the desired synaptic inputs
+or PSTHs, and by editing a copy of the default parameters file.
+
+There are five plugin modules that define the architecture.  Each consists
+of a .jl file containing a function of a specific name that inputs a custom
+dictionary of parameters and outputs one or more arrays.  The path to the
+.jl file as well as the parameters are both specified in "param.jl" with
+variables ending in _file and _args, respectively.  You as the user write
+these five functions to return custom adjacency matrices using parameters
+of your choosing.  Defaults are supplied for each plugin.
+
+  * `genPlasticWeights()` specifies the connectivity of the learned synapses.
+  The default is "src/genPlasticWeights-erdos-renyi.jl"
+
+  * `genStaticWeights()` specifies the connectivity of the fixed synapses.
+  the default is "src/genStaticWeights-erdos-renyi.jl".  This is only used
+  if K > 0.
+
+  * `genFfwdRate()` specifies the spike thresholds for the feed-forward
+  neurons.  The default is "src/genFfwdRate-random.jl".  This is only used
+  if Lffwd > 0.
+
+  * `genStim()` specifies the external input applied to each neuron.
+  The default is "src/genStim-random.jl"
+
+  * `genTarget()` specifies the desired synaptic currents to learn.
+  The default is "src/genTarget-sinusoids.jl".  This is only used if a file
+  with the targets is not supplied on the command line to `init.jl`.
+
+For example, the "genStaticWeights_file" and "genStaticWeights_args"
+variables in "src/param.jl" are a string and a dictionary, respectively.
+The former specifies the path to a .jl file containing a function called
+`genStaticWeights()` to which the latter is passed when `init.jl`
+is executed.  `genStaticWeights()` defines and returns `w0Index`,
+`w0Weights`, and `nc0` which together specify the static connections
+between neurons based on the parameters `Ncells`, `Ne`, `pree`, `prie`,
+`prei`, `prii`, `jee`, `jie`, `jei`, and `jii`.  Should the default code,
+contained in "src/genStaticWeights-erdos-renyi.jl" not do what you want,
+you can create your own file (e.g. "genStaticWeights-custom.jl") which
+defines an alternative definition of `genStaticWeights()` (must be the
+same name) based on a (possibly) alternative set of parameters.  Simply set
+`genStaticWeights_file` in your custom parameters file to the full path to
+your custom function, and `getStaticWeights_args` to the required parameters
+with their values.
+
+If your target synaptic inputs are defined algorithmically then you have to
+use `genTarget()`, but if they are stored in a file then you can also supply
+its fullpath to `init.jl` using the `--xtarg_file` argument.  This file will
+be copied to `xtarg.jld2`.  If your desired temporal activity patterns are
+PSTHs instead of synaptic currents, use the `--spikerate_file` flag instead
+and they will be converted to synaptic currents using the method of Ricciardi
+(Brunel 2000, J. Comput. Neurosci; Richardson 2007, Phys. Rev. E) and saved
+in `xtarg.jld2`.  As this conversion can take awhile, you should subsquently
+use the `--xtarg_file` flag with this newly generated `xtarg.jld2` file.
+
+Finally, you'll need to make a copy of and edit "src/param.jl" to set various
+constants, like the spike threshold, the refractory period, the synapse
+and membrane time constants, the learning rate, the duration and time step
+of the simulation, the floating point precision to use, the seed value for
+random number generation, etc.  See the comments therein for more details.
+
+Then, proceed as above with `init.jl`, `train.jl`, and `test.jl`.
+
+Additional options for all of these scripts can be displayed with the
+`--help` flag:
 
 ```
-$ julia $TSN_DIR/src/gpu/train.jl -h
+$ julia $TSN_DIR/src/gpu/train.jl --help
 usage: train.jl [-n NLOOPS] [-c CORRELATION_INTERVAL] [-s]
                 [-r RESTORE_FROM_CHECKPOINT]
                 [-m MONITOR_RESOURCES_USED] [-h] data_dir
@@ -239,40 +296,14 @@ All data are stored in JLD2 files, which are HDF5 files with a particular
 structure inside designed to store Julia objects.  They should be readable
 in any programming language that can read HDF5.
 
-Plots are output as SVG files which should be readable by any internet
-browser.
-
 
 # Intel Math Kernel Library #
 
 The CPU code can be sped up by about 10% on Intel machines using the
-drop-in MKL package to replace the default OpenBLAS.  To install it, change
-into the TrainSpikingNet.jl directory and execute `julia -e 'using Pkg;
-Pkg.add("MKL")'`.  Then edit "src/init.jl" and "src/cpu/{train,test}.jl"
-and add the line "using MKL" just above the line starting with "using
-LinearAlgebra...".  Alternatively, MKL can be automatically used for your
-other Julia code as well by adding "using MKL" to "~/.julia/config/startup.jl"
-instead.
+drop-in MKL package to replace the default OpenBLAS.  Install it like
+this on Linux:
 
-
-# Plugins #
-
-The network architecture and initialization can be customized through
-user-supplied code.  In the parameters file are five pairs of variables
-which specify the path to .jl files and the arguments required by
-the functions therein.  For example, the `genStaticWeights_file`
-and `genStaticWeights_args` variables are a string and a dictionary,
-respectively.  The former specifies the path to a .jl file containing
-a function called `genStaticWeights()` to which the latter is passed
-when `init.jl ...` is executed.  `genStaticWeights()` defines and
-returns `w0Index`, `w0Weights`, and `nc0` which together specify the static
-connections between neurons based on the parameters `pree`, `prie`, `prei`,
-`prii`, `jee`, `jie`, `jei`, and `jii`.  Should the default code, contained
-in `src/genStaticWeights-erdos-renyi.jl` not do what
-you want, you can create your own file (e.g. `genStaticWeights-custom.jl`)
-which defines an alternative function `genStaticWeights()` (must be the
-same name) based on a (possibly) alternative set of parameters.  Simply set
-`genStaticWeights_file` to the full path to your custom function, and
-`getStaticWeights_args` to the required parameters with their values.
-Other code that can be plugged in include `genPlasticWeights()`, `genStim()`,
-`genTarget()`, and `genFfwdRate()`.
+```
+julia -e 'using Pkg; Pkg.add("MKL")'
+echo "using MKL" >> ~/.julia/config/startup.jl
+```

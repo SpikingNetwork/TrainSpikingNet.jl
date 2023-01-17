@@ -205,8 +205,8 @@
 
             # apply external inputs
             #   - mu: default inputs to maintain the balanced state
-            #   - stim: inputs that trigger the learned responses
-            #   - applied within the time interval [stim_on, stim_off]
+            #   - stim: inputs that trigger the learned responses,
+            #           applied within the time interval [stim_on, stim_off]
             @static if kind in [:train, :test, :train_test]
                 if t > stim_on && t < stim_off
                     bias[ci] = mu[ci] + stim[ti-round(Int,stim_on/dt),ci,itask]

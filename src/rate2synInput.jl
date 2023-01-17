@@ -18,7 +18,7 @@ function rate2synInput(p, sigma)
     replace!(targetRate, 0.0=>0.1)
     xtarg = similar(targetRate)
 
-    #---------- initial condition to Ricciardi ----------#
+    # initial condition to Ricciardi
     initial_mu = 0.5*ones(Ntime)
     invtau = 1000.0/p.taue
     VT = p.threshe
@@ -27,7 +27,7 @@ function rate2synInput(p, sigma)
     Threads.@threads for ict in CartesianIndices(targetRate[1,:,:])
         icell, itask = ict[1], ict[2]
         
-        #---------- Solve Ricciardi ----------#
+        # solve Ricciardi
         xtarg[:,icell,itask] .= solveRicci(targetRate[:,icell,itask], initial_mu, sigma, invtau, VT, Vr)
     end
 

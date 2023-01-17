@@ -57,12 +57,12 @@ threshi = 1.0
 refrac = 0.1 # refractory period
 vre = 0.0   # reset voltage
 
-genStaticWeights_file = "genStaticWeights-erdos-renyi.jl"
-genStaticWeights_args = Dict(:Ncells => Ncells, :Ne => Ne,
-                             :pree => 0.1, :prie => 0.1, :prei => 0.1, :prii => 0.1)
-
 K = round(Int, Ne*genStaticWeights_args[:pree])
 sqrtK = sqrt(K)
+
+genStaticWeights_file = "genStaticWeights-erdos-renyi.jl"
+genStaticWeights_args = Dict(:K => K, :Ncells => Ncells, :Ne => Ne,
+                             :pree => 0.1, :prie => 0.1, :prei => 0.1, :prii => 0.1)
 
 g = 1.0
 je = 2.0 / sqrtK * taue * g

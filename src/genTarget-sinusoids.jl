@@ -1,4 +1,14 @@
-# return a T x Ncells matrix representing the desired currents to be learned
+#=
+the genTarget plugin generates the target synaptic currents.  it can do
+so either algorithmically, or by simply loading data from a file.  this
+file is the default, and for each neuron generates a sinusiod with a
+random phase.
+=#
+
+#=
+return a T x Ncells matrix representing the desired synaptic currents to
+be learned
+=#
 
 function genTarget(args, uavg)
     @unpack train_time, stim_off, learn_every, Ncells, Nsteps, dt, A, period, biasType, mu_ou_bias, b_ou_bias, sig_ou_bias = args
@@ -10,25 +20,22 @@ function genTarget(args, uavg)
     bias = Array{Float64}(undef, Nsteps)
 
 
-    #----- ZERO ----#
     if biasType == :zero
         bias .= 0
-    end
-
-    #----- OU ----#
-    if biasType == :ou
+    elseif biasType == :ou
         bias[1] = 0
         for i = 1:Nsteps-1
-            bias[i+1] = bias[i] + b_ou_bias*(mu_ou_bias-bias[i])*dt + sig_ou_bias*sqrt(dt)*randn(rng)
+            bias[i+1] = bias[i] +
+                        b_ou_bias * (mu_ou_bias - bias[i]) * dt +
+                        sig_ou_bias * sqrt(dt) * randn(rng)
         end
-    end
-
-    #----- RAMPING ----#
-    if biasType == :ramping
+    elseif biasType == :ramping
         Nstart = round(Int, stim_off/dt)
         bias[1:Nstart-1] .= 0
         bias[Nstart:Nsteps] = 0.25/(Nsteps-Nstart)*collect(0:Nsteps-Nstart)
         bias[Nsteps+1:end] .= 0
+    else
+        error("biasType must be one of :zero, :ou, or :ramping")
     end
 
     for j=1:Ncells

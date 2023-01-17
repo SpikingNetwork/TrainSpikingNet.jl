@@ -1,13 +1,25 @@
-# return a T x Lffwd matrix spiking thresholds of the feed forward neurons
+#=
+the genFfwdRate plugin defines the threshold for the Poisson feed-forward neurons.
+this file is the default, and for each neuron simply chooses a random Lffwd as
+presynaptic partners and sets their initial weights to predefined values.
+=#
+
+#=
+return a single Nsteps x Lffwd matrix of time-varying spiking thresholds
+for the feed forward neurons
+=#
 
 function genFfwdRate(args)
     @unpack train_time, stim_off, dt, Lffwd, mu, bou, sig, wid = args
 
     Nsteps = round(Int, (train_time - stim_off) / dt)
-    ffwdRate = mu*ones(Nsteps, Lffwd)
+    ffwdRate = Array{Float64}(undef, Nsteps, Lffwd)
+    ffwdRate[1,:] .= mu
 
     for i = 1:Nsteps-1
-        ffwdRate[i+1,:] = ffwdRate[i,:] + bou*(mu .- ffwdRate[i,:])*dt + sig*sqrt(dt)*randn(rng, Lffwd);
+        ffwdRate[i+1,:] = ffwdRate[i,:] +
+                          bou * (mu .- ffwdRate[i,:]) * dt + 
+                          sig * sqrt(dt) * randn(rng, Lffwd);
     end
 
     ffwdRate = funMovAvg(ffwdRate, wid)

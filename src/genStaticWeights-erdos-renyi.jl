@@ -1,13 +1,25 @@
-# return two matrices each with Ncells columns and a vector of length Ncells
-# specifying the static connectivity.  the first returned matrix (called
-# w0Index in the source code) contains the index of the postsynaptic neuron
-# and the second (w0Weights) contains the synaptic weight.  the vector (nc0)
-# specifies the number of postsynaptic neurons
+#=
+the genStaticWeights plugin defines the connectivity and weights of the
+fixed synapses.  this file is the default, and for each neuron simply
+pools the other neurons, chooses a random 2*K as presynaptic partners, and
+sets their weights to predefined values.
+=#
+
+#=
+returned are two matrices each with Ncells columns and a vector of length
+Ncells specifying the static connectivity.
+
+the first returned matrix (called w0Index in the source code) contains the
+index of the postsynaptic neurons and the second (w0Weights) contains the
+synaptic weights.
+
+the vector (nc0) specifies the number of postsynaptic neurons
+=#
 
 function genStaticWeights(args)
-    @unpack Ncells, Ne, pree, jee, jie, jei, jii = args
+    @unpack K, Ncells, Ne, pree, jee, jie, jei, jii = args
 
-    nc0Max = round(Int, Ncells*pree) # outdegree
+    nc0Max = 2*K # outdegree
     nc0 = fill(nc0Max, Ncells)
     w0Index = zeros(Int, nc0Max, Ncells)
     w0Weights = zeros(nc0Max, Ncells)
