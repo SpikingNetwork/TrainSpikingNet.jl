@@ -10,7 +10,7 @@ for the feed forward neurons
 =#
 
 function genFfwdRate(args)
-    @unpack train_time, stim_off, dt, Lffwd, mu, bou, sig, wid = args
+    @unpack train_time, stim_off, dt, Lffwd, mu, bou, sig, wid, rng = args
 
     Nsteps = round(Int, (train_time - stim_off) / dt)
     ffwdRate = Array{Float64}(undef, Nsteps, Lffwd)

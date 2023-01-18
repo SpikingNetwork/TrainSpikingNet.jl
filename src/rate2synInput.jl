@@ -1,9 +1,9 @@
 using NLsolve
 
-function rate2synInput(p, sigma)
+function rate2synInput(train_time, stim_off, learn_every, taue, threshe, vre, sigma)
     targetRate_dict = load(parsed_args["spikerate_file"])
     targetRate = targetRate_dict[first(keys(targetRate_dict))]
-    Ntime = floor(Int, (p.train_time-p.stim_off)/p.learn_every)
+    Ntime = floor(Int, (train_time-stim_off)/learn_every)
     if size(targetRate,1) != Ntime
         error(parsed_args["spikerate_file"],
               " should have (train_time-stim_off)/learn_every = ",
@@ -20,9 +20,9 @@ function rate2synInput(p, sigma)
 
     # initial condition to Ricciardi
     initial_mu = 0.5*ones(Ntime)
-    invtau = 1000.0/p.taue
-    VT = p.threshe
-    Vr = p.vre
+    invtau = 1000.0/taue
+    VT = threshe
+    Vr = vre
 
     Threads.@threads for ict in CartesianIndices(targetRate[1,:,:])
         icell, itask = ict[1], ict[2]

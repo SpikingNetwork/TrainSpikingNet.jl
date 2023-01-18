@@ -13,7 +13,7 @@ monitor_resources_used = 0  # set to N to measure every N seconds
 rng_func = Dict("gpu"=>:(CUDA.RNG()), "cpu"=>:(Random.default_rng()))
 rng = eval(rng_func["cpu"])
 isnothing(seed) || Random.seed!(rng, seed)
-save(joinpath(parsed_args["data_dir"],"rng-init.jld2"), "rng", rng)
+save(joinpath(data_dir,"rng-init.jld2"), "rng", rng)
 
 dt = 0.1 #simulation timestep (ms)
 
@@ -34,7 +34,8 @@ choose_task_func = :((iloop, ntasks) -> iloop % ntasks + 1)   # or rand(1:ntasks
 
 genStim_file = "genStim-random.jl"
 genStim_args = Dict(:stim_on => stim_on, :stim_off => stim_off, :dt => dt, :Ncells => Ncells,
-                    :mu => 0.0, :b => 1/20, :sig => 0.2)
+                    :mu => 0.0, :b => 1/20, :sig => 0.2,
+                    :rng => rng)
 
 # training variables
 penlambda      = 0.8  # 1 / learning rate
@@ -47,7 +48,8 @@ genTarget_file = "genTarget-sinusoids.jl"
 genTarget_args = Dict(:train_time => train_time, :stim_off => stim_off, :learn_every => learn_every,
                       :Ncells => Ncells, :Nsteps => Nsteps, :dt => dt,
                       :A => 0.5, :period => 1000.0, :biasType => :zero,
-                      :mu_ou_bias => 0.0, :b_ou_bias => 1/400, :sig_ou_bias => 0.02)
+                      :mu_ou_bias => 0.0, :b_ou_bias => 1/400, :sig_ou_bias => 0.02,
+                      :rng => rng)
 
 # neuron param      
 taue = 10 #membrane time constant for exc. neurons (ms)
@@ -57,12 +59,14 @@ threshi = 1.0
 refrac = 0.1 # refractory period
 vre = 0.0   # reset voltage
 
-K = round(Int, Ne*genStaticWeights_args[:pree])
+pree = prie = prei = prii = 0.1
+K = round(Int, Ne*pree)
 sqrtK = sqrt(K)
 
 genStaticWeights_file = "genStaticWeights-erdos-renyi.jl"
 genStaticWeights_args = Dict(:K => K, :Ncells => Ncells, :Ne => Ne,
-                             :pree => 0.1, :prie => 0.1, :prei => 0.1, :prii => 0.1)
+                             :pree => pree, :prie => prie, :prei => prei, :prii => prii,
+                             :rng => rng)
 
 g = 1.0
 je = 2.0 / sqrtK * taue * g
@@ -79,7 +83,8 @@ Linh = L # inhibitory L
 
 genFfwdRate_file = "genFfwdRate-random.jl"
 genFfwdRate_args = Dict(:train_time => train_time, :stim_off => stim_off, :dt => dt,
-                        :Lffwd => Lffwd, :mu => 5, :bou => 1/400, :sig => 0.2, :wid => 500)
+                        :Lffwd => Lffwd, :mu => 5, :bou => 1/400, :sig => 0.2, :wid => 500,
+                        :rng => rng)
 
 #synaptic time constants (ms) 
 tauedecay = 3
@@ -104,7 +109,8 @@ genPlasticWeights_args = Dict(:Ncells => Ncells, :frac => frac, :Ne => Ne,
                               :wpie => 2.0 * taue * g / wpscale,
                               :wpei => -2.0 * taue * g / wpscale,
                               :wpii => -2.0 * taue * g / wpscale,
-                              :wpffwd => 0)
+                              :wpffwd => 0,
+                              :rng => rng)
 
 noise_model=:current  # or :voltage
 sig = 0  # std dev of the Gaussian noise
@@ -112,9 +118,3 @@ sig = 0  # std dev of the Gaussian noise
 correlation_var = K>0 ? :xtotal : :xplastic
 
 maxrate = 500 #(Hz) maximum average firing rate.  if the average firing rate across the simulation for any neuron exceeds this value, some of that neuron's spikes will not be saved
-
-
-p = paramType(PPrecision,PScale,FloatPrecision,IntPrecision,PType,seed,rng_func,example_neurons,wid,train_duration,penlambda,penlamFF,penmu,frac,learn_every,stim_on,stim_off,train_time,dt,Nsteps,Ncells,Ne,Ni,taue,taui,K,L,Lffwd,Lexc,Linh,wpscale,
-je,ji,jx,mu,vre,threshe,threshi,refrac,tauedecay,tauidecay,taudecay_plastic,noise_model,sig,correlation_var,maxrate,
-genStim_file, genStim_args, genTarget_file, genTarget_args, genFfwdRate_file, genFfwdRate_args, genStaticWeights_file, genStaticWeights_args, genPlasticWeights_file, genPlasticWeights_args,
-choose_task_func)

@@ -24,7 +24,7 @@ specifies how many presynaptic connections each neuron has.
 =#
 
 function genPlasticWeights(args, ns0)
-    @unpack Ncells, frac, Ne, L, Lexc, Linh, Lffwd, wpee, wpie, wpei, wpii, wpffwd = args
+    @unpack Ncells, frac, Ne, L, Lexc, Linh, Lffwd, wpee, wpie, wpei, wpii, wpffwd, rng = args
 
     # order neurons by their firing rate
     frac_cells = round(Int, frac*Ne)

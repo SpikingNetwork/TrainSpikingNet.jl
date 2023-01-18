@@ -32,13 +32,46 @@ end
 parsed_args = parse_args(aps)
 
 # --- set up variables --- #
-include(joinpath(@__DIR__,"struct.jl"))
-include(joinpath(parsed_args["data_dir"],"param.jl"))
+module Param
+    using LinearAlgebra, SymmetricFormats, Random, JLD2
+    function set_data_dir(path)
+        global data_dir = path
+    end
+    save_params() = save(joinpath(data_dir, "param.jld2"), "param", (;
+            PPrecision, PScale, FloatPrecision, IntPrecision, PType,
+            seed, rng_func,
+            example_neurons, wid,
+            penlambda, penlamFF, penmu,
+            learn_every,
+            train_duration, stim_on, stim_off, train_time,
+            dt, Nsteps,
+            Ncells, Ne, Ni,
+            taue, taui,
+            K, L, Lffwd, Lexc, Linh,
+            wpscale,
+            je, ji, jx,
+            mu,
+            vre, threshe, threshi, refrac,
+            tauedecay, tauidecay, taudecay_plastic,
+            noise_model, sig,
+            correlation_var,
+            maxrate,
+            genStim_file, genStim_args,
+            genTarget_file, genTarget_args,
+            genFfwdRate_file, genFfwdRate_args,
+            genStaticWeights_file, genStaticWeights_args,
+            genPlasticWeights_file, genPlasticWeights_args,
+            choose_task_func,
+            ))
+end
+Param.set_data_dir(parsed_args["data_dir"])
+Param.include(joinpath(parsed_args["data_dir"], "param.jl"))
+Param.save_params()
 include(joinpath(@__DIR__,"cpu","variables.jl"))
 
-if p.Ncells == typemax(IntPrecision)
+if Param.Ncells == typemax(Param.IntPrecision)
   @warn "IntPrecision is too small for GPU (but fine for CPU)"
-elseif p.Ncells > typemax(IntPrecision)
+elseif Param.Ncells > typemax(Param.IntPrecision)
   @error "IntPrecision is too small"
 end
 
@@ -55,58 +88,59 @@ macro maybethread(loop)
 end
 
 kind=:init
-include(p.genStaticWeights_file)
-include(p.genPlasticWeights_file)
-include(p.genFfwdRate_file)
-include(p.genTarget_file)
-include(p.genStim_file)
+include(Param.genStaticWeights_file)
+include(Param.genPlasticWeights_file)
+include(Param.genFfwdRate_file)
+include(Param.genTarget_file)
+include(Param.genStim_file)
 include(joinpath("cpu","loop.jl"))
 include("rate2synInput.jl")
 
 # --- initialization --- #
-w0Index, w0Weights, nc0 = genStaticWeights(p.genStaticWeights_args)
-ffwdRate = genFfwdRate(p.genFfwdRate_args)
+w0Index, w0Weights, nc0 = genStaticWeights(Param.genStaticWeights_args)
+ffwdRate = genFfwdRate(Param.genFfwdRate_args)
 
 itask = 1
-uavg, ns0, ustd = loop_init(itask, nothing, nothing, p.stim_off, p.train_time, dt,
-    p.Nsteps, p.Ncells, p.Ne, nothing, refrac, vre, invtauedecay,
-    invtauidecay, nothing, mu, thresh, tau, nothing, nothing, ns, nothing,
-    ns_ffwd, forwardInputsE, forwardInputsI, nothing, forwardInputsEPrev,
-    forwardInputsIPrev, nothing, nothing, nothing, xedecay, xidecay, nothing,
-    synInputBalanced, synInput, nothing, nothing, bias, nothing, nothing, lastSpike,
-    nothing, nothing, nothing, nothing, nothing, v, rng, noise, rndFfwd, sig,
-    nothing, nothing, w0Index, w0Weights, nc0, nothing, nothing, nothing,
-    nothing, nothing, nothing, nothing, nothing, nothing, nothing, uavg,
-    utmp, ffwdRate)
+uavg, ns0, ustd = loop_init(itask,
+    nothing, nothing, Param.stim_off, Param.train_time, Param.dt,
+    Param.Nsteps, Param.Ncells, Param.Ne, nothing, Param.Lffwd, Param.refrac,
+    vre, invtauedecay, invtauidecay, nothing, mu, thresh, tau, nothing,
+    nothing, ns, nothing, ns_ffwd, forwardInputsE, forwardInputsI, nothing,
+    forwardInputsEPrev, forwardInputsIPrev, nothing, nothing, nothing,
+    xedecay, xidecay, nothing, synInputBalanced, synInput, nothing, nothing,
+    bias, nothing, nothing, lastSpike, nothing, nothing, nothing, nothing,
+    nothing, v, Param.rng, noise, rndFfwd, sig, nothing, nothing, w0Index,
+    w0Weights, nc0, nothing, nothing, nothing, nothing, nothing, nothing,
+    nothing, nothing, nothing, nothing, uavg, utmp, ffwdRate)
 
 wpWeightFfwd, wpWeightIn, wpIndexIn, ncpIn =
-    genPlasticWeights(p.genPlasticWeights_args, ns0)
+    genPlasticWeights(Param.genPlasticWeights_args, ns0)
 
 # get indices of postsynaptic cells for each presynaptic cell
-wpIndexConvert = zeros(Int, p.Ncells, p.Lexc+p.Linh)
+wpIndexConvert = zeros(Int, Param.Ncells, Param.Lexc+Param.Linh)
 wpIndexOutD = Dict{Int,Array{Int,1}}()
-ncpOut = Array{Int}(undef, p.Ncells)
-for i = 1:p.Ncells
+ncpOut = Array{Int}(undef, Param.Ncells)
+for i = 1:Param.Ncells
     wpIndexOutD[i] = []
 end
-for postCell = 1:p.Ncells
+for postCell = 1:Param.Ncells
     for i = 1:ncpIn[postCell]
         preCell = wpIndexIn[postCell,i]
         push!(wpIndexOutD[preCell], postCell)
         wpIndexConvert[postCell,i] = length(wpIndexOutD[preCell])
     end
 end
-for preCell = 1:p.Ncells
+for preCell = 1:Param.Ncells
     ncpOut[preCell] = length(wpIndexOutD[preCell])
 end
 
 # get weight, index of outgoing connections
-wpIndexOut = zeros(Int, maximum(ncpOut),p.Ncells)
-for preCell = 1:p.Ncells
+wpIndexOut = zeros(Int, maximum(ncpOut), Param.Ncells)
+for preCell = 1:Param.Ncells
     wpIndexOut[1:ncpOut[preCell],preCell] = wpIndexOutD[preCell]
 end
 
-Ntime = floor(Int, (p.train_time-p.stim_off)/p.learn_every)
+Ntime = floor(Int, (Param.train_time - Param.stim_off) / Param.learn_every)
 if parsed_args["xtarg_file"] !== nothing
     xtarg_dict = load(parsed_args["xtarg_file"])
     xtarg = xtarg_dict[first(keys(xtarg_dict))]
@@ -122,38 +156,39 @@ if parsed_args["xtarg_file"] !== nothing
     end
     xtarg = xtarg[:,:,parsed_args["itasks"]]
 elseif parsed_args["spikerate_file"] !== nothing
-    xtarg = rate2synInput(p, p.K==0 ? sig : (ustd / sqrt(p.tauedecay * 1.3))) # factor 1.3 was calibrated manually
+    xtarg = rate2synInput(Param.train_time, Param.stim_off, Param.learn_every,
+                          Param.taue, Param.threshe, Param.vre,
+                          Param.K==0 ? sig : (ustd / sqrt(Param.taue_bal * 1.3))) # factor 1.3 was calibrated manually
 else
-    xtarg = Array{Float64}(undef, Ntime, p.Ncells, length(parsed_args["itasks"]))
+    xtarg = Array{Float64}(undef, Ntime, Param.Ncells, length(parsed_args["itasks"]))
     for itask = 1:length(parsed_args["itasks"])
-        xtarg[:,:,itask] = genTarget(p.genTarget_args, uavg)
+        xtarg[:,:,itask] = genTarget(Param.genTarget_args, uavg)
     end
 end
-timeSteps = round(Int, (p.stim_off - p.stim_on) / dt)
-stim = Array{Float64}(undef, timeSteps, p.Ncells, length(parsed_args["itasks"]))
+timeSteps = round(Int, (Param.stim_off - Param.stim_on) / Param.dt)
+stim = Array{Float64}(undef, timeSteps, Param.Ncells, length(parsed_args["itasks"]))
 for itask = 1:length(parsed_args["itasks"])
-    stim[:,:,itask] = genStim(p.genStim_args)
+    stim[:,:,itask] = genStim(Param.genStim_args)
 end
 
 # --- set up correlation matrix --- #
-pLrec = p.Lexc + p.Linh;
+pLrec = Param.Lexc + Param.Linh;
 
 # L2-penalty
-Pinv_L2 = Diagonal(repeat([p.penlambda], pLrec));
+Pinv_L2 = Diagonal(repeat([Param.penlambda], pLrec));
 # row sum penalty
-vec10 = [ones(p.Lexc); zeros(p.Linh)];
-vec01 = [zeros(p.Lexc); ones(p.Linh)];
-Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01');
+vec10 = [ones(Param.Lexc); zeros(Param.Linh)];
+vec01 = [zeros(Param.Lexc); ones(Param.Linh)];
+Pinv_rowsum = Param.penmu*(vec10*vec10' + vec01*vec01');
 # sum of penalties
 Pinv_rec = Pinv_L2 + Pinv_rowsum;
-Pinv_ffwd = Diagonal(repeat([p.penlamFF], p.Lffwd))
-Pinv = zeros(pLrec+p.Lffwd, pLrec+p.Lffwd)
+Pinv_ffwd = Diagonal(repeat([Param.penlamFF], Param.Lffwd))
+Pinv = zeros(pLrec+Param.Lffwd, pLrec+Param.Lffwd)
 Pinv[1:pLrec, 1:pLrec] = Pinv_rec
-Pinv[pLrec+1 : pLrec+p.Lffwd, pLrec+1 : pLrec+p.Lffwd] = Pinv_ffwd
-Pinv_norm = p.PType(Symmetric(UpperTriangular(Pinv) \ I));
+Pinv[pLrec+1 : pLrec+Param.Lffwd, pLrec+1 : pLrec+Param.Lffwd] = Pinv_ffwd
+Pinv_norm = Param.PType(Symmetric(UpperTriangular(Pinv) \ I));
 
 #----------- save initialization --------------#
-save(joinpath(parsed_args["data_dir"],"param.jld2"), "p", p)
 save(joinpath(parsed_args["data_dir"],"w0Index.jld2"), "w0Index", w0Index)
 save(joinpath(parsed_args["data_dir"],"w0Weights.jld2"), "w0Weights", w0Weights)
 save(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0", nc0)

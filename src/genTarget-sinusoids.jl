@@ -11,7 +11,7 @@ be learned
 =#
 
 function genTarget(args, uavg)
-    @unpack train_time, stim_off, learn_every, Ncells, Nsteps, dt, A, period, biasType, mu_ou_bias, b_ou_bias, sig_ou_bias = args
+    @unpack train_time, stim_off, learn_every, Ncells, Nsteps, dt, A, period, biasType, mu_ou_bias, b_ou_bias, sig_ou_bias, rng = args
 
     sampled_Nsteps = round(Int, (train_time - stim_off) / learn_every)
     utargSampled = Array{Float64}(undef, sampled_Nsteps, Ncells)

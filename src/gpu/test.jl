@@ -44,8 +44,7 @@ if Threads.nthreads() > ndevices()
 end
 
 # --- load code --- #
-include(joinpath(dirname(@__DIR__),"struct.jl"))
-p = load(joinpath(parsed_args["data_dir"],"param.jld2"), "p")
+Param = load(joinpath(parsed_args["data_dir"],"param.jld2"), "param")
 
 include("convertWgtIn2Out.jl")
 include("rls.jl")
@@ -70,20 +69,20 @@ else
 end
 wpWeightFfwd = load(joinpath(parsed_args["data_dir"],"wpWeightFfwd.jld2"), "wpWeightFfwd")
 wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld2"))["wpWeightIn"]
-wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells)
+wpWeightOut = zeros(maximum(wpIndexConvert), Param.Ncells)
 wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
 
 # --- set up variables --- #
 include("variables.jl")
-nc0 = CuArray{p.IntPrecision}(nc0)
-stim = CuArray{p.FloatPrecision}(stim);
-w0Index = CuArray{p.IntPrecision}(w0Index);
-w0Weights = CuArray{p.FloatPrecision}(w0Weights);
-wpIndexOut = CuArray{p.IntPrecision}(wpIndexOut);
-wpWeightOut = CuArray{p.FloatPrecision}(wpWeightOut);
+nc0 = CuArray{Param.IntPrecision}(nc0)
+stim = CuArray{Param.FloatPrecision}(stim);
+w0Index = CuArray{Param.IntPrecision}(w0Index);
+w0Weights = CuArray{Param.FloatPrecision}(w0Weights);
+wpIndexOut = CuArray{Param.IntPrecision}(wpIndexOut);
+wpWeightOut = CuArray{Param.FloatPrecision}(wpWeightOut);
 
-rng = eval(p.rng_func["gpu"])
-isnothing(p.seed) || Random.seed!(rng, p.seed)
+rng = eval(Param.rng_func["gpu"])
+isnothing(Param.seed) || Random.seed!(rng, Param.seed)
 save(joinpath(parsed_args["data_dir"],"rng-test.jld2"), "rng", rng)
 
 # --- test the network --- #
@@ -93,7 +92,7 @@ nss = Array{Any}(undef, ntrials, ntasks);
 timess = Array{Any}(undef, ntrials, ntasks);
 xtotals = Array{Any}(undef, ntrials, ntasks);
 copy_rng = [typeof(rng)() for _=1:ndevices()];
-isnothing(p.seed) || Random.seed!.(copy_rng, p.seed)
+isnothing(Param.seed) || Random.seed!.(copy_rng, Param.seed)
 for var in [:times, :ns, :times_ffwd, :ns_ffwd, :stim, :nc0, :thresh, :tau,
             :w0Index, :w0Weights, :wpWeightFfwd, :wpIndexOut, :wpWeightOut, :mu,
             :forwardInputsE, :forwardInputsI, :forwardInputsP,
@@ -103,7 +102,7 @@ for var in [:times, :ns, :times_ffwd, :ns_ffwd, :stim, :nc0, :thresh, :tau,
   @eval (device!(0); tmp = Array($var))
   @eval $(Symbol("copy_",var)) = [(device!(idevice-1); CuArray($tmp)) for idevice=1:ndevices()];
 end
-if typeof(p.taudecay_plastic)<:AbstractArray
+if typeof(Param.taudecay_plastic)<:AbstractArray
   device!(0); tmp = Array(invtaudecay_plastic)
   copy_invtaudecay_plastic = [(device!(idevice-1); CuArray(tmp)) for idevice=1:ndevices()];
 end
@@ -113,10 +112,10 @@ Threads.@threads for itrial=1:ntrials
     device!(idevice-1)
     for itask = 1:ntasks
         t = @elapsed thisns, thistimes, _, _, thisxtotal, _ = loop_test(itask,
-              p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
-              p.Nsteps, p.Ncells, p.L, nothing, nothing, p.refrac, vre, invtauedecay,
+              Param.learn_every, Param.stim_on, Param.stim_off, Param.train_time, Param.dt,
+              Param.Nsteps, Param.Ncells, nothing, nothing, Param.Lffwd, Param.refrac, vre, invtauedecay,
               invtauidecay,
-              typeof(p.taudecay_plastic)<:Number ? invtaudecay_plastic : copy_invtaudecay_plastic[idevice],
+              typeof(Param.taudecay_plastic)<:Number ? invtaudecay_plastic : copy_invtaudecay_plastic[idevice],
               copy_mu[idevice],
               copy_thresh[idevice],
               copy_tau[idevice],
@@ -139,7 +138,7 @@ Threads.@threads for itrial=1:ntrials
               copy_synInput[idevice],
               nothing, nothing,
               copy_bias[idevice],
-              p.wid, p.example_neurons,
+              Param.wid, Param.example_neurons,
               copy_lastSpike[idevice],
               copy_bnotrefrac[idevice],
               copy_bspike[idevice],
@@ -173,4 +172,7 @@ save(joinpath(parsed_args["data_dir"], "test.jld2"),
      "ineurons_to_test", parsed_args["ineurons_to_test"],
      "nss", nss, "timess", timess, "xtotals", xtotals)
 
-parsed_args["no-plot"] || include(joinpath(dirname(@__DIR__),"plot.jl"))
+parsed_args["no-plot"] || run(`$(Base.julia_cmd())
+                               $(joinpath(@__DIR__, "..", "plot.jl"))
+                               -i $(repr(parsed_args["ineurons_to_test"]))
+                               $(joinpath(parsed_args["data_dir"], "test.jld2"))`)

@@ -1,5 +1,5 @@
 @eval function $(Symbol("loop_",kind))(itask, learn_every, stim_on, stim_off,
-    train_time, dt, Nsteps, Ncells, Ne, Lei, refrac, vre, invtauedecay,
+    train_time, dt, Nsteps, Ncells, Ne, Lei, Lffwd, refrac, vre, invtauedecay,
     invtauidecay, invtaudecay_plastic, mu, thresh, tau, maxTimes, times,
     ns, times_ffwd, ns_ffwd, forwardInputsE, forwardInputsI, forwardInputsP,
     forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev, forwardSpike,
@@ -11,7 +11,7 @@
 
     @static kind in [:init, :train, :train_test] && (steps_per_sec = round(Int, 1000/dt))
 
-    @static kind in [:train, :train_test] && p.Lffwd>0 && (ffwdRate /= steps_per_sec)
+    @static kind in [:train, :train_test] && Param.Lffwd>0 && (ffwdRate /= steps_per_sec)
 
     @static if kind in [:test, :train_test]
         learn_nsteps = round(Int, (train_time - stim_off)/learn_every)
@@ -40,7 +40,7 @@
         learn_seq = 1
         r .= 0
         forwardSpikePrev .= 0
-        @static if p.Lffwd>0
+        @static if Param.Lffwd>0
             ffwdSpikePrev .= 0
             s .= 0
         end
@@ -48,14 +48,14 @@
 
     @static if kind in [:test, :train_test]
         times .= 0
-        @static p.Lffwd>0 && (times_ffwd .= 0)
+        @static Param.Lffwd>0 && (times_ffwd .= 0)
     end
 
     ns .= 0
-    @static p.Lffwd>0 && (ns_ffwd .= 0)
+    @static Param.Lffwd>0 && (ns_ffwd .= 0)
     lastSpike .= -100.0
     randn!(rng, v)
-    @static if p.K>0
+    @static if Param.K>0
         xedecay .= xidecay .= 0
         forwardInputsEPrev .= forwardInputsIPrev .= 0.0
     end
@@ -63,11 +63,11 @@
         xpdecay .= 0
         forwardInputsPPrev .= 0.0
     end
-    @static if p.sig>0
-        @static if p.noise_model==:voltage
+    @static if Param.sig>0
+        @static if Param.noise_model==:voltage
             sqrtdt = sqrt(dt)
             sqrtinvtau = sqrt.(1 ./ tau)
-        elseif p.noise_model==:current
+        elseif Param.noise_model==:current
             invsqrtdt = 1/sqrt(dt)
             sqrttau = sqrt.(tau)
         end
@@ -79,11 +79,11 @@
         t = dt*ti;
 
         # reset spiking activities from the previous time step
-        @static p.K>0 && (forwardInputsE .= forwardInputsI .= 0.0)
+        @static Param.K>0 && (forwardInputsE .= forwardInputsI .= 0.0)
         @static kind in [:train, :test, :train_test] && (forwardInputsP .= 0.0)
         @static if kind in [:train, :train_test]
             forwardSpike .= 0.0
-            @static p.Lffwd>0 && (ffwdSpike .= 0.0)
+            @static Param.Lffwd>0 && (ffwdSpike .= 0.0)
         end
 
         # modify the plastic weights when the stimulus is turned off 
@@ -130,7 +130,7 @@
             xplasticcnt[startInd:endInd] .+= 1
         end
 
-        @static p.sig>0 && randn!(rng, noise)
+        @static Param.sig>0 && randn!(rng, noise)
         synInputBalanced .= 0.0
 
         # update network activities:
@@ -141,20 +141,20 @@
         #       * spikes emitted by each neuron (forwardSpike)
         #       * synapse-filtered spikes emitted by each neuron (r)        
         @maybethread for ci = 1:Ncells
-            @static if p.K>0
+            @static if Param.K>0
                 xedecay[ci] += (-dt*xedecay[ci] + forwardInputsEPrev[ci]) * invtauedecay
                 xidecay[ci] += (-dt*xidecay[ci] + forwardInputsIPrev[ci]) * invtauidecay
             end
             @static if kind in [:train, :test, :train_test]
-                @static if typeof(p.taudecay_plastic)<:Number
+                @static if typeof(Param.taudecay_plastic)<:Number
                     xpdecay[ci] += (-dt*xpdecay[ci] + forwardInputsPPrev[ci]) * invtaudecay_plastic
                 else
                     xpdecay[ci] += (-dt*xpdecay[ci] + forwardInputsPPrev[ci]) * invtaudecay_plastic[ci]
                 end
             end
 
-            @static p.K>0 && (synInputBalanced[ci] += xedecay[ci] + xidecay[ci])
-            @static if p.sig>0 && p.noise_model==:current
+            @static Param.K>0 && (synInputBalanced[ci] += xedecay[ci] + xidecay[ci])
+            @static if Param.sig>0 && Param.noise_model==:current
                 synInputBalanced[ci] += invsqrtdt * sqrttau[ci] * sig[ci] * noise[ci]
             end
             synInput[ci] = synInputBalanced[ci]
@@ -196,7 +196,7 @@
 
             # compute synapse-filtered spike trains
             @static if kind in [:train, :train_test]
-                @static if typeof(p.taudecay_plastic)<:Number
+                @static if typeof(Param.taudecay_plastic)<:Number
                     r[ci] += (-dt*r[ci] + forwardSpikePrev[ci]) * invtaudecay_plastic
                 else
                     r[ci] += (-dt*r[ci] + forwardSpikePrev[ci]) * invtaudecay_plastic[ci]
@@ -216,7 +216,7 @@
             end
             @static kind == :init && (bias[ci] = mu[ci])
 
-            @static if p.sig>0 && p.noise_model==:voltage
+            @static if Param.sig>0 && Param.noise_model==:voltage
                 v[ci] += sqrtdt * sqrtinvtau[ci] * sig[ci] * noise[ci]
             end
 
@@ -248,7 +248,7 @@
                 # (1) balanced connections (static)
                 # loop over neurons (indexed by j) postsynaptic to neuron ci.                     
                 # nc0[ci] is the number neurons postsynaptic neuron ci
-                @static p.K>0 && for j = 1:nc0[ci]                       
+                @static Param.K>0 && for j = 1:nc0[ci]                       
                     post_ci = w0Index[j,ci]                 # cell index of j_th postsynaptic neuron
                     wgt = w0Weights[j,ci]                   # synaptic weight of the connection, ci -> post_ci
                     if wgt > 0                              # excitatory synapse
@@ -275,11 +275,11 @@
         #   - ffwdSpikePrev
         # (1) simulation: ffwd spikes are added to forwardInputsP
         # (2) training: ffwdSpikePrev computes the filtered ffwd spikes, s
-        @static p.Lffwd>0 && if t > stim_off
+        @static Param.Lffwd>0 && if t > stim_off
             @static if kind in [:train, :train_test]
-                for ci = 1:p.Lffwd
+                for ci = 1:Lffwd
                     # if training, filter the spikes
-                    @static if typeof(p.taudecay_plastic)<:Number
+                    @static if typeof(Param.taudecay_plastic)<:Number
                         s[ci] += (-dt*s[ci] + ffwdSpikePrev[ci])*invtaudecay_plastic
                     else
                         s[ci] += (-dt*s[ci] + ffwdSpikePrev[ci])*invtaudecay_plastic[ci]
@@ -289,7 +289,7 @@
 
             tidx = ti - round(Int, stim_off/dt)
             rand!(rng, rndFfwd)
-            for ci = 1:p.Lffwd
+            for ci = 1:Lffwd
                 # feed-forward neuron spiked
                 if rndFfwd[ci] < ffwdRate[tidx,ci]
                     @static kind in [:train, :train_test] && (ffwdSpike[ci] = 1)
@@ -307,14 +307,14 @@
         # save spiking activities produced at the current time step
         #   - forwardInputsPrev's will be used in the next time step to compute synaptic currents (xedecay, xidecay, xpdecay)
         #   - forwardSpikePrev will be used in the next time step to compute synapse-filter spikes (r)
-        @static if p.K>0
+        @static if Param.K>0
             forwardInputsEPrev .= forwardInputsE
             forwardInputsIPrev .= forwardInputsI
         end
         @static kind in [:train, :test, :train_test] && (forwardInputsPPrev .= forwardInputsP)
         @static if kind in [:train, :train_test]
             forwardSpikePrev .= forwardSpike
-            @static p.Lffwd>0 && (ffwdSpikePrev .= ffwdSpike)
+            @static Param.Lffwd>0 && (ffwdSpikePrev .= ffwdSpike)
         end
 
     end #end loop over time

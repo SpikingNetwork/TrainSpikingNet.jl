@@ -10,7 +10,7 @@ responses within the time interval [stim_on, stim_off]
 =#
 
 function genStim(args)
-    @unpack stim_on, stim_off, dt, Ncells, mu, b, sig = args
+    @unpack stim_on, stim_off, dt, Ncells, mu, b, sig, rng = args
 
     timeSteps = round(Int, (stim_off - stim_on) / dt)
     stim = zeros(timeSteps, Ncells)

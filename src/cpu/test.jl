@@ -40,8 +40,7 @@ parsed_args = parse_args(aps)
 BLAS.set_num_threads(1)
 
 # --- load code --- #
-include(joinpath(dirname(@__DIR__),"struct.jl"))
-p = load(joinpath(parsed_args["data_dir"],"param.jld2"), "p")
+Param = load(joinpath(parsed_args["data_dir"],"param.jld2"), "param")
 
 macro maybethread(loop)
   quote $(esc(loop)); end
@@ -72,22 +71,23 @@ else
 end
 wpWeightFfwd = load(joinpath(parsed_args["data_dir"],"wpWeightFfwd-ckpt$R.jld2"), "wpWeightFfwd");
 wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld2"), "wpWeightIn")
-wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells)
-wpWeightOut = convertWgtIn2Out(p.Ncells,ncpIn,wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
+wpWeightOut = zeros(maximum(wpIndexConvert), Param.Ncells)
+wpWeightOut = convertWgtIn2Out(Param.Ncells, ncpIn,
+                               wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut)
 
-rng = eval(p.rng_func["cpu"])
-isnothing(p.seed) || Random.seed!(rng, p.seed)
+rng = eval(Param.rng_func["cpu"])
+isnothing(Param.seed) || Random.seed!(rng, Param.seed)
 save(joinpath(parsed_args["data_dir"],"rng-test.jld2"), "rng", rng)
 
 # --- set up variables --- #
 include("variables.jl")
-stim = Array{p.FloatPrecision}(stim);
-nc0 = Array{p.IntPrecision}(nc0)
-ncpOut = Array{p.IntPrecision}(ncpOut);
-w0Index = Array{p.IntPrecision}(w0Index);
-w0Weights = Array{p.FloatPrecision}(w0Weights);
-wpIndexOut = Array{p.IntPrecision}(wpIndexOut);
-wpWeightOut = Array{p.FloatPrecision}(wpWeightOut);
+stim = Array{Param.FloatPrecision}(stim);
+nc0 = Array{Param.IntPrecision}(nc0)
+ncpOut = Array{Param.IntPrecision}(ncpOut);
+w0Index = Array{Param.IntPrecision}(w0Index);
+w0Weights = Array{Param.FloatPrecision}(w0Weights);
+wpIndexOut = Array{Param.IntPrecision}(wpIndexOut);
+wpWeightOut = Array{Param.FloatPrecision}(wpWeightOut);
 
 # --- test the network --- #
 ntrials = parsed_args["ntrials"]
@@ -96,7 +96,7 @@ nss = Array{Any}(undef, ntrials, ntasks);
 timess = Array{Any}(undef, ntrials, ntasks);
 xtotals = Array{Any}(undef, ntrials, ntasks);
 copy_rng = [typeof(rng)() for _=1:Threads.nthreads()];
-isnothing(p.seed) || Random.seed!.(copy_rng, p.seed)
+isnothing(Param.seed) || Random.seed!.(copy_rng, Param.seed)
 for var in [:times, :ns, :times_ffwd, :ns_ffwd,
             :forwardInputsE, :forwardInputsI, :forwardInputsP,
             :forwardInputsEPrev, :forwardInputsIPrev, :forwardInputsPPrev,
@@ -107,8 +107,9 @@ end
 Threads.@threads for itrial=1:ntrials
     for itask = 1:ntasks
         t = @elapsed thisns, thistimes, _, _, thisxtotal, _ = loop_test(itask,
-              p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
-              p.Nsteps, p.Ncells, nothing, nothing, p.refrac, vre, invtauedecay,
+              Param.learn_every, Param.stim_on, Param.stim_off,
+              Param.train_time, Param.dt, Param.Nsteps, Param.Ncells,
+              nothing, nothing, Param.Lffwd, Param.refrac, vre, invtauedecay,
               invtauidecay, invtaudecay_plastic, mu, thresh, tau, maxTimes,
               copy_times[Threads.threadid()],
               copy_ns[Threads.threadid()],
@@ -128,7 +129,7 @@ Threads.@threads for itrial=1:ntrials
               copy_synInput[Threads.threadid()],
               nothing, nothing,
               copy_bias[Threads.threadid()],
-              p.wid, p.example_neurons,
+              Param.wid, Param.example_neurons,
               copy_lastSpike[Threads.threadid()],
               nothing, nothing, nothing, nothing, nothing,
               copy_v[Threads.threadid()],
@@ -148,4 +149,7 @@ save(joinpath(parsed_args["data_dir"],"test.jld2"),
      "ineurons_to_test", parsed_args["ineurons_to_test"],
      "nss", nss, "timess", timess, "xtotals", xtotals)
 
-parsed_args["no-plot"] || include(joinpath(dirname(@__DIR__),"plot.jl"))
+parsed_args["no-plot"] || run(`$(Base.julia_cmd())
+                               $(joinpath(@__DIR__, "..", "plot.jl"))
+                               -i $(repr(parsed_args["ineurons_to_test"]))
+                               $(joinpath(parsed_args["data_dir"], "test.jld2"))`)
