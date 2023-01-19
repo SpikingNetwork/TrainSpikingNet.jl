@@ -34,7 +34,7 @@ Nsteps = round(Int, train_time/dt)
 
 
 # --- external stimulus plugin --- #
-genStim_file = "genStim-random.jl"
+genStim_file = "genStim-ornstein-uhlenbeck.jl"
 genStim_args = Dict(:stim_on => stim_on, :stim_off => stim_off, :dt => dt, :Ncells => Ncells,
                     :mu => 0.0, :b => 1/20, :sig => 0.2,
                     :rng => rng)
@@ -109,7 +109,7 @@ genPlasticWeights_args = Dict(:Ncells => Ncells, :frac => 1.0, :Ne => Ne,
 
 
 # --- feed forward neuron plugin --- #
-genFfwdRate_file = "genFfwdRate-random.jl"
+genFfwdRate_file = "genFfwdRate-ornstein-uhlenbeck.jl"
 genFfwdRate_args = Dict(:train_time => train_time, :stim_off => stim_off, :dt => dt,
                         :Lffwd => Lffwd, :mu => 5, :bou => 1/400, :sig => 0.2, :wid => 500,
                         :rng => rng)

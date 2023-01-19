@@ -212,11 +212,11 @@ of your choosing.  Defaults are supplied for each plugin.
   if K > 0.
 
   * `genFfwdRate()` specifies the spike thresholds for the feed-forward
-  neurons.  The default is "src/genFfwdRate-random.jl".  This is only used
-  if Lffwd > 0.
+  neurons.  The default is "src/genFfwdRate-ornstein-uhlenbeck.jl".  This is
+  only used if Lffwd > 0.
 
   * `genStim()` specifies the external input applied to each neuron.
-  The default is "src/genStim-random.jl"
+  The default is "src/genStim-ornstein-uhlenbeck.jl"
 
   * `genTarget()` specifies the desired synaptic currents to learn.
   The default is "src/genTarget-sinusoids.jl".  This is only used if a file
