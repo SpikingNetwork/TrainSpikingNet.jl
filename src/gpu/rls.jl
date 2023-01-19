@@ -1,4 +1,8 @@
-function rls(itask, raug, k, den, e, delta, Ncells, Lei, r, s, Px, P, synInputBalanced, xtarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightFfwd, wpWeightIn, wpWeightOut, plusone, minusone, exactlyzero)
+function rls(itask,
+             raug, k, den, e, delta, Ncells, Lei, r, s, Px, P, u_bal,
+             utarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightX, wpWeightIn,
+             wpWeightOut, plusone, minusone, exactlyzero)
+
     raug[1:Lei,:] = @view r[Px]
     raug[Lei+1:end,:] .= s
 
@@ -22,11 +26,11 @@ function rls(itask, raug, k, den, e, delta, Ncells, Lei, r, s, Px, P, synInputBa
     end
 
     batched_dot!(e, wpWeightIn, raug[1:Lei,:])
-    e .+= synInputBalanced .- @view xtarg[learn_seq,:,itask]
-    @static Param.Lffwd>0 && (e .+= wpWeightFfwd*s)
+    e .+= u_bal .- @view utarg[learn_seq,:,itask]
+    @static Param.LX>0 && (e .+= wpWeightX*s)
     delta .= e' .* k .* den'
     wpWeightIn .-= @view delta[1:Lei,:]
-    @static Param.Lffwd>0 && (wpWeightFfwd .-= (@view delta[Lei+1:end,:])')
+    @static Param.LX>0 && (wpWeightX .-= (@view delta[Lei+1:end,:])')
     wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
 
     return wpWeightIn, wpWeightOut

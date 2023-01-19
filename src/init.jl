@@ -23,7 +23,7 @@ end
 add_arg_group!(aps, "mutually exclusive arguments.  if neither is specified, sinusoids\nwill be generated for synpatic inputs", exclusive = true);
 
 @add_arg_table! aps begin
-    "--xtarg_file", "-x"
+    "--utarg_file", "-u"
         help = "full path to the JLD file containing the synaptic current targets"
     "--spikerate_file", "-s"
         help = "full path to the JLD file containing the spike rates"
@@ -46,16 +46,16 @@ module Param
             train_duration, stim_on, stim_off, train_time,
             dt, Nsteps,
             Ncells, Ne, Ni,
-            taue, taui,
-            K, L, Lffwd, Lexc, Linh,
-            mu,
+            tau_meme, tau_memi,
+            K, L, LX, Lexc, Linh,
+            X_bal,
             vre, threshe, threshi, refrac,
-            tauedecay, tauidecay, taudecay_plastic,
+            tau_bale, tau_bali, tau_plas,
             noise_model, sig,
             correlation_var,
-            genStim_file, genStim_args,
-            genTarget_file, genTarget_args,
-            genFfwdRate_file, genFfwdRate_args,
+            genXStim_file, genXStim_args,
+            genUTarget_file, genUTarget_args,
+            genRateX_file, genRateX_args,
             genStaticWeights_file, genStaticWeights_args,
             genPlasticWeights_file, genPlasticWeights_args,
             choose_task_func,
@@ -87,30 +87,30 @@ end
 kind=:init
 include(Param.genStaticWeights_file)
 include(Param.genPlasticWeights_file)
-include(Param.genFfwdRate_file)
-include(Param.genTarget_file)
-include(Param.genStim_file)
+include(Param.genRateX_file)
+include(Param.genUTarget_file)
+include(Param.genXStim_file)
 include(joinpath("cpu","loop.jl"))
-include("rate2synInput.jl")
+include("rate2utarg.jl")
 
 # --- initialization --- #
 w0Index, w0Weights, nc0 = genStaticWeights(Param.genStaticWeights_args)
-ffwdRate = genFfwdRate(Param.genFfwdRate_args)
+rateX = genRateX(Param.genRateX_args)
 
 itask = 1
 uavg, ns0, ustd = loop_init(itask,
     nothing, nothing, Param.stim_off, Param.train_time, Param.dt,
-    Param.Nsteps, Param.Ncells, Param.Ne, nothing, Param.Lffwd, Param.refrac,
-    vre, invtauedecay, invtauidecay, nothing, mu, thresh, tau, nothing,
-    nothing, ns, nothing, ns_ffwd, forwardInputsE, forwardInputsI, nothing,
-    forwardInputsEPrev, forwardInputsIPrev, nothing, nothing, nothing,
-    xedecay, xidecay, nothing, synInputBalanced, synInput, nothing, nothing,
-    bias, nothing, nothing, lastSpike, nothing, nothing, nothing, nothing,
-    nothing, v, Param.rng, noise, rndFfwd, sig, nothing, nothing, w0Index,
+    Param.Nsteps, Param.Ncells, Param.Ne, nothing, Param.LX, Param.refrac,
+    vre, invtau_bale, invtau_bali, nothing, X_bal, thresh, tau_mem, nothing,
+    nothing, ns, nothing, nsX, inputsE, inputsI, nothing,
+    inputsEPrev, inputsIPrev, nothing, nothing, nothing, nothing, nothing,
+    u_bale, u_bali, nothing, u_bal, u, nothing, nothing,
+    X, nothing, nothing, lastSpike, nothing, nothing, nothing, nothing,
+    nothing, v, Param.rng, noise, rndX, sig, nothing, nothing, w0Index,
     w0Weights, nc0, nothing, nothing, nothing, nothing, nothing, nothing,
-    nothing, nothing, nothing, nothing, uavg, utmp, ffwdRate)
+    nothing, nothing, nothing, nothing, uavg, utmp, rateX)
 
-wpWeightFfwd, wpWeightIn, wpIndexIn, ncpIn =
+wpWeightX, wpWeightIn, wpIndexIn, ncpIn =
     genPlasticWeights(Param.genPlasticWeights_args, ns0)
 
 # get indices of postsynaptic cells for each presynaptic cell
@@ -138,34 +138,34 @@ for preCell = 1:Param.Ncells
 end
 
 Ntime = floor(Int, (Param.train_time - Param.stim_off) / Param.learn_every)
-if parsed_args["xtarg_file"] !== nothing
-    xtarg_dict = load(parsed_args["xtarg_file"])
-    xtarg = xtarg_dict[first(keys(xtarg_dict))]
-    if size(xtarg,1) != Ntime
-        error(parsed_args["xtarg_file"],
+if parsed_args["utarg_file"] !== nothing
+    utarg_dict = load(parsed_args["utarg_file"])
+    utarg = utarg_dict[first(keys(utarg_dict))]
+    if size(utarg,1) != Ntime
+        error(parsed_args["utarg_file"],
               " should have (train_time-stim_off)/learn_every = ",
               Ntime, " rows")
     end
-    ndims(xtarg)==2 && (xtarg = xtarg[:,:,[CartesianIndex()]])
-    if any(parsed_args["itasks"] .> size(xtarg,3))
+    ndims(utarg)==2 && (utarg = utarg[:,:,[CartesianIndex()]])
+    if any(parsed_args["itasks"] .> size(utarg,3))
         error("an element of --itasks exceeds the size of the third dimension of ",
-              parsed_args["xtarg_file"])
+              parsed_args["utarg_file"])
     end
-    xtarg = xtarg[:,:,parsed_args["itasks"]]
+    utarg = utarg[:,:,parsed_args["itasks"]]
 elseif parsed_args["spikerate_file"] !== nothing
-    xtarg = rate2synInput(Param.train_time, Param.stim_off, Param.learn_every,
-                          Param.taue, Param.threshe, Param.vre,
-                          Param.K==0 ? sig : (ustd / sqrt(Param.taue_bal * 1.3))) # factor 1.3 was calibrated manually
+    utarg = rate2utarg(Param.train_time, Param.stim_off, Param.learn_every,
+                       Param.tau_meme, Param.threshe, Param.vre,
+                       Param.K==0 ? sig : (ustd / sqrt(Param.tau_bale * 1.3))) # factor 1.3 was calibrated manually
 else
-    xtarg = Array{Float64}(undef, Ntime, Param.Ncells, length(parsed_args["itasks"]))
+    utarg = Array{Float64}(undef, Ntime, Param.Ncells, length(parsed_args["itasks"]))
     for itask = 1:length(parsed_args["itasks"])
-        xtarg[:,:,itask] = genTarget(Param.genTarget_args, uavg)
+        utarg[:,:,itask] = genUTarget(Param.genUTarget_args, uavg)
     end
 end
 timeSteps = round(Int, (Param.stim_off - Param.stim_on) / Param.dt)
-stim = Array{Float64}(undef, timeSteps, Param.Ncells, length(parsed_args["itasks"]))
+X_stim = Array{Float64}(undef, timeSteps, Param.Ncells, length(parsed_args["itasks"]))
 for itask = 1:length(parsed_args["itasks"])
-    stim[:,:,itask] = genStim(Param.genStim_args)
+    X_stim[:,:,itask] = genXStim(Param.genXStim_args)
 end
 
 # --- set up correlation matrix --- #
@@ -179,24 +179,24 @@ vec01 = [zeros(Param.Lexc); ones(Param.Linh)];
 Pinv_rowsum = Param.penmu*(vec10*vec10' + vec01*vec01');
 # sum of penalties
 Pinv_rec = Pinv_L2 + Pinv_rowsum;
-Pinv_ffwd = Diagonal(repeat([Param.penlamFF], Param.Lffwd))
-Pinv = zeros(pLrec+Param.Lffwd, pLrec+Param.Lffwd)
+Pinv_X = Diagonal(repeat([Param.penlamFF], Param.LX))
+Pinv = zeros(pLrec+Param.LX, pLrec+Param.LX)
 Pinv[1:pLrec, 1:pLrec] = Pinv_rec
-Pinv[pLrec+1 : pLrec+Param.Lffwd, pLrec+1 : pLrec+Param.Lffwd] = Pinv_ffwd
+Pinv[pLrec+1 : pLrec+Param.LX, pLrec+1 : pLrec+Param.LX] = Pinv_X
 Pinv_norm = Param.PType(Symmetric(UpperTriangular(Pinv) \ I));
 
 #----------- save initialization --------------#
 save(joinpath(parsed_args["data_dir"],"w0Index.jld2"), "w0Index", w0Index)
 save(joinpath(parsed_args["data_dir"],"w0Weights.jld2"), "w0Weights", w0Weights)
 save(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0", nc0)
-save(joinpath(parsed_args["data_dir"],"stim.jld2"), "stim", stim)
-save(joinpath(parsed_args["data_dir"],"xtarg.jld2"), "xtarg", xtarg)
+save(joinpath(parsed_args["data_dir"],"X_stim.jld2"), "X_stim", X_stim)
+save(joinpath(parsed_args["data_dir"],"utarg.jld2"), "utarg", utarg)
 save(joinpath(parsed_args["data_dir"],"wpIndexIn.jld2"), "wpIndexIn", wpIndexIn)
 save(joinpath(parsed_args["data_dir"],"wpIndexOut.jld2"), "wpIndexOut", wpIndexOut)
 save(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld2"), "wpIndexConvert", wpIndexConvert)
-save(joinpath(parsed_args["data_dir"],"wpWeightFfwd.jld2"), "wpWeightFfwd", wpWeightFfwd)
+save(joinpath(parsed_args["data_dir"],"wpWeightX.jld2"), "wpWeightX", wpWeightX)
 save(joinpath(parsed_args["data_dir"],"wpWeightIn.jld2"), "wpWeightIn", wpWeightIn)
 save(joinpath(parsed_args["data_dir"],"ncpIn.jld2"), "ncpIn", ncpIn)
 save(joinpath(parsed_args["data_dir"],"ncpOut.jld2"), "ncpOut", ncpOut)
 save(joinpath(parsed_args["data_dir"],"P.jld2"), "P", Pinv_norm)
-save(joinpath(parsed_args["data_dir"],"ffwdRate.jld2"), "ffwdRate", ffwdRate)
+save(joinpath(parsed_args["data_dir"],"rateX.jld2"), "rateX", rateX)

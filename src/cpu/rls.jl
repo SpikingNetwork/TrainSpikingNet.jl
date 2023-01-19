@@ -1,4 +1,7 @@
-function rls(itask, raug, k, delta, Ncells, Lei, r, s, Px, P, synInputBalanced, xtarg, learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightFfwd, wpWeightIn, wpWeightOut, plusone, exactlyzero)
+function rls(itask,
+             raug, k, delta, Ncells, Lei, r, s, Px, P, u_bal, utarg,
+             learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightX, wpWeightIn,
+             wpWeightOut, plusone, exactlyzero)
 
     @maybethread for ci = 1:Ncells
         raug_tid = @view raug[:,Threads.threadid()]
@@ -33,14 +36,14 @@ function rls(itask, raug, k, delta, Ncells, Lei, r, s, Px, P, synInputBalanced, 
 
         delta_tid = @view delta[:,Threads.threadid()]
         wpWeightInci = @view wpWeightIn[:,ci]
-        e = wpWeightInci'*view(raug_tid, 1:Lei) + synInputBalanced[ci] - xtarg[learn_seq,ci,itask]
-        @static if Param.Lffwd>0
-              wpWeightFfwdci = @view wpWeightFfwd[ci,:]
-              e += wpWeightFfwdci'*s
+        e = wpWeightInci'*view(raug_tid, 1:Lei) + u_bal[ci] - utarg[learn_seq,ci,itask]
+        @static if Param.LX>0
+              wpWeightXci = @view wpWeightX[ci,:]
+              e += wpWeightXci'*s
         end
         delta_tid = e.*k_tid.*den
         wpWeightInci .-= @view delta_tid[1:Lei]
-        @static Param.Lffwd>0 && (wpWeightFfwdci .-= @view delta_tid[Lei+1:end])
+        @static Param.LX>0 && (wpWeightXci .-= @view delta_tid[Lei+1:end])
     end
     wpWeightOut = convertWgtIn2Out(Ncells,ncpIn,wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
 

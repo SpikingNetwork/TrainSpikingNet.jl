@@ -9,20 +9,20 @@ function ArgParse.parse_item(::Type{Vector{Int}}, x::AbstractString)
     return eval(Meta.parse(x))
 end
 
-s = ArgParseSettings()
+aps = ArgParseSettings()
 
-@add_arg_table! s begin
+@add_arg_table! aps begin
     "--ineurons_to_plot", "-i"
         help = "which neurons to plot.  must be the same or a subset of ineurons_to_test used in test.jl"
         arg_type = Vector{Int}
         default = collect(1:16)
         range_tester = x->all(x.>0)
     "test_file"
-        help = "full path to the JLD file output by test.jl.  this same directory needs to contain the parameters in param.jld2, the synaptic targets in xtarg.jld2, and (optionally) the spike rate in rate.jld2"
+        help = "full path to the JLD file output by test.jl.  this same directory needs to contain the parameters in param.jld2, the synaptic targets in utarg.jld2, and (optionally) the spike rate in rate.jld2"
         required = true
 end
 
-parsed_args = parse_args(s)
+parsed_args = parse_args(aps)
 
 d = load(parsed_args["test_file"])
 ineurons_to_test = d["ineurons_to_test"]
@@ -34,7 +34,7 @@ all(in.(ineurons_to_plot,[ineurons_to_test])) || error("ineurons_to_plot must be
 if all(in.(ineurons_to_test,[ineurons_to_plot]))
     nss = d["nss"]
     timess = d["timess"]
-    xtotals = d["xtotals"]
+    utotals = d["utotals"]
 else
     itest = []
     for iplot in ineurons_to_plot
@@ -42,17 +42,17 @@ else
     end
     nss = similar(d["nss"])
     timess = similar(d["timess"])
-    xtotals = similar(d["xtotals"])
+    utotals = similar(d["utotals"])
     for ij in eachindex(d["nss"])
         nss[ij] = d["nss"][ij][itest]
         timess[ij] = d["timess"][ij][itest,:]
-        xtotals[ij] = d["xtotals"][ij][:,itest]
+        utotals[ij] = d["utotals"][ij][:,itest]
     end
 end
 
 Param = load(joinpath(dirname(parsed_args["test_file"]),"param.jld2"), "param")
 
-xtarg = load(joinpath(dirname(parsed_args["test_file"]),"xtarg.jld2"), "xtarg")
+utarg = load(joinpath(dirname(parsed_args["test_file"]),"utarg.jld2"), "utarg")
 if isfile(joinpath(dirname(parsed_args["test_file"]),"rate.jld2"))
     rate = load(joinpath(dirname(parsed_args["test_file"]),"rate.jld2"), "rate")
 else
@@ -75,17 +75,17 @@ for itask = 1:ntasks
 
 ps = Union{Plot,Context}[]
 for ci=1:nneurons
-    df = DataFrame((t = (1:size(xtarg,1)) .* Param.learn_every/1000,
-                    xtarg = xtarg[:,ineurons_to_plot[ci],itask],
-                    xtotal1 = xtotals[1,itask][:,ci]))
-    xtotal_ci = hcat((x[:,ci] for x in xtotals[:,itask])...)
-    df[!,:xtotal_ave] = dropdims(median(xtotal_ci, dims=2), dims=2)
-    df[!,:xtotal_disp] = dropdims(mapslices(mad, xtotal_ci, dims=2), dims=2)
-    transform!(df, [:xtotal_ave, :xtotal_disp] => ByRow((mu,sigma)->mu+sigma) => :xtotal_upper)
-    transform!(df, [:xtotal_ave, :xtotal_disp] => ByRow((mu,sigma)->mu-sigma) => :xtotal_lower)
-    push!(ps, plot(df, x=:t, y=Col.value(:xtarg, :xtotal_ave, :xtotal1),
-                   color=Col.index(:xtarg, :xtotal_ave, :xtotal1),
-                   ymax=Col.value(:xtotal_upper), ymin=Col.value(:xtotal_lower),
+    df = DataFrame((t = (1:size(utarg,1)) .* Param.learn_every/1000,
+                    utarg = utarg[:,ineurons_to_plot[ci],itask],
+                    utotal1 = utotals[1,itask][:,ci]))
+    utotal_ci = hcat((x[:,ci] for x in utotals[:,itask])...)
+    df[!,:utotal_ave] = dropdims(median(utotal_ci, dims=2), dims=2)
+    df[!,:utotal_disp] = dropdims(mapslices(mad, utotal_ci, dims=2), dims=2)
+    transform!(df, [:utotal_ave, :utotal_disp] => ByRow((mu,sigma)->mu+sigma) => :utotal_upper)
+    transform!(df, [:utotal_ave, :utotal_disp] => ByRow((mu,sigma)->mu-sigma) => :utotal_lower)
+    push!(ps, plot(df, x=:t, y=Col.value(:utarg, :utotal_ave, :utotal1),
+                   color=Col.index(:utarg, :utotal_ave, :utotal1),
+                   ymax=Col.value(:utotal_upper), ymin=Col.value(:utotal_lower),
                    Geom.line, Geom.ribbon,
                    Guide.colorkey(title="", labels=["data","model","model1"]),
                    Guide.title(string("neuron #", ineurons_to_plot[ci])),

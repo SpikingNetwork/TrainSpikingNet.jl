@@ -55,7 +55,7 @@ include("loop.jl")
 nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0")
 ncpIn = load(joinpath(parsed_args["data_dir"],"ncpIn.jld2"), "ncpIn")
 ncpOut = load(joinpath(parsed_args["data_dir"],"ncpOut.jld2"), "ncpOut")
-stim = load(joinpath(parsed_args["data_dir"],"stim.jld2"), "stim")
+X_stim = load(joinpath(parsed_args["data_dir"],"X_stim.jld2"), "X_stim")
 w0Index = load(joinpath(parsed_args["data_dir"],"w0Index.jld2"), "w0Index")
 w0Weights = load(joinpath(parsed_args["data_dir"],"w0Weights.jld2"), "w0Weights")
 wpIndexIn = load(joinpath(parsed_args["data_dir"],"wpIndexIn.jld2"), "wpIndexIn")
@@ -69,7 +69,7 @@ if isnothing(parsed_args["restore_from_checkpoint"])
 else
     R = parsed_args["restore_from_checkpoint"]
 end
-wpWeightFfwd = load(joinpath(parsed_args["data_dir"],"wpWeightFfwd-ckpt$R.jld2"), "wpWeightFfwd");
+wpWeightX = load(joinpath(parsed_args["data_dir"],"wpWeightX-ckpt$R.jld2"), "wpWeightX");
 wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld2"), "wpWeightIn")
 wpWeightOut = zeros(maximum(wpIndexConvert), Param.Ncells)
 wpWeightOut = convertWgtIn2Out(Param.Ncells, ncpIn,
@@ -81,7 +81,7 @@ save(joinpath(parsed_args["data_dir"],"rng-test.jld2"), "rng", rng)
 
 # --- set up variables --- #
 include("variables.jl")
-stim = Array{Param.FloatPrecision}(stim);
+X_stim = Array{Param.FloatPrecision}(X_stim);
 nc0 = Array{Param.IntPrecision}(nc0)
 ncpOut = Array{Param.IntPrecision}(ncpOut);
 w0Index = Array{Param.IntPrecision}(w0Index);
@@ -91,63 +91,62 @@ wpWeightOut = Array{Param.FloatPrecision}(wpWeightOut);
 
 # --- test the network --- #
 ntrials = parsed_args["ntrials"]
-ntasks = size(stim,3)
+ntasks = size(X_stim,3)
 nss = Array{Any}(undef, ntrials, ntasks);
 timess = Array{Any}(undef, ntrials, ntasks);
-xtotals = Array{Any}(undef, ntrials, ntasks);
+utotals = Array{Any}(undef, ntrials, ntasks);
 copy_rng = [typeof(rng)() for _=1:Threads.nthreads()];
 isnothing(Param.seed) || Random.seed!.(copy_rng, Param.seed)
-for var in [:times, :ns, :times_ffwd, :ns_ffwd,
-            :forwardInputsE, :forwardInputsI, :forwardInputsP,
-            :forwardInputsEPrev, :forwardInputsIPrev, :forwardInputsPPrev,
-            :xedecay, :xidecay, :xpdecay, :synInputBalanced, :synInput,
-            :bias, :lastSpike, :v, :noise]
+for var in [:times, :ns, :timesX, :nsX,
+            :inputsE, :inputsI, :inputsP, :inputsEPrev, :inputsIPrev, :inputsPPrev,
+            :u_bale, :u_bali, :uX_plas, :u_bal, :u,
+            :X, :lastSpike, :v, :noise]
   @eval $(Symbol("copy_",var)) = [deepcopy($var) for _=1:Threads.nthreads()];
 end
 Threads.@threads for itrial=1:ntrials
     for itask = 1:ntasks
-        t = @elapsed thisns, thistimes, _, _, thisxtotal, _ = loop_test(itask,
+        t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop_test(itask,
               Param.learn_every, Param.stim_on, Param.stim_off,
               Param.train_time, Param.dt, Param.Nsteps, Param.Ncells,
-              nothing, nothing, Param.Lffwd, Param.refrac, vre, invtauedecay,
-              invtauidecay, invtaudecay_plastic, mu, thresh, tau, maxTimes,
+              nothing, nothing, Param.LX, Param.refrac, vre, invtau_bale,
+              invtau_bali, invtau_plas, X_bal, thresh, tau_mem, maxTimes,
               copy_times[Threads.threadid()],
               copy_ns[Threads.threadid()],
-              copy_times_ffwd[Threads.threadid()],
-              copy_ns_ffwd[Threads.threadid()],
-              copy_forwardInputsE[Threads.threadid()],
-              copy_forwardInputsI[Threads.threadid()],
-              copy_forwardInputsP[Threads.threadid()],
-              copy_forwardInputsEPrev[Threads.threadid()],
-              copy_forwardInputsIPrev[Threads.threadid()],
-              copy_forwardInputsPPrev[Threads.threadid()],
+              copy_timesX[Threads.threadid()],
+              copy_nsX[Threads.threadid()],
+              copy_inputsE[Threads.threadid()],
+              copy_inputsI[Threads.threadid()],
+              copy_inputsP[Threads.threadid()],
+              copy_inputsEPrev[Threads.threadid()],
+              copy_inputsIPrev[Threads.threadid()],
+              copy_inputsPPrev[Threads.threadid()],
+              nothing, nothing, nothing, nothing,
+              copy_u_bale[Threads.threadid()],
+              copy_u_bali[Threads.threadid()],
+              copy_uX_plas[Threads.threadid()],
+              copy_u_bal[Threads.threadid()],
+              copy_u[Threads.threadid()],
               nothing, nothing,
-              copy_xedecay[Threads.threadid()],
-              copy_xidecay[Threads.threadid()],
-              copy_xpdecay[Threads.threadid()],
-              copy_synInputBalanced[Threads.threadid()],
-              copy_synInput[Threads.threadid()],
-              nothing, nothing,
-              copy_bias[Threads.threadid()],
+              copy_X[Threads.threadid()],
               Param.wid, Param.example_neurons,
               copy_lastSpike[Threads.threadid()],
               nothing, nothing, nothing, nothing, nothing,
               copy_v[Threads.threadid()],
               copy_rng[Threads.threadid()],
               copy_noise[Threads.threadid()],
-              nothing, sig, nothing, nothing, w0Index, w0Weights, nc0, stim, nothing,
+              nothing, sig, nothing, nothing, w0Index, w0Weights, nc0, X_stim, nothing,
               nothing, wpIndexOut, nothing, nothing, nothing, wpWeightOut, nothing,
               ncpOut, nothing, nothing, nothing)
         nss[itrial, itask] = thisns[parsed_args["ineurons_to_test"]]
         timess[itrial, itask] = thistimes[parsed_args["ineurons_to_test"],:]
-        xtotals[itrial, itask] = thisxtotal[:,parsed_args["ineurons_to_test"]]
+        utotals[itrial, itask] = thisutotal[:,parsed_args["ineurons_to_test"]]
         println("trial #", itrial, ", task #", itask, ": ",round(t, sigdigits=3), " sec")
     end
 end
 
 save(joinpath(parsed_args["data_dir"],"test.jld2"),
      "ineurons_to_test", parsed_args["ineurons_to_test"],
-     "nss", nss, "timess", timess, "xtotals", xtotals)
+     "nss", nss, "timess", timess, "utotals", utotals)
 
 parsed_args["no-plot"] || run(`$(Base.julia_cmd())
                                $(joinpath(@__DIR__, "..", "plot.jl"))

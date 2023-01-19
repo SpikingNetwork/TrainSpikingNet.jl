@@ -9,9 +9,9 @@ function ArgParse.parse_item(::Type{Vector{Int}}, x::AbstractString)
     return eval(Meta.parse(x))
 end
 
-s = ArgParseSettings()
+aps = ArgParseSettings()
 
-@add_arg_table! s begin
+@add_arg_table! aps begin
     "--ntrials", "-n"
         help = "number of repeated trials to average over"
         arg_type = Int
@@ -35,7 +35,7 @@ s = ArgParseSettings()
         required = true
 end
 
-parsed_args = parse_args(s)
+parsed_args = parse_args(aps)
 
 Threads.nthreads() < ndevices() && @warn "performance is best if no. threads is set to no. GPUs"
 if Threads.nthreads() > ndevices()
@@ -53,7 +53,7 @@ include("loop.jl")
 
 # --- load initialization --- #
 nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0")
-stim = load(joinpath(parsed_args["data_dir"],"stim.jld2"), "stim")
+X_stim = load(joinpath(parsed_args["data_dir"],"X_stim.jld2"), "X_stim")
 w0Index = load(joinpath(parsed_args["data_dir"],"w0Index.jld2"), "w0Index")
 w0Weights = load(joinpath(parsed_args["data_dir"],"w0Weights.jld2"), "w0Weights")
 wpIndexIn = load(joinpath(parsed_args["data_dir"],"wpIndexIn.jld2"), "wpIndexIn")
@@ -67,7 +67,7 @@ if isnothing(parsed_args["restore_from_checkpoint"])
 else
     R = parsed_args["restore_from_checkpoint"]
 end
-wpWeightFfwd = load(joinpath(parsed_args["data_dir"],"wpWeightFfwd.jld2"), "wpWeightFfwd")
+wpWeightX = load(joinpath(parsed_args["data_dir"],"wpWeightX.jld2"), "wpWeightX")
 wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld2"))["wpWeightIn"]
 wpWeightOut = zeros(maximum(wpIndexConvert), Param.Ncells)
 wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
@@ -75,7 +75,7 @@ wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
 # --- set up variables --- #
 include("variables.jl")
 nc0 = CuArray{Param.IntPrecision}(nc0)
-stim = CuArray{Param.FloatPrecision}(stim);
+X_stim = CuArray{Param.FloatPrecision}(X_stim);
 w0Index = CuArray{Param.IntPrecision}(w0Index);
 w0Weights = CuArray{Param.FloatPrecision}(w0Weights);
 wpIndexOut = CuArray{Param.IntPrecision}(wpIndexOut);
@@ -87,57 +87,57 @@ save(joinpath(parsed_args["data_dir"],"rng-test.jld2"), "rng", rng)
 
 # --- test the network --- #
 ntrials = parsed_args["ntrials"]
-ntasks = size(stim,3)
+ntasks = size(X_stim,3)
 nss = Array{Any}(undef, ntrials, ntasks);
 timess = Array{Any}(undef, ntrials, ntasks);
-xtotals = Array{Any}(undef, ntrials, ntasks);
+utotals = Array{Any}(undef, ntrials, ntasks);
 copy_rng = [typeof(rng)() for _=1:ndevices()];
 isnothing(Param.seed) || Random.seed!.(copy_rng, Param.seed)
-for var in [:times, :ns, :times_ffwd, :ns_ffwd, :stim, :nc0, :thresh, :tau,
-            :w0Index, :w0Weights, :wpWeightFfwd, :wpIndexOut, :wpWeightOut, :mu,
-            :forwardInputsE, :forwardInputsI, :forwardInputsP,
-            :forwardInputsEPrev, :forwardInputsIPrev, :forwardInputsPPrev,
-            :xedecay, :xidecay, :xpdecay, :synInputBalanced, :synInput,
-            :bias, :lastSpike, :bnotrefrac, :bspike, :v, :noise, :sig]
+for var in [:times, :ns, :timesX, :nsX, :X_stim, :nc0, :thresh, :tau_mem,
+            :w0Index, :w0Weights, :wpWeightX, :wpIndexOut, :wpWeightOut, :X_bal,
+            :inputsE, :inputsI, :inputsP, :inputsEPrev, :inputsIPrev, :inputsPPrev,
+            :u_bale, :u_bali, :uX_plas, :u_bal, :u,
+            :X, :lastSpike, :bnotrefrac, :bspike, :v, :noise, :sig]
   @eval (device!(0); tmp = Array($var))
   @eval $(Symbol("copy_",var)) = [(device!(idevice-1); CuArray($tmp)) for idevice=1:ndevices()];
 end
-if typeof(Param.taudecay_plastic)<:AbstractArray
-  device!(0); tmp = Array(invtaudecay_plastic)
-  copy_invtaudecay_plastic = [(device!(idevice-1); CuArray(tmp)) for idevice=1:ndevices()];
+if typeof(Param.tau_plas)<:AbstractArray
+  device!(0); tmp = Array(invtau_plas)
+  copy_invtau_plas = [(device!(idevice-1); CuArray(tmp)) for idevice=1:ndevices()];
 end
 synchronize()
 Threads.@threads for itrial=1:ntrials
     idevice = Threads.threadid()
     device!(idevice-1)
     for itask = 1:ntasks
-        t = @elapsed thisns, thistimes, _, _, thisxtotal, _ = loop_test(itask,
-              Param.learn_every, Param.stim_on, Param.stim_off, Param.train_time, Param.dt,
-              Param.Nsteps, Param.Ncells, nothing, nothing, Param.Lffwd, Param.refrac, vre, invtauedecay,
-              invtauidecay,
-              typeof(Param.taudecay_plastic)<:Number ? invtaudecay_plastic : copy_invtaudecay_plastic[idevice],
-              copy_mu[idevice],
+        t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop_test(itask,
+              Param.learn_every, Param.stim_on, Param.stim_off,
+              Param.train_time, Param.dt, Param.Nsteps, Param.Ncells,
+              nothing, nothing, Param.LX, Param.refrac, vre, invtau_bale,
+              invtau_bali,
+              typeof(Param.tau_plas)<:Number ? invtau_plas : copy_invtau_plas[idevice],
+              copy_X_bal[idevice],
               copy_thresh[idevice],
-              copy_tau[idevice],
+              copy_tau_mem[idevice],
               maxTimes,
               copy_times[idevice],
               copy_ns[idevice],
-              copy_times_ffwd[idevice],
-              copy_ns_ffwd[idevice],
-              copy_forwardInputsE[idevice],
-              copy_forwardInputsI[idevice],
-              copy_forwardInputsP[idevice],
-              copy_forwardInputsEPrev[idevice],
-              copy_forwardInputsIPrev[idevice],
-              copy_forwardInputsPPrev[idevice],
+              copy_timesX[idevice],
+              copy_nsX[idevice],
+              copy_inputsE[idevice],
+              copy_inputsI[idevice],
+              copy_inputsP[idevice],
+              copy_inputsEPrev[idevice],
+              copy_inputsIPrev[idevice],
+              copy_inputsPPrev[idevice],
+              nothing, nothing, nothing, nothing,
+              copy_u_bale[idevice],
+              copy_u_bali[idevice],
+              copy_uX_plas[idevice],
+              copy_u_bal[idevice],
+              copy_u[idevice],
               nothing, nothing,
-              copy_xedecay[idevice],
-              copy_xidecay[idevice],
-              copy_xpdecay[idevice],
-              copy_synInputBalanced[idevice],
-              copy_synInput[idevice],
-              nothing, nothing,
-              copy_bias[idevice],
+              copy_X[idevice],
               Param.wid, Param.example_neurons,
               copy_lastSpike[idevice],
               copy_bnotrefrac[idevice],
@@ -153,9 +153,9 @@ Threads.@threads for itrial=1:ntrials
               copy_w0Index[idevice],
               copy_w0Weights[idevice],
               copy_nc0[idevice],
-              copy_stim[idevice],
+              copy_X_stim[idevice],
               nothing,
-              copy_wpWeightFfwd[idevice],
+              copy_wpWeightX[idevice],
               nothing,
               copy_wpIndexOut[idevice],
               nothing, nothing,
@@ -163,14 +163,14 @@ Threads.@threads for itrial=1:ntrials
               nothing);
         nss[itrial, itask] = Array(thisns[parsed_args["ineurons_to_test"]])
         timess[itrial, itask] = Array(thistimes[parsed_args["ineurons_to_test"],:])
-        xtotals[itrial, itask] = Array(thisxtotal[:,parsed_args["ineurons_to_test"]])
+        utotals[itrial, itask] = Array(thisutotal[:,parsed_args["ineurons_to_test"]])
         println("trial #", itrial, ", task #", itask, ": ",round(t, sigdigits=3), " sec")
     end
 end
 
 save(joinpath(parsed_args["data_dir"], "test.jld2"),
      "ineurons_to_test", parsed_args["ineurons_to_test"],
-     "nss", nss, "timess", timess, "xtotals", xtotals)
+     "nss", nss, "timess", timess, "utotals", utotals)
 
 parsed_args["no-plot"] || run(`$(Base.julia_cmd())
                                $(joinpath(@__DIR__, "..", "plot.jl"))

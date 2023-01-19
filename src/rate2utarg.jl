@@ -1,6 +1,6 @@
 using NLsolve
 
-function rate2synInput(train_time, stim_off, learn_every, taue, threshe, vre, sigma)
+function rate2utarg(train_time, stim_off, learn_every, taue_mem, threshe, vre, sigma)
     targetRate_dict = load(parsed_args["spikerate_file"])
     targetRate = targetRate_dict[first(keys(targetRate_dict))]
     Ntime = floor(Int, (train_time-stim_off)/learn_every)
@@ -12,15 +12,15 @@ function rate2synInput(train_time, stim_off, learn_every, taue, threshe, vre, si
     ndims(targetRate)==2 && (targetRate = targetRate[:,:,[CartesianIndex()]])
     if any(parsed_args["itasks"] .> size(targetRate,3))
         error("an element of --itask exceeds the size of the third dimension of ",
-              parsed_args["xtarg_file"])
+              parsed_args["utarg_file"])
     end
     targetRate = targetRate[:,:,parsed_args["itasks"]]
     replace!(targetRate, 0.0=>0.1)
-    xtarg = similar(targetRate)
+    utarg = similar(targetRate)
 
     # initial condition to Ricciardi
     initial_mu = 0.5*ones(Ntime)
-    invtau = 1000.0/taue
+    invtau = 1000.0/taue_mem
     VT = threshe
     Vr = vre
 
@@ -28,10 +28,10 @@ function rate2synInput(train_time, stim_off, learn_every, taue, threshe, vre, si
         icell, itask = ict[1], ict[2]
         
         # solve Ricciardi
-        xtarg[:,icell,itask] .= solveRicci(targetRate[:,icell,itask], initial_mu, sigma, invtau, VT, Vr)
+        utarg[:,icell,itask] .= solveRicci(targetRate[:,icell,itask], initial_mu, sigma, invtau, VT, Vr)
     end
 
-    return xtarg
+    return utarg
 end
 
 function solveRicci(rate, initial_mu, sigma, invtau, VT, Vr)

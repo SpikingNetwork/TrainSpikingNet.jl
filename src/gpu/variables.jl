@@ -1,12 +1,12 @@
-mu = CuArray{Param.FloatPrecision}(Param.mu)  # external input
+X_bal = CuArray{Param.FloatPrecision}(Param.X_bal)  # external input
 
 #synaptic time constants
-invtauedecay = Param.FloatPrecision(1/Param.tauedecay)
-invtauidecay = Param.FloatPrecision(1/Param.tauidecay)
-if typeof(Param.taudecay_plastic)<:Number
-    invtaudecay_plastic = Param.FloatPrecision(1/Param.taudecay_plastic)
+invtau_bale = Param.FloatPrecision(1/Param.tau_bale)
+invtau_bali = Param.FloatPrecision(1/Param.tau_bali)
+if typeof(Param.tau_plas)<:Number
+    invtau_plas = Param.FloatPrecision(1/Param.tau_plas)
 else
-    invtaudecay_plastic = CuVector{Param.FloatPrecision}(inv.(Param.taudecay_plastic))
+    invtau_plas = CuVector{Param.FloatPrecision}(inv.(Param.tau_plas))
 end
 
 #spike thresholds
@@ -15,36 +15,36 @@ thresh[1:Param.Ne] .= Param.threshe
 thresh[(1+Param.Ne):Param.Ncells] .= Param.threshi
 
 #membrane time constants
-tau = CuVector{Param.FloatPrecision}(undef, Param.Ncells)
-tau[1:Param.Ne] .= Param.taue
-tau[(1+Param.Ne):Param.Ncells] .= Param.taui
+tau_mem = CuVector{Param.FloatPrecision}(undef, Param.Ncells)
+tau_mem[1:Param.Ne] .= Param.tau_meme
+tau_mem[(1+Param.Ne):Param.Ncells] .= Param.tau_memi
 
 maxTimes = round(Int, Param.maxrate * Param.train_time / 1000) # maximum number of spikes times to record
 times = CuArray{Float64}(undef, Param.Ncells, 1+maxTimes)      # times of recurrent spikes throughout trial
 ns = CuVector{Param.IntPrecision}(undef, Param.Ncells)         # number of recurrent spikes in trial
-times_ffwd = CuArray{Float64}(undef, Param.Lffwd, 1+maxTimes)  # times of feed-forward spikes throughout trial
-ns_ffwd = CuVector{Param.IntPrecision}(undef, Param.Lffwd)     # number of feed-forward spikes in trial
+timesX = CuArray{Float64}(undef, Param.LX, 1+maxTimes)         # times of feed-forward spikes throughout trial
+nsX = CuVector{Param.IntPrecision}(undef, Param.LX)            # number of feed-forward spikes in trial
 
-forwardInputsE = CuVector{Param.FloatPrecision}(undef, Param.Ncells+1)     # excitatory synaptic currents to neurons via balanced connections at one time step
-forwardInputsI = CuVector{Param.FloatPrecision}(undef, Param.Ncells+1)     # inhibitory synaptic currents to neurons via balanced connections at one time step
-forwardInputsP = CuVector{Param.FloatPrecision}(undef, Param.Ncells+1)     # synaptic currents to neurons via plastic connections at one time step
-forwardInputsEPrev = CuVector{Param.FloatPrecision}(undef, Param.Ncells+1) # copy of forwardInputsE from previous time step
-forwardInputsIPrev = CuVector{Param.FloatPrecision}(undef, Param.Ncells+1) # copy of forwardInputsI from previous time step
-forwardInputsPPrev = CuVector{Param.FloatPrecision}(undef, Param.Ncells+1) # copy of forwardInputsP from previous time step
-forwardSpike = CuVector{Param.FloatPrecision}(undef, Param.Ncells)         # spikes emitted by each recurrent neuron at one time step
-forwardSpikePrev = CuVector{Param.FloatPrecision}(undef, Param.Ncells)     # copy of forwardSpike from previous time step
-ffwdSpike = CuVector{Param.FloatPrecision}(undef, Param.Lffwd)             # spikes emitted by each feed-forward neuron at one time step
-ffwdSpikePrev = CuVector{Param.FloatPrecision}(undef, Param.Lffwd)         # copy of ffwdSpike from previous time step
+inputsE = CuVector{Param.FloatPrecision}(undef, Param.Ncells+1)      # excitatory synaptic currents to neurons via balanced connections at one time step
+inputsI = CuVector{Param.FloatPrecision}(undef, Param.Ncells+1)      # inhibitory synaptic currents to neurons via balanced connections at one time step
+inputsP = CuVector{Param.FloatPrecision}(undef, Param.Ncells+1)      # synaptic currents to neurons via plastic connections at one time step
+inputsEPrev = CuVector{Param.FloatPrecision}(undef, Param.Ncells+1)  # copy of inputsE from previous time step
+inputsIPrev = CuVector{Param.FloatPrecision}(undef, Param.Ncells+1)  # copy of inputsI from previous time step
+inputsPPrev = CuVector{Param.FloatPrecision}(undef, Param.Ncells+1)  # copy of inputsP from previous time step
+spikes = CuVector{Param.FloatPrecision}(undef, Param.Ncells)         # spikes emitted by each recurrent neuron at one time step
+spikesPrev = CuVector{Param.FloatPrecision}(undef, Param.Ncells)     # copy of spike from previous time step
+spikesX = CuVector{Param.FloatPrecision}(undef, Param.LX)            # spikes emitted by each feed-forward neuron at one time step
+spikesXPrev = CuVector{Param.FloatPrecision}(undef, Param.LX)        # copy of spikesX from previous time step
 
-xedecay = CuVector{Param.FloatPrecision}(undef, Param.Ncells)          # synapse-filtered excitatory current (i.e. filtered version of forwardInputsE)
-xidecay = CuVector{Param.FloatPrecision}(undef, Param.Ncells)          # synapse-filtered inhibitory current (i.e. filtered version of forwardInputsI)
-xpdecay = CuVector{Param.FloatPrecision}(undef, Param.Ncells)          # synapse-filtered plastic current (i.e. filtered version of forwardInputsP)
-synInputBalanced = CuVector{Param.FloatPrecision}(undef, Param.Ncells) # sum of xedecay and xidecay (i.e. synaptic current from the balanced connections)
-synInput = CuVector{Param.FloatPrecision}(undef, Param.Ncells)         # sum of xedecay and xidecay (i.e. synaptic current from the balanced connections)
-r = CuVector{Param.FloatPrecision}(undef, Param.Ncells)                # synapse-filtered recurrent spikes (i.e. filtered version of forwardSpike)
-s = CuVector{Param.FloatPrecision}(undef, Param.Lffwd)                 # synapse-filtered feed-forward spikes (i.e. filtered version of ffwdSpike)
+u_bale = CuVector{Param.FloatPrecision}(undef, Param.Ncells)   # synapse-filtered excitatory current (i.e. filtered version of inputsE)
+u_bali = CuVector{Param.FloatPrecision}(undef, Param.Ncells)   # synapse-filtered inhibitory current (i.e. filtered version of inputsI)
+uX_plas = CuVector{Param.FloatPrecision}(undef, Param.Ncells)  # synapse-filtered plastic current (i.e. filtered version of inputsP)
+u_bal = CuVector{Param.FloatPrecision}(undef, Param.Ncells)    # sum of u_bale and u_bali (i.e. synaptic current from the balanced connections)
+u = CuVector{Param.FloatPrecision}(undef, Param.Ncells)        # sum of u_bale and u_bali (i.e. synaptic current from the balanced connections)
+r = CuVector{Param.FloatPrecision}(undef, Param.Ncells)        # synapse-filtered recurrent spikes (i.e. filtered version of spike)
+rX = CuVector{Param.FloatPrecision}(undef, Param.LX)           # synapse-filtered feed-forward spikes (i.e. filtered version of spikesX)
 
-bias = CuVector{Param.FloatPrecision}(undef, Param.Ncells)   # total external input to neurons
+X = CuVector{Param.FloatPrecision}(undef, Param.Ncells)   # total external input to neurons
 lastSpike = CuArray{Float64}(undef, Param.Ncells)            # last time a neuron spiked
 
 bnotrefrac = CuVector{Bool}(undef, Param.Ncells)  # which recurrent neurons are not in the refractory period
@@ -56,7 +56,7 @@ PScale = Param.FloatPrecision(Param.PScale)
 
 vre = Param.FloatPrecision(Param.vre)  # reset voltage
 
-PLtot = Param.Lexc + Param.Linh + Param.Lffwd
+PLtot = Param.Lexc + Param.Linh + Param.LX
 raug = CuArray{Param.FloatPrecision}(undef, PLtot, Param.Ncells)
 k = CuArray{Param.FloatPrecision}(undef, PLtot, Param.Ncells)
 den = CuArray{Param.FloatPrecision}(undef, Param.Ncells)
@@ -66,7 +66,7 @@ v = CuVector{Param.FloatPrecision}(undef, Param.Ncells)         # membrane volta
 noise = CuArray{Param.FloatPrecision}(undef, Param.Ncells)      # actual noise added at current time step
 sig = CUDA.fill(Param.FloatPrecision(Param.sig), Param.Ncells)  # std dev of the Gaussian noise
 
-rndFfwd = CuArray{Param.FloatPrecision}(undef, Param.Lffwd)     # uniform noise to generate Poisson feed-forward spikes
-bspike_ffwd = CuVector{Bool}(undef, Param.Lffwd)                # which feed-forward neurons spikes
+rndX = CuArray{Param.FloatPrecision}(undef, Param.LX)  # uniform noise to generate Poisson feed-forward spikes
+bspikeX = CuVector{Bool}(undef, Param.LX)              # which feed-forward neurons spikes
 
 learn_step = round(Int, Param.learn_every/Param.dt)

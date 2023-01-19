@@ -95,14 +95,14 @@ the neural connectivity:
 
 ```
 $ ls -t ~/data
-ffwdRate.jld2  wpWeightIn.jld2      wpIndexIn.jld2  w0Weights.jld2  param.jl
-P.jld2         wpWeightFfwd.jld2    xtarg.jld2      w0Index.jld2
-ncpOut.jld2    wpIndexConvert.jld2  stim.jld2       param.jld2
-ncpIn.jld2     wpIndexOut.jld2      nc0.jld2        rng-init.jld2
+rateX.jld2   wpWeightIn.jld2      wpIndexIn.jld2  w0Weights.jld2  param.jl
+P.jld2       wpWeightX.jld2       utarg.jld2      w0Index.jld2
+ncpOut.jld2  wpIndexConvert.jld2  X_stim.jld2     param.jld2
+ncpIn.jld2   wpIndexOut.jld2      nc0.jld2        rng-init.jld2
 ```
 
 To highlight just a few:  "wpWeightIn.jld2" stores the plastic synaptic
-weights, "w0Weights.jld2" stores the static synaptic weights, and "xtarg.jld2"
+weights, "w0Weights.jld2" stores the static synaptic weights, and "utarg.jld2"
 stores the target synaptic currents (sinusoidal in this case).  See the
 comments in the code for more details.
 
@@ -148,11 +148,11 @@ for "checkpoint":
 
 ```
 $ ls -t ~/data
-P-ckpt100.jld2             P.jld2             wpIndexConvert.jld2  nc0.jld2        param.jl
-wpWeightIn-ckpt100.jld2    ncpOut.jld2        wpIndexOut.jld2      w0Weights.jld2
-wpWeightFfwd-ckpt100.jld2  ncpIn.jld2         wpIndexIn.jld2       w0Index.jld2
-rng-train.jld2             wpWeightIn.jld2    xtarg.jld2           param.jld2
-ffwdRate.jld2              wpWeightFfwd.jld2  stim.jld2            rng-init.jld2
+P-ckpt100.jld2           P.jld2           wpIndexConvert.jld2  nc0.jld2        param.jl
+wpWeightIn-ckpt100.jld2  ncpOut.jld2      wpIndexOut.jld2      w0Weights.jld2
+wpWeightX-ckpt100.jld2   ncpIn.jld2       wpIndexIn.jld2       w0Index.jld2
+rng-train.jld2           wpWeightIn.jld2  utarg.jld2           param.jld2
+rateX.jld2               wpWeightX.jld2   X_stim.jld2          rng-init.jld2
 ```
 
 Finally, use `test.jl` to plot the trained activities:
@@ -179,13 +179,13 @@ underlying data is stored in "test.jld2":
 
 ```
 $ ls -t ~/data
-test-psth-task1.pdf        rng-train.jld2     wpIndexConvert.jld2  w0Index.jld2
-test-syninput-task1.pdf    ffwdRate.jld2      wpIndexOut.jld2      param.jld2
-test.jld2                  P.jld2             wpIndexIn.jld2       rng-init.jld2
-rng-test.jld2              ncpOut.jld2        xtarg.jld2           param.jl
-P-ckpt100.jld2             ncpIn.jld2         stim.jld2
-wpWeightIn-ckpt100.jld2    wpWeightIn.jld2    nc0.jld2
-wpWeightFfwd-ckpt100.jld2  wpWeightFfwd.jld2  w0Weights.jld2
+test-psth-task1.pdf      rng-train.jld2   wpIndexConvert.jld2  w0Index.jld2
+test-syninput-task1.pdf  rateX.jld2       wpIndexOut.jld2      param.jld2
+test.jld2                P.jld2           wpIndexIn.jld2       rng-init.jld2
+rng-test.jld2            ncpOut.jld2      utarg.jld2           param.jl
+P-ckpt100.jld2           ncpIn.jld2       X_stim.jld2
+wpWeightIn-ckpt100.jld2  wpWeightIn.jld2  nc0.jld2
+wpWeightX-ckpt100.jld2   wpWeightX.jld2   w0Weights.jld2
 ```
 
 # Custom Usage #
@@ -211,15 +211,15 @@ of your choosing.  Defaults are supplied for each plugin.
   the default is "src/genStaticWeights-erdos-renyi.jl".  This is only used
   if K > 0.
 
-  * `genFfwdRate()` specifies the spike thresholds for the feed-forward
-  neurons.  The default is "src/genFfwdRate-ornstein-uhlenbeck.jl".  This is
-  only used if Lffwd > 0.
+  * `genRateX()` specifies the spike thresholds for the feed-forward neurons.
+  The default is "src/genRateX-ornstein-uhlenbeck.jl".  This is only used
+  if LX > 0.
 
-  * `genStim()` specifies the external input applied to each neuron.
-  The default is "src/genStim-ornstein-uhlenbeck.jl"
+  * `genXStim()` specifies the external input applied to each neuron.
+  The default is "src/genXStim-ornstein-uhlenbeck.jl"
 
-  * `genTarget()` specifies the desired synaptic currents to learn.
-  The default is "src/genTarget-sinusoids.jl".  This is only used if a file
+  * `genUTarget()` specifies the desired synaptic currents to learn.
+  The default is "src/genUTarget-sinusoids.jl".  This is only used if a file
   with the targets is not supplied on the command line to `init.jl`.
 
 For example, the "genStaticWeights_file" and "genStaticWeights_args"
@@ -239,14 +239,14 @@ your custom function, and `getStaticWeights_args` to the required parameters
 with their values.
 
 If your target synaptic inputs are defined algorithmically then you have to
-use `genTarget()`, but if they are stored in a file then you can also supply
-its fullpath to `init.jl` using the `--xtarg_file` argument.  This file will
-be copied to `xtarg.jld2`.  If your desired temporal activity patterns are
+use `genUTarget()`, but if they are stored in a file then you can also supply
+its fullpath to `init.jl` using the `--utarg_file` argument.  This file will
+be copied to `utarg.jld2`.  If your desired temporal activity patterns are
 PSTHs instead of synaptic currents, use the `--spikerate_file` flag instead
 and they will be converted to synaptic currents using the method of Ricciardi
 (Brunel 2000, J. Comput. Neurosci; Richardson 2007, Phys. Rev. E) and saved
-in `xtarg.jld2`.  As this conversion can take awhile, you should subsquently
-use the `--xtarg_file` flag with this newly generated `xtarg.jld2` file.
+in `utarg.jld2`.  As this conversion can take awhile, you should subsquently
+use the `--utarg_file` flag with this newly generated `utarg.jld2` file.
 
 Finally, you'll need to make a copy of and edit "src/param.jl" to set various
 constants, like the spike threshold, the refractory period, the synapse

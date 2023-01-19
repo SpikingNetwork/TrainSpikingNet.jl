@@ -116,8 +116,8 @@ end
                          -s $(joinpath(@__DIR__, "scratch", "ricciardi", "spikerates.jld2"))
                          $(joinpath(@__DIR__, "scratch", "ricciardi"))`)
     write(joinpath(@__DIR__, "scratch", "ricciardi", "init.log"), join(init_out, '\n'))
-    xtarg = load(joinpath(@__DIR__, "scratch", "ricciardi", "xtarg.jld2"))["xtarg"]
-    dx = diff(xtarg, dims=1)
+    utarg = load(joinpath(@__DIR__, "scratch", "ricciardi", "utarg.jld2"))["utarg"]
+    dx = diff(utarg, dims=1)
     @test all(dx[:,1].>0)
     @test all(dx[:,2].<0)
     @test all(dx[1:49,3].>0)
@@ -158,17 +158,17 @@ end
 end
 
 @testset "feed forward" begin
-    mkdir(joinpath(@__DIR__, "scratch", "cpu-Lffwd"))
-    open(joinpath(@__DIR__, "scratch", "cpu-Lffwd", "param.jl"), "w") do fileout 
+    mkdir(joinpath(@__DIR__, "scratch", "cpu-LX"))
+    open(joinpath(@__DIR__, "scratch", "cpu-LX", "param.jl"), "w") do fileout 
         for line in readlines(joinpath(@__DIR__, "param.jl"))
-            if startswith(line, "Lffwd")
-                println(fileout, "Lffwd = L>>1")
+            if startswith(line, "LX")
+                println(fileout, "LX = L>>1")
             else
                 println(fileout, line)
             end
         end
     end
-    compare_cpu_to_gpu("Lffwd")
+    compare_cpu_to_gpu("LX")
 end
 
 @testset "multiple tasks" begin
@@ -191,7 +191,7 @@ end
     dgpu = load(joinpath(@__DIR__, "scratch", "gpu-twotasks", "test.jld2"))
     @test dcpu["nss"] == dgpu["nss"]
     @test dcpu["ineurons_to_test"] == dgpu["ineurons_to_test"]
-    @test isapprox(dcpu["xtotals"], dgpu["xtotals"])
+    @test isapprox(dcpu["utotals"], dgpu["utotals"])
     @test isapprox(dcpu["timess"], dgpu["timess"])
 end
 

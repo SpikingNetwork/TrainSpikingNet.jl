@@ -34,22 +34,22 @@ Nsteps = round(Int, train_time/dt)
 
 
 # --- external stimulus plugin --- #
-genStim_file = "genStim-ornstein-uhlenbeck.jl"
-genStim_args = Dict(:stim_on => stim_on, :stim_off => stim_off, :dt => dt, :Ncells => Ncells,
+genXStim_file = "genXStim-ornstein-uhlenbeck.jl"
+genXStim_args = Dict(:stim_on => stim_on, :stim_off => stim_off, :dt => dt, :Ncells => Ncells,
                     :mu => 0.0, :b => 1/20, :sig => 0.2,
                     :rng => rng)
 
 
 # --- neuron --- #
-taue = 10      # membrane time constant (ms)
-taui = 10 
-threshe = 1.0  # spike threshold
+tau_meme = 10   # membrane time constant (ms)
+tau_memi = 10 
+threshe = 1.0   # spike threshold
 threshi = 1.0   
-refrac = 0.1   # refractory period
-vre = 0.0      # reset voltage
-tauedecay = 3  # synaptic time constants (ms) 
-tauidecay = 3
-taudecay_plastic = 150  # can be a vector too, e.g. (150-70)*rand(rng, Ncells) .+ 70
+refrac = 0.1    # refractory period
+vre = 0.0       # reset voltage
+tau_bale = 3    # synaptic time constants (ms) 
+tau_bali = 3
+tau_plas = 150  # can be a vector too, e.g. (150-70)*rand(rng, Ncells) .+ 70
 
 
 # --- fixed connections plugin --- #
@@ -63,8 +63,8 @@ genStaticWeights_args = Dict(:K => K, :Ncells => Ncells, :Ne => Ne,
                              :rng => rng)
 
 g = 1.0
-je = 2.0 / sqrtK * taue * g
-ji = 2.0 / sqrtK * taue * g 
+je = 2.0 / sqrtK * tau_meme * g
+ji = 2.0 / sqrtK * tau_meme * g 
 jx = 0.08 * sqrtK * g 
 
 merge!(genStaticWeights_args, Dict(:jee => 0.15je, :jie => je, :jei => -0.75ji, :jii => -ji))
@@ -76,14 +76,14 @@ penlamFF    = 1.0
 penmu       = 8.0   # regularize weights
 learn_every = 10.0  # (ms)
 
-correlation_var = K>0 ? :xtotal : :xplastic
+correlation_var = K>0 ? :utotal : uxplastic
 
 choose_task_func = :((iloop, ntasks) -> iloop % ntasks + 1)   # or e.g. rand(1:ntasks)
 
 
 # --- target synaptic current plugin --- #
-genTarget_file = "genTarget-sinusoids.jl"
-genTarget_args = Dict(:train_time => train_time, :stim_off => stim_off, :learn_every => learn_every,
+genUTarget_file = "genUTarget-sinusoids.jl"
+genUTarget_args = Dict(:train_time => train_time, :stim_off => stim_off, :learn_every => learn_every,
                       :Ncells => Ncells, :Nsteps => Nsteps, :dt => dt,
                       :A => 0.5, :period => 1000.0, :biasType => :zero,
                       :mu_ou_bias => 0.0, :b_ou_bias => 1/400, :sig_ou_bias => 0.02,
@@ -94,37 +94,35 @@ genTarget_args = Dict(:train_time => train_time, :stim_off => stim_off, :learn_e
 L = round(Int,sqrt(K)*2.0)  # number of plastic weights per neuron
 Lexc = L
 Linh = L
-Lffwd = 0
+LX = 0
 
 wpscale = sqrt(L) * 2.0
 
 genPlasticWeights_file = "genPlasticWeights-erdos-renyi.jl"
 genPlasticWeights_args = Dict(:Ncells => Ncells, :frac => 1.0, :Ne => Ne,
-                              :L => L, :Lexc => Lexc, :Linh => Linh, :Lffwd => Lffwd,
-                              :wpee => 2.0 * taue * g / wpscale,
-                              :wpie => 2.0 * taue * g / wpscale,
-                              :wpei => -2.0 * taue * g / wpscale,
-                              :wpii => -2.0 * taue * g / wpscale,
-                              :wpffwd => 0,
+                              :L => L, :Lexc => Lexc, :Linh => Linh, :LX => LX,
+                              :wpee => 2.0 * tau_meme * g / wpscale,
+                              :wpie => 2.0 * tau_meme * g / wpscale,
+                              :wpei => -2.0 * tau_meme * g / wpscale,
+                              :wpii => -2.0 * tau_meme * g / wpscale,
+                              :wpX => 0,
                               :rng => rng)
 
 
 # --- feed forward neuron plugin --- #
-genFfwdRate_file = "genFfwdRate-ornstein-uhlenbeck.jl"
-genFfwdRate_args = Dict(:train_time => train_time, :stim_off => stim_off, :dt => dt,
-                        :Lffwd => Lffwd, :mu => 5, :bou => 1/400, :sig => 0.2, :wid => 500,
+genRateX_file = "genRateX-ornstein-uhlenbeck.jl"
+genRateX_args = Dict(:train_time => train_time, :stim_off => stim_off, :dt => dt,
+                        :LX => LX, :mu => 5, :bou => 1/400, :sig => 0.2, :wid => 500,
                         :rng => rng)
 
 
 # --- external input --- #
-muemin = jx*1.5
-muemax = jx*1.5
-muimin = jx
-muimax = jx
+X_bale = jx*1.5
+X_bali = jx
 
-mu = Vector{Float64}(undef, Ncells)
-mu[1:Ne] = (muemax-muemin) * rand(rng, Ne) .+ muemin
-mu[(Ne+1):Ncells] = (muimax-muimin) * rand(rng, Ni) .+ muimin
+X_bal = Vector{Float64}(undef, Ncells)
+X_bal[1:Ne] .= X_bale
+X_bal[(Ne+1):Ncells] .= X_bali
 
 
 # --- time-varying noise --- #

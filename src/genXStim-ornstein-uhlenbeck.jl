@@ -1,5 +1,5 @@
 #=
-the genStim plugin defines the external inputs added to the membrane voltage.
+the genXStim plugin defines the external inputs added to the membrane voltage.
 this file is the default, and returns for each neuron a random time-varying
 signal.
 =#
@@ -9,7 +9,7 @@ return a T x Ncells matrix representing the inputs that trigger the learned
 responses within the time interval [stim_on, stim_off]
 =#
 
-function genStim(args)
+function genXStim(args)
     @unpack stim_on, stim_off, dt, Ncells, mu, b, sig, rng = args
 
     timeSteps = round(Int, (stim_off - stim_on) / dt)

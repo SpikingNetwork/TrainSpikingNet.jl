@@ -66,15 +66,15 @@ w0Weights = load(joinpath(parsed_args["data_dir"],"w0Weights.jld2"), "w0Weights"
 nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0");
 ncpIn = load(joinpath(parsed_args["data_dir"],"ncpIn.jld2"), "ncpIn");
 ncpOut = load(joinpath(parsed_args["data_dir"],"ncpOut.jld2"), "ncpOut");
-stim = load(joinpath(parsed_args["data_dir"],"stim.jld2"), "stim");
-xtarg = load(joinpath(parsed_args["data_dir"],"xtarg.jld2"), "xtarg");
+X_stim = load(joinpath(parsed_args["data_dir"],"X_stim.jld2"), "X_stim");
+utarg = load(joinpath(parsed_args["data_dir"],"utarg.jld2"), "utarg");
 wpIndexIn = load(joinpath(parsed_args["data_dir"],"wpIndexIn.jld2"), "wpIndexIn");
 wpIndexOut = load(joinpath(parsed_args["data_dir"],"wpIndexOut.jld2"), "wpIndexOut");
 wpIndexConvert = load(joinpath(parsed_args["data_dir"],"wpIndexConvert.jld2"), "wpIndexConvert");
-ffwdRate = load(joinpath(parsed_args["data_dir"],"ffwdRate.jld2"), "ffwdRate");
+rateX = load(joinpath(parsed_args["data_dir"],"rateX.jld2"), "rateX");
 if isnothing(parsed_args["restore_from_checkpoint"]);
     R=0
-    wpWeightFfwd = load(joinpath(parsed_args["data_dir"],"wpWeightFfwd.jld2"), "wpWeightFfwd");
+    wpWeightX = load(joinpath(parsed_args["data_dir"],"wpWeightX.jld2"), "wpWeightX");
     wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn.jld2"), "wpWeightIn");
     Pinv_norm = load(joinpath(parsed_args["data_dir"],"P.jld2"), "P");
     P = Vector{Param.PType}();
@@ -87,7 +87,7 @@ if isnothing(parsed_args["restore_from_checkpoint"]);
     end
 else
     R = parsed_args["restore_from_checkpoint"];
-    wpWeightFfwd = load(joinpath(parsed_args["data_dir"],"wpWeightFfwd-ckpt$R.jld2"), "wpWeightFfwd");
+    wpWeightX = load(joinpath(parsed_args["data_dir"],"wpWeightX-ckpt$R.jld2"), "wpWeightX");
     wpWeightIn = load(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$R.jld2"), "wpWeightIn");
     P = load(joinpath(parsed_args["data_dir"],"P-ckpt$R.jld2"), "P");
 end;
@@ -100,7 +100,7 @@ isnothing(Param.seed) || Random.seed!(rng, Param.seed)
 save(joinpath(parsed_args["data_dir"],"rng-train.jld2"), "rng", rng)
 
 choose_task = eval(Param.choose_task_func)
-ntasks = size(xtarg,3)
+ntasks = size(utarg,3)
 
 # --- set up correlation matrix --- #
 Px = Vector{Array{Int64,1}}();
@@ -113,8 +113,8 @@ include("variables.jl")
 Px = Vector{Vector{Param.IntPrecision}}(Px);
 PType = typeof(Param.PType(Param.PPrecision.([1. 2; 3 4])));
 P = Vector{PType}(P);
-stim = Array{Param.FloatPrecision}(stim);
-xtarg = Array{Param.FloatPrecision}(xtarg);
+X_stim = Array{Param.FloatPrecision}(X_stim);
+utarg = Array{Param.FloatPrecision}(utarg);
 nc0 = Array{Param.IntPrecision}(nc0);
 ncpIn = Array{Param.IntPrecision}(ncpIn);
 ncpOut = Array{Param.IntPrecision}(ncpOut);
@@ -124,9 +124,9 @@ wpIndexIn = Array{Param.IntPrecision}(wpIndexIn);
 wpIndexConvert = Array{Param.IntPrecision}(wpIndexConvert);
 wpIndexOut = Array{Param.IntPrecision}(wpIndexOut);
 wpWeightIn = Array{Param.FloatPrecision}(wpWeightIn);
-wpWeightFfwd = Array{Param.FloatPrecision}(wpWeightFfwd);
+wpWeightX = Array{Param.FloatPrecision}(wpWeightX);
 wpWeightOut = Array{Param.FloatPrecision}(wpWeightOut);
-ffwdRate = Array{Param.FloatPrecision}(ffwdRate);
+rateX = Array{Param.FloatPrecision}(rateX);
 
 # --- monitor resources used --- #
 function monitor_resources(c::Channel)
@@ -162,46 +162,45 @@ for iloop = R.+(1:parsed_args["nloops"])
 
         loop_train(itask,
             Param.learn_every, Param.stim_on, Param.stim_off,
-            Param.train_time, Param.dt, Param.Nsteps, Param.Ncells, nothing,
-            Param.Lexc+Param.Linh, Param.Lffwd, Param.refrac, vre,
-            invtauedecay, invtauidecay, invtaudecay_plastic, mu, thresh,
-            tau, nothing, nothing, ns, nothing, ns_ffwd, forwardInputsE,
-            forwardInputsI, forwardInputsP, forwardInputsEPrev,
-            forwardInputsIPrev, forwardInputsPPrev, forwardSpike,
-            forwardSpikePrev, xedecay, xidecay, xpdecay, synInputBalanced,
-            synInput, r, s, bias, nothing, nothing, lastSpike, plusone,
-            exactlyzero, PScale, raug, k, v, rng, noise, rndFfwd, sig, P,
-            Px, w0Index, w0Weights, nc0, stim, xtarg, wpIndexIn, wpIndexOut,
-            wpIndexConvert, wpWeightFfwd, wpWeightIn, wpWeightOut, ncpIn,
-            ncpOut, nothing, nothing, ffwdRate)
-    else
-        _, _, _, _, xtotal, _, _, xplastic, _ = loop_train_test(itask,
-            Param.learn_every, Param.stim_on, Param.stim_off,
-            Param.train_time, Param.dt, Param.Nsteps, Param.Ncells, nothing,
-            Param.Lexc+Param.Linh, Param.Lffwd, Param.refrac,
-            vre, invtauedecay, invtauidecay, invtaudecay_plastic,
-            mu, thresh, tau, maxTimes, times, ns, times_ffwd,
-            ns_ffwd, forwardInputsE, forwardInputsI, forwardInputsP,
-            forwardInputsEPrev, forwardInputsIPrev, forwardInputsPPrev,
-            forwardSpike, forwardSpikePrev, xedecay, xidecay, xpdecay,
-            synInputBalanced, synInput, r, s, bias, Param.wid, Param.example_neurons,
+            Param.train_time, Param.dt, Param.Nsteps, Param.Ncells,
+            nothing, Param.Lexc+Param.Linh, Param.LX, Param.refrac,
+            vre, invtau_bale, invtau_bali, invtau_plas, X_bal, thresh,
+            tau_mem, nothing, nothing, ns, nothing, nsX, inputsE,
+            inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev,
+            spikes, spikesPrev, spikesX, spikesXPrev, u_bale, u_bali,
+            uX_plas, u_bal, u, r, rX, X, nothing, nothing,
             lastSpike, plusone, exactlyzero, PScale, raug, k, v, rng, noise,
-            rndFfwd, sig, P, Px, w0Index, w0Weights, nc0, stim, xtarg,
-            wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightFfwd, wpWeightIn,
-            wpWeightOut, ncpIn, ncpOut, nothing, nothing, ffwdRate)
+            rndX, sig, P, Px, w0Index, w0Weights, nc0, X_stim, utarg,
+            wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightX, wpWeightIn,
+            wpWeightOut, ncpIn, ncpOut, nothing, nothing, rateX)
+    else
+        _, _, _, _, utotal, _, _, uplastic, _ = loop_train_test(itask,
+            Param.learn_every, Param.stim_on, Param.stim_off,
+            Param.train_time, Param.dt, Param.Nsteps, Param.Ncells,
+            nothing, Param.Lexc+Param.Linh, Param.LX, Param.refrac, vre,
+            invtau_bale, invtau_bali, invtau_plas, X_bal, thresh, tau_mem,
+            maxTimes, times, ns, timesX, nsX, inputsE, inputsI,
+            inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes,
+            spikesPrev, spikesX, spikesXPrev, u_bale, u_bali,
+            uX_plas, u_bal, u, r, rX, X, Param.wid,
+            Param.example_neurons, lastSpike, plusone, exactlyzero, PScale,
+            raug, k, v, rng, noise, rndX, sig, P, Px, w0Index, w0Weights,
+            nc0, X_stim, utarg, wpIndexIn, wpIndexOut, wpIndexConvert,
+            wpWeightX, wpWeightIn, wpWeightOut, ncpIn, ncpOut, nothing,
+            nothing, rateX)
 
-        if Param.correlation_var == :xtotal
-            xlearned = xtotal
-        elseif Param.correlation_var == :xplastic
-            xlearned = xplastic
+        if Param.correlation_var == :utotal
+            ulearned = utotal
+        elseif Param.correlation_var == :uplastic
+            ulearned = uplastic
         else
             error("invalid value for correlation_var parameter")
         end
         pcor = Array{Float64}(undef, Param.Ncells)
         for ci in 1:Param.Ncells
-            xtarg_slice = @view xtarg[:,ci, itask]
-            xlearned_slice = @view xlearned[:,ci]
-            pcor[ci] = cor(xtarg_slice,xlearned_slice)
+            utarg_slice = @view utarg[:,ci, itask]
+            ulearned_slice = @view ulearned[:,ci]
+            pcor[ci] = cor(utarg_slice, ulearned_slice)
         end
 
         bnotnan = .!isnan.(pcor)
@@ -213,8 +212,8 @@ for iloop = R.+(1:parsed_args["nloops"])
             suffix = string("ckpt", iloop, "-cor", round(thiscor, digits=3))
             save(joinpath(parsed_args["data_dir"], "wpWeightIn-$suffix.jld2"),
                  "wpWeightIn", Array(wpWeightIn))
-            save(joinpath(parsed_args["data_dir"], "wpWeightFfwd-$suffix.jld2"),
-                 "wpWeightFfwd", Array(wpWeightFfwd))
+            save(joinpath(parsed_args["data_dir"], "wpWeightX-$suffix.jld2"),
+                 "wpWeightX", Array(wpWeightX))
             save(joinpath(parsed_args["data_dir"], "P-$suffix.jld2"), "P", P)
             if maxcor != -Inf
                 for oldckptfile in filter(x -> !contains(x, string("ckpt", iloop)) &&
@@ -230,8 +229,8 @@ for iloop = R.+(1:parsed_args["nloops"])
     if iloop == R+parsed_args["nloops"]
         save(joinpath(parsed_args["data_dir"],"wpWeightIn-ckpt$iloop.jld2"),
              "wpWeightIn", Array(wpWeightIn))
-        save(joinpath(parsed_args["data_dir"],"wpWeightFfwd-ckpt$iloop.jld2"),
-             "wpWeightFfwd", Array(wpWeightFfwd))
+        save(joinpath(parsed_args["data_dir"],"wpWeightX-ckpt$iloop.jld2"),
+             "wpWeightX", Array(wpWeightX))
         save(joinpath(parsed_args["data_dir"],"P-ckpt$iloop.jld2"), "P", P)
     end
 

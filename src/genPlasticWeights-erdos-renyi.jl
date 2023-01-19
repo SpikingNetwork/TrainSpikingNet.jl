@@ -11,8 +11,8 @@ static connectivity alone (called ns0 in the code).
 
 returned are three matrices and a vector specifying the plastic connectivity.
 
-the first returned matrix (called wpWeightFfwd in the source code) is
-Ncells x Lffwd and contains the (initial) weights of the feed forward
+the first returned matrix (called wpWeightX in the source code) is
+Ncells x LX and contains the (initial) weights of the feed forward
 presynaptic neurons.
 
 the second (wpWeightIn, Ncells columns) and third (wpIndexIn, Ncells rows)
@@ -24,7 +24,7 @@ specifies how many presynaptic connections each neuron has.
 =#
 
 function genPlasticWeights(args, ns0)
-    @unpack Ncells, frac, Ne, L, Lexc, Linh, Lffwd, wpee, wpie, wpei, wpii, wpffwd, rng = args
+    @unpack Ncells, frac, Ne, L, Lexc, Linh, LX, wpee, wpie, wpei, wpii, wpX, rng = args
 
     # order neurons by their firing rate
     frac_cells = round(Int, frac*Ne)
@@ -66,9 +66,9 @@ function genPlasticWeights(args, ns0)
     end
 
     # define feedforward weights to all neurons
-    #       - wpWeightFfwd = randn(Ncells, Lffwd) * wpffwd
-    #       - initial weights, wpffwd = 0
-    wpWeightFfwd = randn(rng, Ncells, Lffwd) * wpffwd
+    #       - wpWeightX = randn(Ncells, LX) * wpX
+    #       - initial weights, wpX = 0
+    wpWeightX = randn(rng, Ncells, LX) * wpX
     
-    return wpWeightFfwd, wpWeightIn, wpIndexIn, ncpIn
+    return wpWeightX, wpWeightIn, wpIndexIn, ncpIn
 end
