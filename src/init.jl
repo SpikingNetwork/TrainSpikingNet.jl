@@ -2,6 +2,8 @@ using Pkg;  Pkg.activate(dirname(@__DIR__), io=devnull)
 
 using LinearAlgebra, Random, JLD2, Statistics, StatsBase, ArgParse, SymmetricFormats, UnPack
 
+println(BLAS.get_config())
+
 # --- define command line arguments --- #
 function ArgParse.parse_item(::Type{Vector{Int}}, x::AbstractString)
     return eval(Meta.parse(x))

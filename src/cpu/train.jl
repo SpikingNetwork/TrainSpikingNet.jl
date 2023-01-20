@@ -2,6 +2,8 @@ using Pkg;  Pkg.activate(dirname(dirname(@__DIR__)), io=devnull)
 
 using LinearAlgebra, LinearAlgebra.BLAS, Random, JLD2, Statistics, ArgParse, SymmetricFormats
 
+println(BLAS.get_config())
+
 # --- define command line arguments --- #
 aps = ArgParseSettings()
 
