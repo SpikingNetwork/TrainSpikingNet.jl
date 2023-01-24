@@ -53,8 +53,8 @@ PScale = Param.FloatPrecision(Param.PScale)
 
 vre = Param.FloatPrecision(Param.vre)  # reset voltage
 
-uavg = zeros(Param.FloatPrecision, Param.Ncells)  # average synaptic input
-utmp = Matrix{Param.FloatPrecision}(undef, Param.Nsteps - round(Int, 1000/Param.dt), 1000)
+uavg = zeros(Float64, Param.Ncells)  # average synaptic input
+utmp = Matrix{Float64}(undef, Param.Nsteps - round(Int, 1000/Param.dt), 1000)
 
 PLtot = Param.Lexc + Param.Linh + Param.LX
 raug = Matrix{Param.FloatPrecision}(undef, PLtot, Threads.nthreads())

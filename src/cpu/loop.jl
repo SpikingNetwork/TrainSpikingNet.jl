@@ -163,7 +163,7 @@
 
             @static if kind == :init
                 if ti > 1000/dt # 1000 ms
-                    uavg[ci] += u[ci] / (Nsteps - steps_per_sec) # save u
+                    uavg[ci] += u[ci] # save u
                     if ci <= 1000
                         utmp[ti - steps_per_sec, ci] = u[ci]
                     end
@@ -322,8 +322,7 @@
         println("mean excitatory firing rate: ", 1000*mean(ns[1:Ne])/train_time, " Hz")
         println("mean inhibitory firing rate: ", 1000*mean(ns[(Ne+1):Ncells])/train_time, " Hz")
                     
-        ustd = mean(std(utmp, dims=1))
-        return uavg, ns, ustd
+        return uavg ./ (Nsteps - steps_per_sec), ns, mean(std(utmp, dims=1))
     end
 
     @static if kind in [:test, :train_test]
