@@ -1,8 +1,8 @@
 # --- simulation --- #
 PType=Symmetric  # storage format of the covariance matrix;  use SymmetricPacked for large models
-PPrecision = Float64  # precision of the covariance matrix.  can be <:Integer on GPUs
+PPrecision = Float32  # precision of the covariance matrix.  can be Float16 or even <:Integer on GPUs
 PScale = 1  # if PPrecision<:Integer then PScale should be e.g. 2^(nbits-2)
-FloatPrecision = Float64  # precision of all other floating point variables, except time
+FloatPrecision = Float32  # precision of all other floating point variables, except time
 IntPrecision = UInt32  # precision of all integer variables
 
 example_neurons = 25  # no. of neurons to save for visualization 
