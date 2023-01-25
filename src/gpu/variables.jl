@@ -19,11 +19,12 @@ tau_mem = CuVector{Param.FloatPrecision}(undef, Param.Ncells)
 tau_mem[1:Param.Ne] .= Param.tau_meme
 tau_mem[(1+Param.Ne):Param.Ncells] .= Param.tau_memi
 
-maxTimes = round(Int, Param.maxrate * Param.train_time / 1000) # maximum number of spikes times to record
-times = CuArray{Float64}(undef, Param.Ncells, 1+maxTimes)      # times of recurrent spikes throughout trial
-ns = CuVector{Param.IntPrecision}(undef, Param.Ncells)         # number of recurrent spikes in trial
-timesX = CuArray{Float64}(undef, Param.LX, 1+maxTimes)         # times of feed-forward spikes throughout trial
-nsX = CuVector{Param.IntPrecision}(undef, Param.LX)            # number of feed-forward spikes in trial
+maxTimes = round(Int, Param.maxrate * Param.train_time / 1000)      # maximum number of spikes times to record
+_times_precision = Dict(8=>UInt8, 16=>UInt16, 32=>UInt32, 64=>UInt64)[nextpow(2, log2(Param.Nsteps))]
+times = CuArray{_times_precision}(undef, Param.Ncells, 1+maxTimes)  # times of recurrent spikes throughout trial
+ns = CuVector{Param.IntPrecision}(undef, Param.Ncells)              # number of recurrent spikes in trial
+timesX = CuArray{_times_precision}(undef, Param.LX, 1+maxTimes)     # times of feed-forward spikes throughout trial
+nsX = CuVector{Param.IntPrecision}(undef, Param.LX)                 # number of feed-forward spikes in trial
 
 inputsE = CuVector{Param.FloatPrecision}(undef, Param.Ncells+1)      # excitatory synaptic currents to neurons via balanced connections at one time step
 inputsI = CuVector{Param.FloatPrecision}(undef, Param.Ncells+1)      # inhibitory synaptic currents to neurons via balanced connections at one time step

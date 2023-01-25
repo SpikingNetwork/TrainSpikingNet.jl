@@ -20,9 +20,10 @@ tau_mem[1:Param.Ne] .= Param.tau_meme
 tau_mem[(1+Param.Ne):Param.Ncells] .= Param.tau_memi
 
 maxTimes = round(Int, Param.maxrate * Param.train_time / 1000)  # maximum number of spikes times to record
-times = Array{Float64}(undef, Param.Ncells, maxTimes)           # times of recurrent spikes throughout trial
+_times_precision = Dict(8=>UInt8, 16=>UInt16, 32=>UInt32, 64=>UInt64)[nextpow(2, log2(Param.Nsteps))]
+times = Array{_times_precision}(undef, Param.Ncells, maxTimes)  # times of recurrent spikes throughout trial
 ns = Vector{Param.IntPrecision}(undef, Param.Ncells)            # number of recurrent spikes in trial
-timesX = Array{Float64}(undef, Param.LX, maxTimes)              # times of feed-forward spikes throughout trial
+timesX = Array{_times_precision}(undef, Param.LX, maxTimes)     # times of feed-forward spikes throughout trial
 nsX = Vector{Param.IntPrecision}(undef, Param.LX)               # number of feed-forward spikes in trial
 
 inputsE = Vector{Param.FloatPrecision}(undef, Param.Ncells)      # excitatory synaptic currents to neurons via balanced connections at one time step

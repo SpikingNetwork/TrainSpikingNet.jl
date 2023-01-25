@@ -206,7 +206,7 @@ end
         v .= ifelse.(bspike, vre, v)
         lastSpike .= ifelse.(bspike, t, lastSpike)
         @static if kind in [:test, :train_test]
-            times[ CartesianIndex.(1:Ncells, min.(maxTimes, bspike.*ns) .+ 1) ] .= t
+            times[ CartesianIndex.(1:Ncells, min.(maxTimes, bspike.*ns) .+ 1) ] .= ti
         end
 
         # accumulate the contribution of spikes to postsynaptic currents
@@ -231,7 +231,7 @@ end
             @static kind in [:train, :train_test] && (spikesX .= bspikeX)
             nsX .+= bspikeX
             @static if kind in [:test, :train_test]
-                timesX[ CartesianIndex.(1:LX, min.(maxTimes, bspikeX.*nsX) .+ 1) ] .= t
+                timesX[ CartesianIndex.(1:LX, min.(maxTimes, bspikeX.*nsX) .+ 1) ] .= ti
             end
             inputsP[2:end] .+= dropdims(sum(view(wpWeightX,:,bspikeX), dims=2), dims=2)
         end
