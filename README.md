@@ -299,7 +299,7 @@ in any programming language that can read HDF5.
 
 # Intel Math Kernel Library #
 
-The CPU code can be sped up by about 10% on Intel machines using the
+The CPU code can be sped up by about 10-50% on Intel machines using the
 drop-in MKL package to replace the default OpenBLAS.  Install it like
 this on Linux:
 

@@ -1,6 +1,6 @@
 #=
 the genPlasticWeights plugin defines the connectivity of the learned synapses.
-this file is the default, and for each neuron simply chooses a random L as
+this file is the default, and for each neuron simply chooses a random 2*L as
 presynaptic partners and sets their initial weights to predefined values.
 =#
 

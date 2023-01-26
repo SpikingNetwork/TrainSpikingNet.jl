@@ -10,7 +10,7 @@ function rls(itask,
         k_tid = @view k[:,Threads.threadid()]
 
         @static if Param.PType == Array
-            # k_tid .= P[ci] * raug / PScale
+            # k_tid .= P[ci] * raug_tid / PScale
             # mul!(k_tid, P[ci], raug, 1.0/PScale, exactlyzero)
             gemv!('N', plusone/PScale, P[ci], raug_tid, exactlyzero, k_tid)
         elseif Param.PType == Symmetric
@@ -23,7 +23,7 @@ function rls(itask,
         den = plusone/(plusone + vPv)
 
         @static if Param.PType == Array
-            # P[ci] .-= den*k_tid*k_tid'
+            # P[ci] .-= den * PScale * k_tid * k_tid'
             # P[ci] .-= round.(PPrecision, clamp.(den*k_tid*k_tid' * PScale,
             #                                     typemin(PPrecision), typemax(PPrecision)))
             # mul!(P[ci], k_tid, transpose(k_tid), -den*PScale, plusone)

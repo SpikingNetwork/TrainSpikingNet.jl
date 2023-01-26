@@ -19,7 +19,7 @@ the vector (nc0) specifies the number of postsynaptic neurons
 function genStaticWeights(args)
     @unpack K, Ncells, Ne, pree, jee, jie, jei, jii, rng = args
 
-    nc0Max = 2*K # outdegree
+    nc0Max = 2*K  # outdegree
     nc0 = fill(nc0Max, Ncells)
     w0Index = zeros(Int, nc0Max, Ncells)
     w0Weights = zeros(nc0Max, Ncells)
