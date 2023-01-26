@@ -108,7 +108,7 @@ uavg, ns0, ustd = loop_init(itask,
     inputsEPrev, inputsIPrev, nothing, nothing, nothing, nothing, nothing,
     u_bale, u_bali, nothing, u_bal, u, nothing, nothing,
     X, nothing, nothing, lastSpike, nothing, nothing, nothing, nothing,
-    nothing, v, Param.rng, noise, rndX, sig, nothing, nothing, w0Index,
+    nothing, v, Param.rng, noise, rndX, sig, nothing, w0Index,
     w0Weights, nc0, nothing, nothing, nothing, nothing, nothing, nothing,
     nothing, nothing, nothing, nothing, uavg, utmp, rateX)
 

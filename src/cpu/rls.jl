@@ -1,11 +1,11 @@
 function rls(itask,
-             raug, k, delta, Ncells, Lei, r, s, Px, P, u_bal, utarg,
+             raug, k, delta, Ncells, Lei, r, s, P, u_bal, utarg,
              learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightX, wpWeightIn,
              wpWeightOut, plusone, exactlyzero)
 
     @maybethread for ci = 1:Ncells
         raug_tid = @view raug[:,Threads.threadid()]
-        raug_tid[1:Lei] = @views r[Px[ci]]
+        raug_tid[1:Lei] = @views r[wpIndexIn[ci,:]]
         raug_tid[Lei+1:end] = s
         k_tid = @view k[:,Threads.threadid()]
 

@@ -136,7 +136,7 @@ Threads.@threads for itrial=1:ntrials
               copy_v[Threads.threadid()],
               copy_rng[Threads.threadid()],
               copy_noise[Threads.threadid()],
-              nothing, sig, nothing, nothing, w0Index, w0Weights, nc0, X_stim, nothing,
+              nothing, sig, nothing, w0Index, w0Weights, nc0, X_stim, nothing,
               nothing, wpIndexOut, nothing, nothing, nothing, wpWeightOut, nothing,
               ncpOut, nothing, nothing, nothing)
         nss[itrial, itask] = thisns[parsed_args["ineurons_to_test"]]

@@ -149,7 +149,7 @@ Threads.@threads for itrial=1:ntrials
               copy_noise[idevice],
               nothing,
               copy_sig[idevice],
-              nothing, nothing,
+              nothing,
               copy_w0Index[idevice],
               copy_w0Weights[idevice],
               copy_nc0[idevice],

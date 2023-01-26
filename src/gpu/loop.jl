@@ -52,7 +52,7 @@ end
     spikesX, spikesXPrev, u_bale, u_bali, uX_plas, u_bal,
     u, r, rX, X, wid, example_neurons, lastSpike, bnotrefrac,
     bspike, plusone, minusone, PScale, raug, k, den, e, delta, v, rng, noise,
-    rndX, sig, P, Px, w0Index, w0Weights, nc0, X_stim, utarg, wpWeightX,
+    rndX, sig, P, w0Index, w0Weights, nc0, X_stim, utarg, wpWeightX,
     wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, rateX)
 
     @static kind in [:train, :train_test] && Param.LX>0 && (rateX /= round(Int, 1000/dt))
@@ -124,7 +124,7 @@ end
         # modify the plastic weights when the stimulus is turned off 
         @static kind in [:train, :train_test] && if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
             wpWeightIn, wpWeightOut = rls(itask,
-                    raug, k, den, e, delta, Ncells, Lei, r, rX, Px,
+                    raug, k, den, e, delta, Ncells, Lei, r, rX,
                     P, u_bal, utarg, learn_seq, wpIndexIn,
                     wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
                     plusone, minusone, exactlyzero)

@@ -6,7 +6,7 @@
     spikesPrev, spikesX, spikesXPrev, u_bale, u_bali, uX_plas,
     u_bal, u, r, rX, X, wid, example_neurons, lastSpike,
     plusone, exactlyzero, PScale, raug, k, v, rng, noise, rndX, sig,
-    P, Px, w0Index, w0Weights, nc0, X_stim, utarg, wpIndexIn, wpIndexOut,
+    P, w0Index, w0Weights, nc0, X_stim, utarg, wpIndexIn, wpIndexOut,
     wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut, ncpIn, ncpOut,
     uavg, utmp, rateX)
 
@@ -101,7 +101,7 @@
         # wpIndexIn:  - Ncell x Kin matrix where Kin = Lexc + Linh
         #             - ith row, wpIndexIn[i,:]:
         #                 - Indices of presynaptic neurons that connect to neuron i
-        #                 - Fixed throughout the simulation. Used to define Px
+        #                 - Fixed throughout the simulation
         # wpWeightOut: - plastic weights used for simulating network activities
         #              - Kout x Ncell matrix where Kout is the number of outgoing plastic synapses from each neuron
         #              - the actual number of outgoing plastic synapses is different across neurons, so we chose a fixed number Kout >= Lexc + Linh
@@ -115,7 +115,7 @@
 
         @static kind in [:train, :train_test] && if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
             wpWeightIn, wpWeightOut = rls(itask,
-                    raug, k, delta, Ncells, Lei, r, rX, Px, P,
+                    raug, k, delta, Ncells, Lei, r, rX, P,
                     u_bal, utarg, learn_seq, ncpIn, wpIndexIn,
                     wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
                     plusone, exactlyzero)

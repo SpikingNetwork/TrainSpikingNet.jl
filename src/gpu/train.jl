@@ -85,12 +85,8 @@ save(joinpath(parsed_args["data_dir"],"rng-train.jld2"), "rng",rng)
 choose_task = eval(Param.choose_task_func)
 ntasks = size(utarg,3)
 
-#--- set up correlation matrix --- #
-Px = wpIndexIn'; # neurons presynaptic to ci
-
 # --- set up variables --- #
 include("variables.jl")
-Px = CuArray{Param.IntPrecision}(Px);
 P = CuArray{Param.PPrecision}(P);
 nc0 = CuArray{Param.IntPrecision}(nc0);
 X_stim = CuArray{Param.FloatPrecision}(X_stim);
@@ -160,7 +156,7 @@ for iloop = R.+(1:parsed_args["nloops"])
             spikes, spikesPrev, spikesX, spikesXPrev, u_bale, u_bali,
             uX_plas, u_bal, u, r, rX, X, nothing, nothing,
             lastSpike, bnotrefrac, bspike, plusone, minusone, PScale, raug,
-            k, den, e, delta, v, rng, noise, rndX, sig, P, Px, w0Index,
+            k, den, e, delta, v, rng, noise, rndX, sig, P, w0Index,
             w0Weights, nc0, X_stim, utarg, wpWeightX, wpIndexIn, wpIndexOut,
             wpIndexConvert, wpWeightIn, wpWeightOut, rateX)
     else
@@ -175,7 +171,7 @@ for iloop = R.+(1:parsed_args["nloops"])
             uX_plas, u_bal, u, r, rX, X, Param.wid,
             Param.example_neurons, lastSpike, bnotrefrac, bspike, plusone,
             minusone, PScale, raug, k, den, e, delta, v, rng, noise, rndX,
-            sig, P, Px, w0Index, w0Weights, nc0, X_stim, utarg, wpWeightX,
+            sig, P, w0Index, w0Weights, nc0, X_stim, utarg, wpWeightX,
             wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
             rateX)
 

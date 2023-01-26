@@ -1,9 +1,9 @@
 function rls(itask,
-             raug, k, den, e, delta, Ncells, Lei, r, s, Px, P, u_bal,
+             raug, k, den, e, delta, Ncells, Lei, r, s, P, u_bal,
              utarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightX, wpWeightIn,
              wpWeightOut, plusone, minusone, exactlyzero)
 
-    raug[1:Lei,:] = @view r[Px]
+    raug[1:Lei,:] = @view r[wpIndexIn']
     raug[Lei+1:end,:] .= s
 
     @static if Param.PType == Array
