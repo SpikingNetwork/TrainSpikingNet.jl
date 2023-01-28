@@ -9,15 +9,31 @@ else
     invtau_plas = Vector{Param.FloatPrecision}(inv.(Param.tau_plas))
 end
 
-#spike thresholds
-thresh = Vector{Param.FloatPrecision}(undef, Param.Ncells)
-thresh[1:Param.Ne] .= Param.threshe
-thresh[(1+Param.Ne):Param.Ncells] .= Param.threshi
+_args = []
+for (k,v) in pairs(Param.cellModel_args)
+    if typeof(v)<:AbstractArray
+        push!(_args, k=>Array{Param.FloatPrecision}(v))
+    else
+        push!(_args, k=>v)
+    end
+end
+cellModel_args = (; _args...)
+_args = nothing
 
-#membrane time constants
-tau_mem = Vector{Param.FloatPrecision}(undef, Param.Ncells)
-tau_mem[1:Param.Ne] .= Param.tau_meme
-tau_mem[(1+Param.Ne):Param.Ncells] .= Param.tau_memi
+if typeof(Param.sig)<:Number
+    sig = fill(Param.FloatPrecision(Param.sig), Param.Ncells)
+else
+    sig = Param.FloatPrecision.(Param.sig)
+end
+if any(sig .> 0)
+    if Param.noise_model==:voltage
+        sig .*= sqrt(Param.dt) / sqrt.(Param.tau_meme)
+    elseif Param.noise_model==:current
+        sig .*= sqrt.(Param.tau_meme) / sqrt(Param.dt)
+    else
+        error("noise_model must :voltage or :current")
+    end
+end
 
 maxTimes = round(Int, Param.maxrate * Param.train_time / 1000)  # maximum number of spikes times to record
 _times_precision = Dict(8=>UInt8, 16=>UInt16, 32=>UInt32, 64=>UInt64)[nextpow(2, log2(Param.Nsteps))]
@@ -62,7 +78,6 @@ k = Matrix{Param.FloatPrecision}(undef, PLtot, Threads.nthreads())
 delta = Matrix{Param.FloatPrecision}(undef, PLtot, Threads.nthreads())
 v = Vector{Param.FloatPrecision}(undef, Param.Ncells)      # membrane voltage
 noise = Vector{Param.FloatPrecision}(undef, Param.Ncells)  # actual noise added at current time step
-sig = fill(Param.FloatPrecision(Param.sig), Param.Ncells)  # std dev of the Gaussian noise
 
 rndX = Vector{Param.FloatPrecision}(undef, Param.LX)    # uniform noise to generate Poisson feed-forward spikes
 

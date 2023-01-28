@@ -48,10 +48,11 @@ macro maybethread(loop)
   quote $(esc(loop)); end
 end
 
-include("convertWgtIn2Out.jl")
-include("rls.jl")
 kind=:test
+include(Param.cellModel_file)
+include("convertWgtIn2Out.jl")
 include("loop.jl")
+include("rls.jl")
 
 # --- load initialization --- #
 nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0")
@@ -77,7 +78,7 @@ wpWeightOut = zeros(maximum(wpIndexConvert), Param.Ncells)
 wpWeightOut = convertWgtIn2Out(Param.Ncells, ncpIn,
                                wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut)
 
-rng = eval(Param.rng_func["cpu"])
+rng = eval(Param.rng_func.cpu)
 isnothing(Param.seed) || Random.seed!(rng, Param.seed)
 save(joinpath(parsed_args["data_dir"],"rng-test.jld2"), "rng", rng)
 
@@ -110,8 +111,8 @@ Threads.@threads for itrial=1:ntrials
         t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop_test(itask,
               Param.learn_every, Param.stim_on, Param.stim_off,
               Param.train_time, Param.dt, Param.Nsteps, Param.Ncells,
-              nothing, nothing, Param.LX, Param.refrac, vre, invtau_bale,
-              invtau_bali, invtau_plas, X_bal, thresh, tau_mem, maxTimes,
+              nothing, nothing, Param.LX, Param.refrac, invtau_bale,
+              invtau_bali, invtau_plas, X_bal, maxTimes,
               copy_times[Threads.threadid()],
               copy_ns[Threads.threadid()],
               copy_timesX[Threads.threadid()],
@@ -138,7 +139,7 @@ Threads.@threads for itrial=1:ntrials
               copy_noise[Threads.threadid()],
               nothing, sig, nothing, w0Index, w0Weights, nc0, X_stim, nothing,
               nothing, wpIndexOut, nothing, nothing, nothing, wpWeightOut, nothing,
-              ncpOut, nothing, nothing, nothing)
+              ncpOut, nothing, nothing, nothing, cellModel_args)
         nss[itrial, itask] = thisns[parsed_args["ineurons_to_test"]]
         timess[itrial, itask] = thistimes[parsed_args["ineurons_to_test"],:]
         utotals[itrial, itask] = thisutotal[:,parsed_args["ineurons_to_test"]]

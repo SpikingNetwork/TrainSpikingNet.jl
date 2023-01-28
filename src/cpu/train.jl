@@ -54,6 +54,7 @@ macro maybethread(loop)
 end
 
 kind=:train
+include(Param.cellModel_file)
 include("convertWgtIn2Out.jl")
 include("loop.jl")
 include("rls.jl")
@@ -97,7 +98,7 @@ wpWeightOut = zeros(maximum(wpIndexConvert), Param.Ncells);
 wpWeightOut = convertWgtIn2Out(Param.Ncells, ncpIn,
                                wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut);
 
-rng = eval(Param.rng_func["cpu"])
+rng = eval(Param.rng_func.cpu)
 isnothing(Param.seed) || Random.seed!(rng, Param.seed)
 save(joinpath(parsed_args["data_dir"],"rng-train.jld2"), "rng", rng)
 
@@ -159,21 +160,22 @@ for iloop = R.+(1:parsed_args["nloops"])
             Param.learn_every, Param.stim_on, Param.stim_off,
             Param.train_time, Param.dt, Param.Nsteps, Param.Ncells,
             nothing, Param.Lexc+Param.Linh, Param.LX, Param.refrac,
-            vre, invtau_bale, invtau_bali, invtau_plas, X_bal, thresh,
-            tau_mem, nothing, nothing, ns, nothing, nsX, inputsE,
+            invtau_bale, invtau_bali, invtau_plas, X_bal,
+            nothing, nothing, ns, nothing, nsX, inputsE,
             inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev,
             spikes, spikesPrev, spikesX, spikesXPrev, u_bale, u_bali,
             uX_plas, u_bal, u, r, rX, X, nothing, nothing,
             lastSpike, plusone, exactlyzero, Param.PScale, raug, k, v, rng, noise,
             rndX, sig, P, w0Index, w0Weights, nc0, X_stim, utarg,
             wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightX, wpWeightIn,
-            wpWeightOut, ncpIn, ncpOut, nothing, nothing, rateX)
+            wpWeightOut, ncpIn, ncpOut, nothing, nothing, rateX,
+            cellModel_args)
     else
         _, _, _, _, utotal, _, _, uplastic, _ = loop_train_test(itask,
             Param.learn_every, Param.stim_on, Param.stim_off,
             Param.train_time, Param.dt, Param.Nsteps, Param.Ncells,
-            nothing, Param.Lexc+Param.Linh, Param.LX, Param.refrac, vre,
-            invtau_bale, invtau_bali, invtau_plas, X_bal, thresh, tau_mem,
+            nothing, Param.Lexc+Param.Linh, Param.LX, Param.refrac,
+            invtau_bale, invtau_bali, invtau_plas, X_bal,
             maxTimes, times, ns, timesX, nsX, inputsE, inputsI,
             inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes,
             spikesPrev, spikesX, spikesXPrev, u_bale, u_bali,
@@ -182,7 +184,7 @@ for iloop = R.+(1:parsed_args["nloops"])
             raug, k, v, rng, noise, rndX, sig, P, w0Index, w0Weights,
             nc0, X_stim, utarg, wpIndexIn, wpIndexOut, wpIndexConvert,
             wpWeightX, wpWeightIn, wpWeightOut, ncpIn, ncpOut, nothing,
-            nothing, rateX)
+            nothing, rateX, cellModel_args)
 
         if Param.correlation_var == :utotal
             ulearned = utotal

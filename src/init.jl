@@ -55,11 +55,18 @@ module Param
             tau_bale, tau_bali, tau_plas,
             noise_model, sig,
             correlation_var,
-            genXStim_file, genXStim_args,
-            genUTarget_file, genUTarget_args,
-            genRateX_file, genRateX_args,
-            genStaticWeights_file, genStaticWeights_args,
-            genPlasticWeights_file, genPlasticWeights_args,
+            :genXStim_file => abspath(@__DIR__, genXStim_file),
+            genXStim_args,
+            :genUTarget_file => abspath(@__DIR__, genUTarget_file),
+            genUTarget_args,
+            :genRateX_file => abspath(@__DIR__, genRateX_file),
+            genRateX_args,
+            :genStaticWeights_file => abspath(@__DIR__, genStaticWeights_file),
+            genStaticWeights_args,
+            :genPlasticWeights_file => abspath(@__DIR__, genPlasticWeights_file),
+            genPlasticWeights_args,
+            :cellModel_file => abspath(@__DIR__, cellModel_file),
+            cellModel_args,
             choose_task_func,
             ))
 end
@@ -92,6 +99,7 @@ include(Param.genPlasticWeights_file)
 include(Param.genRateX_file)
 include(Param.genUTarget_file)
 include(Param.genXStim_file)
+include(Param.cellModel_file)
 include(joinpath("cpu","loop.jl"))
 include("rate2utarg.jl")
 
@@ -103,14 +111,14 @@ itask = 1
 uavg, ns0, ustd = loop_init(itask,
     nothing, nothing, Param.stim_off, Param.train_time, Param.dt,
     Param.Nsteps, Param.Ncells, Param.Ne, nothing, Param.LX, Param.refrac,
-    vre, invtau_bale, invtau_bali, nothing, X_bal, thresh, tau_mem, nothing,
+    invtau_bale, invtau_bali, nothing, X_bal, nothing,
     nothing, ns, nothing, nsX, inputsE, inputsI, nothing,
     inputsEPrev, inputsIPrev, nothing, nothing, nothing, nothing, nothing,
     u_bale, u_bali, nothing, u_bal, u, nothing, nothing,
     X, nothing, nothing, lastSpike, nothing, nothing, nothing, nothing,
     nothing, v, Param.rng, noise, rndX, sig, nothing, w0Index,
     w0Weights, nc0, nothing, nothing, nothing, nothing, nothing, nothing,
-    nothing, nothing, nothing, nothing, uavg, utmp, rateX)
+    nothing, nothing, nothing, nothing, uavg, utmp, rateX, cellModel_args)
 
 wpWeightX, wpWeightIn, wpIndexIn, ncpIn =
     genPlasticWeights(Param.genPlasticWeights_args, ns0)
@@ -157,7 +165,7 @@ if parsed_args["utarg_file"] !== nothing
 elseif parsed_args["spikerate_file"] !== nothing
     utarg = rate2utarg(Param.train_time, Param.stim_off, Param.learn_every,
                        Param.tau_meme, Param.threshe, Param.vre,
-                       Param.K==0 ? sig : (ustd / sqrt(Param.tau_bale * 1.3))) # factor 1.3 was calibrated manually
+                       Param.K==0 ? Param.sig : (ustd / sqrt(Param.tau_bale * 1.3))) # factor 1.3 was calibrated manually
 else
     utarg = Array{Float64}(undef, Ntime, Param.Ncells, length(parsed_args["itasks"]))
     for itask = 1:length(parsed_args["itasks"])

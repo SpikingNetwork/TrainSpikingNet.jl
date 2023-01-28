@@ -72,7 +72,7 @@ First, make a copy of the parameters file.  Like this on Linux:
 
 ```
 $ mkdir ~/data
-$ cp src/param.jl ~/data
+$ cp $TSN_DIR/src/param.jl ~/data
 ```
 
 Now use `init.jl` to pick random synaptic weights and generate artificial
@@ -208,7 +208,7 @@ of your choosing.  Defaults are supplied for each plugin.
   The default is "src/genPlasticWeights-erdos-renyi.jl"
 
   * `genStaticWeights()` specifies the connectivity of the fixed synapses.
-  the default is "src/genStaticWeights-erdos-renyi.jl".  This is only used
+  The default is "src/genStaticWeights-erdos-renyi.jl".  This is only used
   if K > 0.
 
   * `genRateX()` specifies the spike thresholds for the feed-forward neurons.
@@ -226,11 +226,11 @@ For example, the "genStaticWeights_file" and "genStaticWeights_args"
 variables in "src/param.jl" are a string and a dictionary, respectively.
 The former specifies the path to a .jl file containing a function called
 `genStaticWeights()` to which the latter is passed when `init.jl`
-is executed.  `genStaticWeights()` defines and returns `w0Index`,
+is executed.  `genStaticWeights()` constructs and returns `w0Index`,
 `w0Weights`, and `nc0` which together specify the static connections
 between neurons based on the parameters `Ncells`, `Ne`, `pree`, `prie`,
 `prei`, `prii`, `jee`, `jie`, `jei`, and `jii`.  Should the default code,
-contained in "src/genStaticWeights-erdos-renyi.jl" not do what you want,
+contained in "src/genStaticWeights-erdos-renyi.jl", not do what you want,
 you can create your own file (e.g. "genStaticWeights-custom.jl") which
 defines an alternative definition of `genStaticWeights()` (must be the
 same name) based on a (possibly) alternative set of parameters.  Simply set
@@ -248,13 +248,38 @@ and they will be converted to synaptic currents using the method of Ricciardi
 in `utarg.jld2`.  As this conversion can take awhile, you should subsquently
 use the `--utarg_file` flag with this newly generated `utarg.jld2` file.
 
-Finally, you'll need to make a copy of and edit "src/param.jl" to set various
-constants, like the spike threshold, the refractory period, the synapse
-and membrane time constants, the learning rate, the duration and time step
-of the simulation, the floating point precision to use, the seed value for
-random number generation, etc.  See the comments therein for more details.
+Simulation parameters, like the learning rate, the duration and time step
+of the simulation, the floating point precision to use, the seed value
+for random number generation, etc., are specified in "src/param.jl".
+Simply make a copy and edit.  See the comments therein for more details.
 
-Then, proceed as above with `init.jl`, `train.jl`, and `test.jl`.
+The cell model is also specified in "param.jl".  Much like the neural
+architecture, this code is pulled out into a plugin, so that it is easy to
+use a custom algorithm.  the "cellModel_file" and "cellModel_args" variables
+are the path to a .jl file and a dictionary of parameters, respectively.
+The former must define six functions, three each for the CPU and GPU:
+
+    `cellModel_timestep!` updates the state variables at each tick of the clock
+
+    `cellModel_spiked[!]` returns whether a neuron spiked or not
+
+    `cellModel_reset!` sets the variables to their initial state
+
+The CPU methods each input `i`, which is the cell index.  The GPU methods
+operate on all cells in parallel, and input `bnotrefrac` and `bspike` which
+are boolean vectors indicating which neurons are not in the refractory
+period and which have spiked, respectively.  Other inputs include the
+membrane voltage (`v`), and the external (`X`) and recurrent (`u`) currents.
+
+Six cell models are supplied, five of which
+are the Allen Institute's General Leak Integrate
+and Fire (GLIF) models (see [Teeter, Iyer, Menon, et al, Mihalas,
+2017](https://static-content.springer.com/esm/art%3A10.1038%2Fs41467-017-02717-4/MediaObjects/41467_2017_2717_MOESM1_ESM.pdf)).
+The sixth, "src/cellModel-kim-darshan.jl", is the default, and is a
+performance-optimized version of GLIF1.
+
+Once you have configured all the above, proceed with `init.jl`, `train.jl`,
+and `test.jl` as described in the Tutorial.
 
 Additional options for all of these scripts can be displayed with the
 `--help` flag:

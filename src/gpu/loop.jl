@@ -46,14 +46,15 @@ end
 
 @eval function $(Symbol("loop_",kind))(itask,
     learn_every, stim_on, stim_off, train_time, dt, Nsteps, Ncells, Ne, Lei,
-    LX, refrac, vre, invtau_bale, invtau_bali, invtau_plas, X_bal, thresh,
-    tau_mem, maxTimes, times, ns, timesX, nsX, inputsE, inputsI,
+    LX, refrac, invtau_bale, invtau_bali, invtau_plas, X_bal,
+    maxTimes, times, ns, timesX, nsX, inputsE, inputsI,
     inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes, spikesPrev,
     spikesX, spikesXPrev, u_bale, u_bali, uX_plas, u_bal,
     u, r, rX, X, wid, example_neurons, lastSpike, bnotrefrac,
     bspike, plusone, minusone, PScale, raug, k, den, e, delta, v, rng, noise,
     rndX, sig, P, w0Index, w0Weights, nc0, X_stim, utarg, wpWeightX,
-    wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, rateX)
+    wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, rateX,
+    cellModel_args)
 
     @static kind in [:train, :train_test] && Param.LX>0 && (rateX /= round(Int, 1000/dt))
 
@@ -102,16 +103,6 @@ end
     end
     uX_plas .= 0
     inputsPPrev .= 0.0
-    @static if Param.sig>0
-        @static if Param.noise_model==:voltage 
-            sqrtdt = sqrt(dt)
-            sqrtinvtau_mem = sqrt.(1 ./ tau_mem)
-        elseif Param.noise_model==:current
-            invsqrtdt = 1/sqrt(dt)
-            sqrttau_mem = sqrt.(tau_mem)
-        end
-    end
-    invtau_mem = 1 ./ tau_mem
 
     # start the actual training
     for ti=1:Nsteps
@@ -147,7 +138,7 @@ end
 
         @static Param.K>0 && (u_bal .+= u_bale .+ u_bali)
         @static if Param.sig>0 && Param.noise_model==:current
-            u_bal .+= invsqrtdt .* sqrttau_mem .* sig .* noise
+            u_bal .+= sig .* noise
         end
         u .= u_bal .+ uX_plas
 
@@ -192,18 +183,18 @@ end
         end
 
         @static if Param.sig>0 && Param.noise_model==:voltage
-            v .+= sqrtdt .* sqrtinvtau_mem .* sig .* noise
+            v .+= sig .* noise
         end
 
         # not in refractory period
         bnotrefrac .= t .> (lastSpike .+ refrac)
-        v .+= bnotrefrac .* dt .* invtau_mem .* (X .- v .+ u)
+        @inline cellModel_timestep!(bnotrefrac, v, X, u, cellModel_args)
 
         # spike occurred
-        bspike .= bnotrefrac .& (v .> thresh)
+        @inline cellModel_spiked!(bspike, bnotrefrac, v, cellModel_args)
         @static kind in [:train, :train_test] && (spikes .= bspike)
         ns .+= bspike
-        v .= ifelse.(bspike, vre, v)
+        @inline cellModel_reset!(bspike, v, cellModel_args)
         lastSpike .= ifelse.(bspike, t, lastSpike)
         @static if kind in [:test, :train_test]
             times[ CartesianIndex.(1:Ncells, min.(maxTimes, bspike.*ns) .+ 1) ] .= ti

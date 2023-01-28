@@ -1,14 +1,14 @@
 @eval function $(Symbol("loop_",kind))(itask,
     learn_every, stim_on, stim_off, train_time, dt, Nsteps, Ncells, Ne,
-    Lei, LX, refrac, vre, invtau_bale, invtau_bali, invtau_plas, X_bal,
-    thresh, tau_mem, maxTimes, times, ns, timesX, nsX, inputsE,
+    Lei, LX, refrac, invtau_bale, invtau_bali, invtau_plas, X_bal,
+    maxTimes, times, ns, timesX, nsX, inputsE,
     inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes,
     spikesPrev, spikesX, spikesXPrev, u_bale, u_bali, uX_plas,
     u_bal, u, r, rX, X, wid, example_neurons, lastSpike,
     plusone, exactlyzero, PScale, raug, k, v, rng, noise, rndX, sig,
     P, w0Index, w0Weights, nc0, X_stim, utarg, wpIndexIn, wpIndexOut,
     wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut, ncpIn, ncpOut,
-    uavg, utmp, rateX)
+    uavg, utmp, rateX, cellModel_args)
 
     @static kind in [:init, :train, :train_test] && (steps_per_sec = round(Int, 1000/dt))
 
@@ -61,16 +61,6 @@
         uX_plas .= 0
         inputsPPrev .= 0.0
     end
-    @static if Param.sig>0
-        @static if Param.noise_model==:voltage
-            sqrtdt = sqrt(dt)
-            sqrtinvtau_mem = sqrt.(1 ./ tau_mem)
-        elseif Param.noise_model==:current
-            invsqrtdt = 1/sqrt(dt)
-            sqrttau_mem = sqrt.(tau_mem)
-        end
-    end
-    invtau_mem = 1 ./ tau_mem
 
     # start the actual training
     for ti=1:Nsteps
@@ -154,7 +144,7 @@
 
             @static Param.K>0 && (u_bal[ci] += u_bale[ci] + u_bali[ci])
             @static if Param.sig>0 && Param.noise_model==:current
-                u_bal[ci] += invsqrtdt * sqrttau_mem[ci] * sig[ci] * noise[ci]
+                u_bal[ci] += sig[ci] * noise[ci]
             end
             u[ci] = u_bal[ci]
             @static if kind in [:train, :test, :train_test]
@@ -216,20 +206,20 @@
             @static kind == :init && (X[ci] = X_bal[ci])
 
             @static if Param.sig>0 && Param.noise_model==:voltage
-                v[ci] += sqrtdt * sqrtinvtau_mem[ci] * sig[ci] * noise[ci]
+                v[ci] += sig[ci] * noise[ci]
             end
 
             # not in refractory period
             if t > (lastSpike[ci] + refrac)  
                 # update membrane potential
-                v[ci] += dt * invtau_mem[ci] * (X[ci] - v[ci] + u[ci])
+                @inline cellModel_timestep!(ci, v, X, u, cellModel_args)
 
                 #spike occurred
-                if v[ci] > thresh[ci]                      
-                    v[ci] = vre                 # reset voltage
-                    @static kind in [:train, :train_test] && (spikes[ci] = 1)   # record that neuron ci spiked. Used for computing r[ci]
-                    lastSpike[ci] = t           # record neuron ci's last spike time. Used for checking ci is not in refractory period
-                    ns[ci] += 1           # number of spikes neuron ci emitted
+                if @inline cellModel_spiked(ci, v, cellModel_args)
+                    @inline cellModel_reset!(ci, v, cellModel_args)  # reset voltage
+                    @static kind in [:train, :train_test] && (spikes[ci] = 1)  # record that neuron ci spiked. Used for computing r[ci]
+                    lastSpike[ci] = t  # record neuron ci's last spike time. Used for checking ci is not in refractory period
+                    ns[ci] += 1  # number of spikes neuron ci emitted
                     @static kind in [:test, :train_test] && if ns[ci] <= maxTimes
                         times[ci, min(maxTimes, ns[ci])] = ti
                     end

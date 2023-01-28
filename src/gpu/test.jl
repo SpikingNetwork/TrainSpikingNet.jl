@@ -46,10 +46,11 @@ end
 # --- load code --- #
 Param = load(joinpath(parsed_args["data_dir"],"param.jld2"), "param")
 
-include("convertWgtIn2Out.jl")
-include("rls.jl")
 kind=:test
+include(Param.cellModel_file)
+include("convertWgtIn2Out.jl")
 include("loop.jl")
+include("rls.jl")
 
 # --- load initialization --- #
 nc0 = load(joinpath(parsed_args["data_dir"],"nc0.jld2"), "nc0")
@@ -81,7 +82,7 @@ w0Weights = CuArray{Param.FloatPrecision}(w0Weights);
 wpIndexOut = CuArray{Param.IntPrecision}(wpIndexOut);
 wpWeightOut = CuArray{Param.FloatPrecision}(wpWeightOut);
 
-rng = eval(Param.rng_func["gpu"])
+rng = eval(Param.rng_func.gpu)
 isnothing(Param.seed) || Random.seed!(rng, Param.seed)
 save(joinpath(parsed_args["data_dir"],"rng-test.jld2"), "rng", rng)
 
@@ -93,7 +94,7 @@ timess = Array{Any}(undef, ntrials, ntasks);
 utotals = Array{Any}(undef, ntrials, ntasks);
 copy_rng = [typeof(rng)() for _=1:ndevices()];
 isnothing(Param.seed) || Random.seed!.(copy_rng, Param.seed)
-for var in [:times, :ns, :timesX, :nsX, :X_stim, :nc0, :thresh, :tau_mem,
+for var in [:times, :ns, :timesX, :nsX, :X_stim, :nc0,
             :w0Index, :w0Weights, :wpWeightX, :wpIndexOut, :wpWeightOut, :X_bal,
             :inputsE, :inputsI, :inputsP, :inputsEPrev, :inputsIPrev, :inputsPPrev,
             :u_bale, :u_bali, :uX_plas, :u_bal, :u,
@@ -113,12 +114,10 @@ Threads.@threads for itrial=1:ntrials
         t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop_test(itask,
               Param.learn_every, Param.stim_on, Param.stim_off,
               Param.train_time, Param.dt, Param.Nsteps, Param.Ncells,
-              nothing, nothing, Param.LX, Param.refrac, vre, invtau_bale,
+              nothing, nothing, Param.LX, Param.refrac, invtau_bale,
               invtau_bali,
               typeof(Param.tau_plas)<:Number ? invtau_plas : copy_invtau_plas[idevice],
               copy_X_bal[idevice],
-              copy_thresh[idevice],
-              copy_tau_mem[idevice],
               maxTimes,
               copy_times[idevice],
               copy_ns[idevice],
@@ -160,7 +159,8 @@ Threads.@threads for itrial=1:ntrials
               copy_wpIndexOut[idevice],
               nothing, nothing,
               copy_wpWeightOut[idevice],
-              nothing);
+              nothing,
+              cellModel_args);
         nss[itrial, itask] = Array(thisns[parsed_args["ineurons_to_test"]])
         timess[itrial, itask] = Array(thistimes[parsed_args["ineurons_to_test"],:])
         utotals[itrial, itask] = Array(thisutotal[:,parsed_args["ineurons_to_test"]])
