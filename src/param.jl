@@ -5,6 +5,10 @@ PScale = 1  # if PPrecision<:Integer then PScale should be e.g. 2^(nbits-2)
 FloatPrecision = Float32  # precision of all other floating point variables, except time
 IntPrecision = UInt32  # precision of all integer variables.  should be > Ncells
 
+# promote_type(PPrecision, typeof(PScale), FloatPrecision) is used to
+# accumulate intermediate `gemv` etc. values on GPU, so if PPrecision and
+# FloatPrecision are small, make typeof(PScale) big and float
+
 example_neurons = 25  # no. of neurons to save for visualization 
 wid = 50  # width (ms) of the moving average window in time
 maxrate = 500 # (Hz) maximum average firing rate; spikes will be lost if the average firing rate exceeds this value

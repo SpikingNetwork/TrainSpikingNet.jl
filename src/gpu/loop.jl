@@ -127,7 +127,7 @@ end
                     raug, k, den, e, delta, Ncells, Lei, r, rX,
                     P, u_bal, utarg, learn_seq, wpIndexIn,
                     wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
-                    plusone, minusone, exactlyzero)
+                    plusone, minusone, exactlyzero, PScale)
             learn_seq += 1
         end
 

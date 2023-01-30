@@ -53,7 +53,6 @@ bspike = CuVector{Bool}(undef, Param.Ncells)      # which recurrent neurons spik
 plusone = Param.FloatPrecision(1.0)
 minusone = Param.FloatPrecision(-1.0)
 exactlyzero = Param.FloatPrecision(0.0)
-PScale = Param.FloatPrecision(Param.PScale)
 
 vre = Param.FloatPrecision(Param.vre)  # reset voltage
 

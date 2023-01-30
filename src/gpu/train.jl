@@ -155,7 +155,7 @@ for iloop = R.+(1:parsed_args["nloops"])
             inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev,
             spikes, spikesPrev, spikesX, spikesXPrev, u_bale, u_bali,
             uX_plas, u_bal, u, r, rX, X, nothing, nothing,
-            lastSpike, bnotrefrac, bspike, plusone, minusone, PScale, raug,
+            lastSpike, bnotrefrac, bspike, plusone, minusone, Param.PScale, raug,
             k, den, e, delta, v, rng, noise, rndX, sig, P, w0Index,
             w0Weights, nc0, X_stim, utarg, wpWeightX, wpIndexIn, wpIndexOut,
             wpIndexConvert, wpWeightIn, wpWeightOut, rateX)
@@ -170,7 +170,7 @@ for iloop = R.+(1:parsed_args["nloops"])
             spikesPrev, spikesX, spikesXPrev, u_bale, u_bali,
             uX_plas, u_bal, u, r, rX, X, Param.wid,
             Param.example_neurons, lastSpike, bnotrefrac, bspike, plusone,
-            minusone, PScale, raug, k, den, e, delta, v, rng, noise, rndX,
+            minusone, Param.PScale, raug, k, den, e, delta, v, rng, noise, rndX,
             sig, P, w0Index, w0Weights, nc0, X_stim, utarg, wpWeightX,
             wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
             rateX)

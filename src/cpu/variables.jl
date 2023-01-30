@@ -50,7 +50,6 @@ lastSpike = Array{Float64}(undef, Param.Ncells)           # last time a neuron s
 
 plusone = Param.FloatPrecision(1.0)
 exactlyzero = Param.FloatPrecision(0.0)
-PScale = Param.FloatPrecision(Param.PScale)
 
 vre = Param.FloatPrecision(Param.vre)  # reset voltage
 
