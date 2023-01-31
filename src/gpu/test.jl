@@ -114,7 +114,7 @@ Threads.@threads for itrial=1:ntrials
         t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop_test(itask,
               Param.learn_every, Param.stim_on, Param.stim_off,
               Param.train_time, Param.dt, Param.Nsteps, Param.Ncells,
-              nothing, nothing, Param.LX, Param.refrac, invtau_bale,
+              nothing, nothing, Param.LX, Param.refrac, learn_step, invtau_bale,
               invtau_bali,
               typeof(Param.tau_plas)<:Number ? invtau_plas : copy_invtau_plas[idevice],
               copy_X_bal[idevice],

@@ -111,7 +111,7 @@ itask = 1
 uavg, ns0, ustd = loop_init(itask,
     nothing, nothing, Param.stim_off, Param.train_time, Param.dt,
     Param.Nsteps, Param.Ncells, Param.Ne, nothing, Param.LX, Param.refrac,
-    invtau_bale, invtau_bali, nothing, X_bal, nothing,
+    learn_step, invtau_bale, invtau_bali, nothing, X_bal, nothing,
     nothing, ns, nothing, nsX, inputsE, inputsI, nothing,
     inputsEPrev, inputsIPrev, nothing, nothing, nothing, nothing, nothing,
     u_bale, u_bali, nothing, u_bal, u, nothing, nothing,

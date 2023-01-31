@@ -1,6 +1,6 @@
 @eval function $(Symbol("loop_",kind))(itask,
     learn_every, stim_on, stim_off, train_time, dt, Nsteps, Ncells, Ne,
-    Lei, LX, refrac, invtau_bale, invtau_bali, invtau_plas, X_bal,
+    Lei, LX, refrac, learn_step, invtau_bale, invtau_bali, invtau_plas, X_bal,
     maxTimes, times, ns, timesX, nsX, inputsE,
     inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes,
     spikesPrev, spikesX, spikesXPrev, u_bale, u_bali, uX_plas,
@@ -12,7 +12,7 @@
 
     @static kind in [:init, :train, :train_test] && (steps_per_sec = round(Int, 1000/dt))
 
-    @static kind in [:train, :train_test] && Param.LX>0 && (rateX /= steps_per_sec)
+    @static (kind in [:train, :train_test] && Param.LX>0) && (rateX /= steps_per_sec)
 
     @static if kind in [:test, :train_test]
         learn_nsteps = round(Int, (train_time - stim_off)/learn_every)
@@ -103,13 +103,15 @@
         #                  - Indices of postsynaptic neurons that neuron i connect to
         #                  - Fixed throughout the simulation. Used to compute inputsP
 
-        @static kind in [:train, :train_test] && if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
-            wpWeightIn, wpWeightOut = rls(itask,
-                    raug, k, delta, Ncells, Lei, r, rX, P,
-                    u_bal, utarg, learn_seq, ncpIn, wpIndexIn,
-                    wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
-                    plusone, exactlyzero, PScale)
-            learn_seq += 1
+        @static if kind in [:train, :train_test]
+            if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
+                wpWeightIn, wpWeightOut = rls(itask,
+                        raug, k, delta, Ncells, Lei, r, rX, P,
+                        u_bal, utarg, learn_seq, ncpIn, wpIndexIn,
+                        wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
+                        plusone, exactlyzero, PScale)
+                learn_seq += 1
+            end
         end
 
         @static kind in [:test, :train_test] && if t > stim_off && t <= train_time && mod(t,1.0) == 0
