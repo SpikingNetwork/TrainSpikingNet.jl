@@ -1,20 +1,19 @@
-using NLsolve
-
-function rate2utarg(train_time, stim_off, learn_every, taue_mem, threshe, vre, sigma)
-    targetRate_dict = load(parsed_args["spikerate_file"])
+function rate2utarg(itasks, spikerate_file,
+                    train_time, stim_off, learn_every, taue_mem, threshe, vre, sigma)
+    targetRate_dict = load(spikerate_file)
     targetRate = targetRate_dict[first(keys(targetRate_dict))]
     Ntime = floor(Int, (train_time-stim_off)/learn_every)
     if size(targetRate,1) != Ntime
-        error(parsed_args["spikerate_file"],
+        error(spikerate_file,
               " should have (train_time-stim_off)/learn_every = ",
               Ntime, " rows")
     end
     ndims(targetRate)==2 && (targetRate = targetRate[:,:,[CartesianIndex()]])
-    if any(parsed_args["itasks"] .> size(targetRate,3))
+    if any(itasks .> size(targetRate,3))
         error("an element of --itask exceeds the size of the third dimension of ",
-              parsed_args["utarg_file"])
+              utarg_file)
     end
-    targetRate = targetRate[:,:,parsed_args["itasks"]]
+    targetRate = targetRate[:,:,itasks]
     replace!(targetRate, 0.0=>0.1)
     utarg = similar(targetRate)
 
