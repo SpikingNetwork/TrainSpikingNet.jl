@@ -138,7 +138,7 @@ Threads.@threads for itrial=1:ntrials
               copy_rng[Threads.threadid()],
               copy_noise[Threads.threadid()],
               nothing, sig, nothing, w0Index, w0Weights, nc0, X_stim, nothing,
-              nothing, wpIndexOut, nothing, nothing, nothing, wpWeightOut, nothing,
+              nothing, wpIndexOut, nothing, wpWeightX, nothing, wpWeightOut, nothing,
               ncpOut, nothing, nothing, nothing, cellModel_args)
         nss[itrial, itask] = thisns[parsed_args["ineurons_to_test"]]
         timess[itrial, itask] = thistimes[parsed_args["ineurons_to_test"],:]
