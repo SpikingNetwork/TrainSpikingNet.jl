@@ -13,7 +13,7 @@ function update_inputs(bspike,
         @inbounds for i=i0:istride:length(bspike)
             if i<=length(bspike) && bspike[i]
                 for j=j0:jstride:max(size(w0Index,1),size(wpIndexOut,1))
-                    @static if Param.K>0
+                    @static if p.K>0
                         if j<=size(w0Index,1)
                             CUDA.@atomic inputsE[0x1 + w0Index[j,i]] += max(w0Weights[j,i], 0)
                             CUDA.@atomic inputsI[0x1 + w0Index[j,i]] += min(w0Weights[j,i], 0)
@@ -33,7 +33,7 @@ function update_inputs(bspike,
                                        wpIndexOut, wpWeightOut, inputsP)
     config = launch_configuration(kernel.fun)
     dims = (length(bspike),
-            (@static Param.K>0 ? max(size(w0Index,1),size(wpIndexOut,1)) : size(wpIndexOut,1)))
+            (@static p.K>0 ? max(size(w0Index,1),size(wpIndexOut,1)) : size(wpIndexOut,1)))
     xthreads = min(32, dims[1])
     ythreads = min(fld(config.threads, xthreads), cld(prod(dims), xthreads))
     xblocks = min(config.blocks, cld(dims[1], xthreads))
@@ -56,7 +56,7 @@ end
     wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, rateX,
     cellModel_args)
 
-    @static (kind in [:train, :train_test] && Param.LX>0) && (rateX /= round(Int, 1000/dt))
+    @static (kind in [:train, :train_test] && p.LX>0) && (rateX /= round(Int, 1000/dt))
 
     @static if kind in [:test, :train_test]
         learn_nsteps = round(Int, (train_time - stim_off)/learn_every)
@@ -82,7 +82,7 @@ end
         learn_seq = 1
         r .= 0
         spikesPrev .= 0
-        @static if Param.LX>0
+        @static if p.LX>0
             spikesXPrev .= 0
             rX .= 0
         end
@@ -90,14 +90,14 @@ end
 
     @static if kind in [:test, :train_test]
         times .= 0
-        @static Param.LX>0 && (timesX .= 0)
+        @static p.LX>0 && (timesX .= 0)
     end
 
     ns .= 0
-    @static Param.LX>0 && (nsX .= 0)
+    @static p.LX>0 && (nsX .= 0)
     lastSpike .= -100.0
     randn!(rng, v)
-    @static if Param.K>0
+    @static if p.K>0
         u_bale .= u_bali .= 0
         inputsEPrev .= inputsIPrev .= 0.0
     end
@@ -109,7 +109,7 @@ end
         t = dt*ti;
 
         # reset spiking activities from the previous time step
-        @static Param.K>0 && (inputsE .= inputsI .= 0.0)
+        @static p.K>0 && (inputsE .= inputsI .= 0.0)
         inputsP .= 0.0
 
         # modify the plastic weights when the stimulus is turned off 
@@ -124,22 +124,22 @@ end
             end
         end
 
-        @static Param.sig>0 && randn!(rng, noise)
+        @static p.sig>0 && randn!(rng, noise)
         u_bal .= 0.0
 
         # update network activities
-        @static if Param.K>0
+        @static if p.K>0
             axpby!(invtau_bale, (@view inputsEPrev[2:end]), plusone-dt*invtau_bale, u_bale)
             axpby!(invtau_bali, (@view inputsIPrev[2:end]), plusone-dt*invtau_bali, u_bali)
         end
-        @static if typeof(Param.tau_plas)<:Number
+        @static if typeof(p.tau_plas)<:Number
             axpby!(invtau_plas, (@view inputsPPrev[2:end]), plusone-dt*invtau_plas, uX_plas)
         else
             uX_plas .+= (-dt.*uX_plas .+ (@view inputsPPrev[2:end])) .* invtau_plas
         end
 
-        @static Param.K>0 && (u_bal .+= u_bale .+ u_bali)
-        @static if Param.sig>0 && Param.noise_model==:current
+        @static p.K>0 && (u_bal .+= u_bale .+ u_bali)
+        @static if p.sig>0 && p.noise_model==:current
             u_bal .+= sig .* noise
         end
         u .= u_bal .+ uX_plas
@@ -170,7 +170,7 @@ end
 
         # compute synapse-filtered spike trains
         @static if kind in [:train, :train_test]
-            @static if typeof(Param.tau_plas)<:Number
+            @static if typeof(p.tau_plas)<:Number
                 axpby!(invtau_plas, spikesPrev, plusone-dt*invtau_plas, r)
             else
                 r .+= (-dt.*r .+ spikesPrev) .* invtau_plas
@@ -184,7 +184,7 @@ end
             X .= X_bal
         end
 
-        @static if Param.sig>0 && Param.noise_model==:voltage
+        @static if p.sig>0 && p.noise_model==:voltage
             v .+= sig .* noise
         end
 
@@ -208,9 +208,9 @@ end
                       wpIndexOut, wpWeightOut, inputsP)
 
         # external input to trained excitatory neurons
-        @static Param.LX>0 && if t > stim_off
+        @static p.LX>0 && if t > stim_off
             @static if kind in [:train, :train_test]
-                @static if typeof(Param.tau_plas)<:Number
+                @static if typeof(p.tau_plas)<:Number
                     axpby!(invtau_plas, spikesXPrev, plusone-dt*invtau_plas, rX)
                 else
                     rX .+= (-dt.*rX .+ spikesXPrev) .* invtau_plas
@@ -230,14 +230,14 @@ end
         end
 
         # save spiking activities produced at the current time step
-        @static if Param.K>0
+        @static if p.K>0
             inputsEPrev .= inputsE
             inputsIPrev .= inputsI
         end
         inputsPPrev .= inputsP
         @static if kind in [:train, :train_test]
             spikesPrev .= spikes
-            @static Param.LX>0 && (spikesXPrev .= spikesX)
+            @static p.LX>0 && (spikesXPrev .= spikesX)
         end
     end
 

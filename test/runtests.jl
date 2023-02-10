@@ -1,4 +1,4 @@
-using Test, JLD2, SymmetricFormats
+using TrainSpikingNet, Test, JLD2, SymmetricFormats
 
 function compare_cpu_to_gpu(kind;
                             ntasks=1, nloops=1, cinterval=nloops,
@@ -15,13 +15,13 @@ function compare_cpu_to_gpu(kind;
 
     cp(joinpath(@__DIR__, "scratch", "cpu-$kind"), joinpath(@__DIR__, "scratch", "gpu-$kind"))
     cpu_out = readlines(`$(Base.julia_cmd()) -t 4
-                         $(joinpath(@__DIR__, "..", "src", "cpu", "train.jl"))
+                         $(joinpath(@__DIR__, "..", "src", "train.jl"))
                          --nloops $nloops --correlation_interval $cinterval
                          $(joinpath(@__DIR__, "scratch", "cpu-$kind"))`)
     write(joinpath(@__DIR__, "scratch", "cpu-$kind", "train.log"), join(cpu_out, '\n'))
     gpu_out = readlines(`$(Base.julia_cmd())
-                         $(joinpath(@__DIR__, "..", "src", "gpu", "train.jl"))
-                         --nloops $nloops --correlation_interval $cinterval
+                         $(joinpath(@__DIR__, "..", "src", "train.jl"))
+                         --nloops $nloops --correlation_interval $cinterval -g
                          $(joinpath(@__DIR__, "scratch", "gpu-$kind"))`)
     write(joinpath(@__DIR__, "scratch", "gpu-$kind", "train.log"), join(gpu_out, '\n'))
 
@@ -166,7 +166,7 @@ end
     end
 
     gpu_out = readlines(`$(Base.julia_cmd())
-                         $(joinpath(@__DIR__, "..", "src", "gpu", "train.jl"))
+                         $(joinpath(@__DIR__, "..", "src", "train.jl")) -g
                          $(joinpath(@__DIR__, "scratch", "Int16"))`)
     write(joinpath(@__DIR__, "scratch", "Int16", "train.log"), join(gpu_out, '\n'))
     iHz = findlast(contains("Hz"), gpu_out)
@@ -196,11 +196,11 @@ end
 
 @testset "test" begin
     run(pipeline(`$(Base.julia_cmd())
-                  $(joinpath(@__DIR__, "..", "src", "cpu", "test.jl"))
+                  $(joinpath(@__DIR__, "..", "src", "test.jl"))
                   $(joinpath(@__DIR__, "scratch", "cpu-twotasks"))`, stdout=devnull))
 
     run(pipeline(`$(Base.julia_cmd()) -t 1
-                  $(joinpath(@__DIR__, "..", "src", "gpu", "test.jl"))
+                  $(joinpath(@__DIR__, "..", "src", "test.jl")) -g
                   $(joinpath(@__DIR__, "scratch", "gpu-twotasks"))`, stdout=devnull))
 
     dcpu = load(joinpath(@__DIR__, "scratch", "cpu-twotasks", "test.jld2"))
@@ -257,4 +257,20 @@ glif_vdt = ":thresh_v=>fill(0,Ncells), :a_v=>0.1, :b_v=>0.9"
     end
 
     compare_cpu_to_gpu(string("GLIF", glif), spikerate=false)
+end
+
+@testset "REPL" begin
+    data_dir = joinpath(@__DIR__, "scratch", "REPL")
+    mkdir(data_dir)
+    cp(joinpath(@__DIR__, "param.jl"), joinpath(data_dir, "param.jl"))
+    p = param(data_dir)
+    @test hasproperty(p, :dt)
+    config(data_dir, :cpu)
+    s = redirect_stdout(init, devnull)
+    @test hasproperty(s, :w0Weights)
+    w = redirect_stdout(train, devnull)
+    @test hasproperty(w, :wpWeightIn)
+    a = redirect_stdout(test, devnull)
+    @test hasproperty(a, :nss)
+    plot(joinpath(data_dir, "test.jld2"))
 end
