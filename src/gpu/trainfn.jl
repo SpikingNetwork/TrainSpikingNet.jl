@@ -8,22 +8,22 @@ function train(; nloops = 1,
     # --- load initialization --- #
     w0Index = load(joinpath(data_dir,"w0Index.jld2"), "w0Index");
     w0Weights = load(joinpath(data_dir,"w0Weights.jld2"), "w0Weights");
-    nc0 = load(joinpath(data_dir,"nc0.jld2"), "nc0");
     X_stim = load(joinpath(data_dir,"X_stim.jld2"), "X_stim");
     utarg = load(joinpath(data_dir,"utarg.jld2"), "utarg");
     wpIndexIn = load(joinpath(data_dir,"wpIndexIn.jld2"), "wpIndexIn");
     wpIndexOut = load(joinpath(data_dir,"wpIndexOut.jld2"), "wpIndexOut");
     wpIndexConvert = load(joinpath(data_dir,"wpIndexConvert.jld2"), "wpIndexConvert");
     rateX = load(joinpath(data_dir,"rateX.jld2"), "rateX");
+    pLtot = size(wpIndexIn,1) + p.LX
     if isnothing(restore_from_checkpoint)
         R=0
         wpWeightX = load(joinpath(data_dir,"wpWeightX.jld2"), "wpWeightX");
         wpWeightIn = load(joinpath(data_dir,"wpWeightIn.jld2"), "wpWeightIn");
-        Pinv_norm = load(joinpath(data_dir,"P.jld2"), "P");
-        PLtot = p.Lexc + p.Linh + p.LX
-        P1 = p.PType(Array{Float64}(undef, PLtot, PLtot));
-        P = Array{Float64}(undef, (size(p.PType==SymmetricPacked ? P1.tri : P1)..., p.Ncells));
-        P .= p.PType==SymmetricPacked ? Pinv_norm.tri : Pinv_norm;
+        P = load(joinpath(data_dir,"P.jld2"), "P");
+        P = paddedviews(0, P...);
+        P = p.PType==SymmetricPacked ?
+                cat((SymmetricPacked(p).tri for p in P)..., dims=2) :
+                cat(P..., dims=3);
         if p.PPrecision<:Integer
             P .= round.(P .* p.PScale)
         end
@@ -33,8 +33,8 @@ function train(; nloops = 1,
         wpWeightIn = load(joinpath(data_dir,"wpWeightIn-ckpt$R.jld2"), "wpWeightIn");
         P = load(joinpath(data_dir,"P-ckpt$R.jld2"), "P");
     end;
-    wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells);
-    wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut);
+    wpWeightOut = zeros(maximum(wpIndexConvert)+1, p.Ncells+1);
+    wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn);
 
     rng = eval(p.rng_func.gpu)
     isnothing(p.seed) || Random.seed!(rng, p.seed)
@@ -44,7 +44,6 @@ function train(; nloops = 1,
 
     # --- set up variables --- #
     P = CuArray{p.PPrecision}(P);
-    nc0 = CuArray{p.IntPrecision}(nc0);
     X_stim = CuArray{p.FloatPrecision}(X_stim);
     utarg = CuArray{p.FloatPrecision}(utarg);
     w0Index = CuArray{p.IntPrecision}(w0Index);
@@ -56,6 +55,12 @@ function train(; nloops = 1,
     wpWeightIn = CuArray{p.FloatPrecision}(wpWeightIn);
     wpWeightOut = CuArray{p.FloatPrecision}(wpWeightOut);
     rateX = CuArray{p.FloatPrecision}(rateX);
+
+    raug = CuArray{p.FloatPrecision}(undef, pLtot, p.Ncells)
+    k = CuArray{p.FloatPrecision}(undef, pLtot, p.Ncells)
+    den = CuArray{p.FloatPrecision}(undef, p.Ncells)
+    e = CuArray{p.FloatPrecision}(undef, p.Ncells)
+    delta = CuArray{p.FloatPrecision}(undef, pLtot, p.Ncells)
 
     # --- monitor resources used --- #
     function monitor_resources(c::Channel)
@@ -105,7 +110,7 @@ function train(; nloops = 1,
             loop_train(itask,
                 p.learn_every, p.stim_on, p.stim_off,
                 p.train_time, p.dt, p.Nsteps, p.Ncells,
-                nothing, p.Lexc+p.Linh, p.LX, p.refrac,
+                nothing, p.LX, p.refrac,
                 learn_step, invtau_bale, invtau_bali, invtau_plas, X_bal,
                 nothing, nothing, ns, nothing, nsX, inputsE,
                 inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev,
@@ -113,14 +118,14 @@ function train(; nloops = 1,
                 uX_plas, u_bal, u, r, rX, X, nothing, nothing,
                 lastSpike, bnotrefrac, bspike, plusone, minusone, p.PScale, raug,
                 k, den, e, delta, v, rng, noise, rndX, sig, P, w0Index,
-                w0Weights, nc0, X_stim, utarg, wpWeightX, wpIndexIn, wpIndexOut,
+                w0Weights, X_stim, utarg, wpWeightX, wpIndexIn, wpIndexOut,
                 wpIndexConvert, wpWeightIn, wpWeightOut, rateX,
                 cellModel_args)
         else
             _, _, _, _, utotal, _, _, uplastic, _ = loop_train_test(itask,
                 p.learn_every, p.stim_on, p.stim_off,
                 p.train_time, p.dt, p.Nsteps, p.Ncells,
-                nothing, p.Lexc+p.Linh, p.LX, p.refrac,
+                nothing, p.LX, p.refrac,
                 learn_step, invtau_bale, invtau_bali, invtau_plas, X_bal,
                 maxTimes, times, ns, timesX, nsX, inputsE, inputsI,
                 inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes,
@@ -128,7 +133,7 @@ function train(; nloops = 1,
                 uX_plas, u_bal, u, r, rX, X, p.wid,
                 p.example_neurons, lastSpike, bnotrefrac, bspike, plusone,
                 minusone, p.PScale, raug, k, den, e, delta, v, rng, noise, rndX,
-                sig, P, w0Index, w0Weights, nc0, X_stim, utarg, wpWeightX,
+                sig, P, w0Index, w0Weights, X_stim, utarg, wpWeightX,
                 wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
                 rateX, cellModel_args)
 

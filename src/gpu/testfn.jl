@@ -10,7 +10,6 @@ function test(; ntrials = 1,
     end
 
     # --- load initialization --- #
-    nc0 = load(joinpath(data_dir,"nc0.jld2"), "nc0")
     X_stim = load(joinpath(data_dir,"X_stim.jld2"), "X_stim")
     w0Index = load(joinpath(data_dir,"w0Index.jld2"), "w0Index")
     w0Weights = load(joinpath(data_dir,"w0Weights.jld2"), "w0Weights")
@@ -27,11 +26,10 @@ function test(; ntrials = 1,
     end
     wpWeightX = load(joinpath(data_dir,"wpWeightX.jld2"), "wpWeightX")
     wpWeightIn = load(joinpath(data_dir,"wpWeightIn-ckpt$R.jld2"))["wpWeightIn"]
-    wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells)
-    wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
+    wpWeightOut = zeros(maximum(wpIndexConvert)+1, p.Ncells+1)
+    wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn);
 
     # --- set up variables --- #
-    global nc0 = CuArray{p.IntPrecision}(nc0)
     global X_stim = CuArray{p.FloatPrecision}(X_stim);
     global w0Index = CuArray{p.IntPrecision}(w0Index);
     global w0Weights = CuArray{p.FloatPrecision}(w0Weights);
@@ -49,7 +47,7 @@ function test(; ntrials = 1,
     copy_rng = [typeof(rng)() for _=1:ndevices()];
     isnothing(p.seed) || Random.seed!.(copy_rng, p.seed .+ (1:Threads.nthreads()))
     save(joinpath(data_dir,"rng-test.jld2"), "rng", copy_rng)
-    for var in [:times, :ns, :timesX, :nsX, :X_stim, :nc0,
+    for var in [:times, :ns, :timesX, :nsX, :X_stim,
                 :w0Index, :w0Weights, :wpWeightX, :wpIndexOut, :wpWeightOut, :X_bal,
                 :inputsE, :inputsI, :inputsP, :inputsEPrev, :inputsIPrev, :inputsPPrev,
                 :u_bale, :u_bali, :uX_plas, :u_bal, :u,
@@ -69,7 +67,7 @@ function test(; ntrials = 1,
             t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop_test(itask,
                   p.learn_every, p.stim_on, p.stim_off,
                   p.train_time, p.dt, p.Nsteps, p.Ncells,
-                  nothing, nothing, p.LX, p.refrac, learn_step, invtau_bale,
+                  nothing, p.LX, p.refrac, learn_step, invtau_bale,
                   invtau_bali,
                   typeof(p.tau_plas)<:Number ? invtau_plas : copy_invtau_plas[idevice],
                   copy_X_bal[idevice],
@@ -106,7 +104,6 @@ function test(; ntrials = 1,
                   nothing,
                   copy_w0Index[idevice],
                   copy_w0Weights[idevice],
-                  copy_nc0[idevice],
                   copy_X_stim[idevice],
                   nothing,
                   copy_wpWeightX[idevice],

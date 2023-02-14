@@ -49,8 +49,8 @@ inputsP = CuVector{p.FloatPrecision}(undef, p.Ncells+1)      # synaptic currents
 inputsEPrev = CuVector{p.FloatPrecision}(undef, p.Ncells+1)  # copy of inputsE from previous time step
 inputsIPrev = CuVector{p.FloatPrecision}(undef, p.Ncells+1)  # copy of inputsI from previous time step
 inputsPPrev = CuVector{p.FloatPrecision}(undef, p.Ncells+1)  # copy of inputsP from previous time step
-spikes = CuVector{p.FloatPrecision}(undef, p.Ncells)         # spikes emitted by each recurrent neuron at one time step
-spikesPrev = CuVector{p.FloatPrecision}(undef, p.Ncells)     # copy of spike from previous time step
+spikes = CuVector{p.FloatPrecision}(undef, p.Ncells+1)       # spikes emitted by each recurrent neuron at one time step
+spikesPrev = CuVector{p.FloatPrecision}(undef, p.Ncells+1)   # copy of spike from previous time step
 spikesX = CuVector{p.FloatPrecision}(undef, p.LX)            # spikes emitted by each feed-forward neuron at one time step
 spikesXPrev = CuVector{p.FloatPrecision}(undef, p.LX)        # copy of spikesX from previous time step
 
@@ -59,7 +59,7 @@ u_bali = CuVector{p.FloatPrecision}(undef, p.Ncells)   # synapse-filtered inhibi
 uX_plas = CuVector{p.FloatPrecision}(undef, p.Ncells)  # synapse-filtered plastic current (i.e. filtered version of inputsP)
 u_bal = CuVector{p.FloatPrecision}(undef, p.Ncells)    # sum of u_bale and u_bali (i.e. synaptic current from the balanced connections)
 u = CuVector{p.FloatPrecision}(undef, p.Ncells)        # sum of u_bale and u_bali (i.e. synaptic current from the balanced connections)
-r = CuVector{p.FloatPrecision}(undef, p.Ncells)        # synapse-filtered recurrent spikes (i.e. filtered version of spike)
+r = CuVector{p.FloatPrecision}(undef, p.Ncells+1)      # synapse-filtered recurrent spikes (i.e. filtered version of spike)
 rX = CuVector{p.FloatPrecision}(undef, p.LX)           # synapse-filtered feed-forward spikes (i.e. filtered version of spikesX)
 
 X = CuVector{p.FloatPrecision}(undef, p.Ncells)   # total external input to neurons
@@ -73,12 +73,6 @@ exactlyzero = p.FloatPrecision(0.0)
 
 vre = p.FloatPrecision(p.vre)  # reset voltage
 
-PLtot = p.Lexc + p.Linh + p.LX
-raug = CuArray{p.FloatPrecision}(undef, PLtot, p.Ncells)
-k = CuArray{p.FloatPrecision}(undef, PLtot, p.Ncells)
-den = CuArray{p.FloatPrecision}(undef, p.Ncells)
-e = CuArray{p.FloatPrecision}(undef, p.Ncells)
-delta = CuArray{p.FloatPrecision}(undef, PLtot, p.Ncells)
 v = CuVector{p.FloatPrecision}(undef, p.Ncells)         # membrane voltage
 noise = CuArray{p.FloatPrecision}(undef, p.Ncells)      # actual noise added at current time step
 

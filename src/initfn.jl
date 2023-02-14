@@ -8,13 +8,13 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
     itask = 1
     uavg0, ns0, ustd0 = loop_init(itask,
         nothing, nothing, p.stim_off, p.train_time, p.dt,
-        p.Nsteps, p.Ncells, p.Ne, nothing, p.LX, p.refrac,
+        p.Nsteps, p.Ncells, p.Ne, p.LX, p.refrac,
         learn_step, invtau_bale, invtau_bali, nothing, X_bal, nothing,
         nothing, ns, nothing, nsX, inputsE, inputsI, nothing,
         inputsEPrev, inputsIPrev, nothing, nothing, nothing, nothing, nothing,
         u_bale, u_bali, nothing, u_bal, u, nothing, nothing,
         X, nothing, nothing, lastSpike, nothing, nothing, nothing, nothing,
-        nothing, v, p.rng, noise, rndX, sig, nothing, w0Index,
+        nothing, nothing, v, p.rng, noise, rndX, sig, nothing, w0Index,
         w0Weights, nc0, nothing, nothing, nothing, nothing, nothing, nothing,
         nothing, nothing, nothing, nothing, uavg, ustd, rateX, cellModel_args)
 
@@ -22,7 +22,8 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
         genPlasticWeights(p.genPlasticWeights_args, ns0)
 
     # get indices of postsynaptic cells for each presynaptic cell
-    wpIndexConvert = zeros(Int, p.Lexc+p.Linh, p.Ncells)
+    ncpInMax = maximum(ncpIn)
+    wpIndexConvert = zeros(Int, ncpInMax, p.Ncells)
     wpIndexOutV = Vector{Int}[Int[] for _ in 1:p.Ncells]
     for postCell = 1:p.Ncells
         for i = 1:ncpIn[postCell]
@@ -73,21 +74,18 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
     end
 
     # --- set up correlation matrix --- #
-    pLrec = p.Lexc + p.Linh;
-
-    # L2-penalty
-    Pinv_L2 = Diagonal(repeat([p.penlambda], pLrec));
-    # row sum penalty
-    vec10 = [ones(p.Lexc); zeros(p.Linh)];
-    vec01 = [zeros(p.Lexc); ones(p.Linh)];
-    Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01');
-    # sum of penalties
-    Pinv_rec = Pinv_L2 + Pinv_rowsum;
     Pinv_X = Diagonal(repeat([p.penlamFF], p.LX))
-    Pinv = zeros(pLrec+p.LX, pLrec+p.LX)
-    Pinv[1:pLrec, 1:pLrec] = Pinv_rec
-    Pinv[pLrec+1 : pLrec+p.LX, pLrec+1 : pLrec+p.LX] = Pinv_X
-    Pinv_norm = p.PType(Symmetric(UpperTriangular(Pinv) \ I));
+    P = Array{p.PType}(undef, p.Ncells)
+    Threads.@threads for i = 1:p.Ncells
+        Pinv_L2 = Diagonal(repeat([p.penlambda], ncpIn[i]));
+        vec10 = wpWeightIn[1:ncpIn[i], i] .> 0
+        vec01 = wpWeightIn[1:ncpIn[i], i] .< 0
+        Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01')
+        Pinv = zeros(p.LX+ncpIn[i], p.LX+ncpIn[i])
+        Pinv[1:p.LX, 1:p.LX] = Pinv_X
+        Pinv[p.LX+1:end, p.LX+1:end] = Pinv_L2 + Pinv_rowsum
+        P[i] = p.PType(Symmetric(UpperTriangular(Pinv) \ I))
+    end
 
     #----------- save initialization --------------#
     save(joinpath(data_dir,"w0Index.jld2"), "w0Index", w0Index)
@@ -102,9 +100,9 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
     save(joinpath(data_dir,"wpWeightIn.jld2"), "wpWeightIn", wpWeightIn)
     save(joinpath(data_dir,"ncpIn.jld2"), "ncpIn", ncpIn)
     save(joinpath(data_dir,"ncpOut.jld2"), "ncpOut", ncpOut)
-    save(joinpath(data_dir,"P.jld2"), "P", Pinv_norm)
+    save(joinpath(data_dir,"P.jld2"), "P", P)
     save(joinpath(data_dir,"rateX.jld2"), "rateX", rateX)
 
     return (; w0Index, w0Weights, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightX, wpWeightIn,
-              nc0, X_stim, utarg, ncpIn, ncpOut, :P => Pinv_norm, rateX)
+              nc0, X_stim, utarg, ncpIn, ncpOut, P, rateX)
 end

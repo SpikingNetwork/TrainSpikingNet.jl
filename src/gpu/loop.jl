@@ -20,7 +20,7 @@ function update_inputs(bspike,
                         end
                     end
                     if j<=size(wpIndexOut,1)
-                        CUDA.@atomic inputsP[0x1 + wpIndexOut[j,i]] += wpWeightOut[j,i]
+                        CUDA.@atomic inputsP[0x1 + wpIndexOut[j,i]] += wpWeightOut[j+1,i+1]
                     end
                 end
             end
@@ -45,14 +45,14 @@ function update_inputs(bspike,
 end
 
 @eval function $(Symbol("loop_",kind))(itask,
-    learn_every, stim_on, stim_off, train_time, dt, Nsteps, Ncells, Ne, Lei,
+    learn_every, stim_on, stim_off, train_time, dt, Nsteps, Ncells, Ne,
     LX, refrac, learn_step, invtau_bale, invtau_bali, invtau_plas, X_bal,
     maxTimes, times, ns, timesX, nsX, inputsE, inputsI,
     inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes, spikesPrev,
     spikesX, spikesXPrev, u_bale, u_bali, uX_plas, u_bal,
     u, r, rX, X, wid, example_neurons, lastSpike, bnotrefrac,
     bspike, plusone, minusone, PScale, raug, k, den, e, delta, v, rng, noise,
-    rndX, sig, P, w0Index, w0Weights, nc0, X_stim, utarg, wpWeightX,
+    rndX, sig, P, w0Index, w0Weights, X_stim, utarg, wpWeightX,
     wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, rateX,
     cellModel_args)
 
@@ -116,7 +116,7 @@ end
         @static if kind in [:train, :train_test]
             if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
                 wpWeightIn, wpWeightOut = rls(itask,
-                        raug, k, den, e, delta, Ncells, Lei, r, rX,
+                        raug, k, den, e, delta, r, rX,
                         P, u_bal, utarg, learn_seq, wpIndexIn,
                         wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
                         plusone, minusone, exactlyzero, PScale)
@@ -194,7 +194,7 @@ end
 
         # spike occurred
         @inline cellModel_spiked!(bspike, bnotrefrac, v, cellModel_args)
-        @static kind in [:train, :train_test] && (spikes .= bspike)
+        @static kind in [:train, :train_test] && (spikes[2:end] .= bspike)
         ns .+= bspike
         @inline cellModel_reset!(bspike, v, cellModel_args)
         lastSpike .= ifelse.(bspike, t, lastSpike)

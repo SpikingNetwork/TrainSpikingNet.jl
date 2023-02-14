@@ -72,10 +72,6 @@ vre = p.FloatPrecision(p.vre)  # reset voltage
 uavg = zeros(Float64, p.Ncells)  # average synaptic input
 ustd = Matrix{Float64}(undef, p.Nsteps - round(Int, 1000/p.dt), 1000)
 
-PLtot = p.Lexc + p.Linh + p.LX
-raug = Matrix{p.FloatPrecision}(undef, PLtot, Threads.nthreads())
-k = Matrix{p.FloatPrecision}(undef, PLtot, Threads.nthreads())
-delta = Matrix{p.FloatPrecision}(undef, PLtot, Threads.nthreads())
 v = Vector{p.FloatPrecision}(undef, p.Ncells)      # membrane voltage
 noise = Vector{p.FloatPrecision}(undef, p.Ncells)  # actual noise added at current time step
 

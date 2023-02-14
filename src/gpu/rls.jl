@@ -1,10 +1,11 @@
 function rls(itask,
-             raug, k, den, e, delta, Ncells, Lei, r, s, P, u_bal,
+             raug, k, den, e, delta, r, rX, P, u_bal,
              utarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightX, wpWeightIn,
              wpWeightOut, plusone, minusone, exactlyzero, PScale)
 
-    raug[1:Lei,:] = @view r[wpIndexIn]
-    raug[Lei+1:end,:] .= s
+    lenrX = length(rX)
+    @static p.LX>0 && (raug[1:lenrX,:] .= rX)
+    raug[lenrX+1:end,:] = @view r[0x1 .+ wpIndexIn]
 
     @static if p.PType == Array
         batched_gemv!('N', plusone/PScale, P, raug, exactlyzero, k)
@@ -25,13 +26,13 @@ function rls(itask,
         batched_spr!('U', -den*PScale, k, P)
     end
 
-    batched_dot!(e, wpWeightIn, raug[1:Lei,:])
+    batched_dot!(e, wpWeightIn, raug[lenrX+1:end,:])
     e .+= u_bal .- @view utarg[learn_seq,:,itask]
-    @static p.LX>0 && (e .+= wpWeightX*s)
+    @static p.LX>0 && (e .+= wpWeightX*rX)
     delta .= e' .* k .* den'
-    wpWeightIn .-= @view delta[1:Lei,:]
-    @static p.LX>0 && (wpWeightX .-= (@view delta[Lei+1:end,:])')
-    wpWeightOut = convertWgtIn2Out(wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
+    wpWeightIn .-= @view delta[lenrX+1:end,:]
+    @static p.LX>0 && (wpWeightX .-= (@view delta[1:lenrX,:])')
+    wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn)
 
     return wpWeightIn, wpWeightOut
 end

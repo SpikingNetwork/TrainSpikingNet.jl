@@ -1,11 +1,11 @@
 @eval function $(Symbol("loop_", kind))(itask,
     learn_every, stim_on, stim_off, train_time, dt, Nsteps, Ncells, Ne,
-    Lei, LX, refrac, learn_step, invtau_bale, invtau_bali, invtau_plas, X_bal,
+    LX, refrac, learn_step, invtau_bale, invtau_bali, invtau_plas, X_bal,
     maxTimes, times, ns, timesX, nsX, inputsE,
     inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes,
     spikesPrev, spikesX, spikesXPrev, u_bale, u_bali, uX_plas,
     u_bal, u, r, rX, X, wid, example_neurons, lastSpike,
-    plusone, exactlyzero, PScale, raug, k, v, rng, noise, rndX, sig,
+    plusone, exactlyzero, PScale, raug, k, delta, v, rng, noise, rndX, sig,
     P, w0Index, w0Weights, nc0, X_stim, utarg, wpIndexIn, wpIndexOut,
     wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut, ncpIn, ncpOut,
     uavg, ustd, rateX, cellModel_args)
@@ -106,7 +106,7 @@
         @static if kind in [:train, :train_test]
             if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
                 wpWeightIn, wpWeightOut = rls(itask,
-                        raug, k, delta, Ncells, Lei, r, rX, P,
+                        raug, k, delta, Ncells, r, rX, P,
                         u_bal, utarg, learn_seq, ncpIn, wpIndexIn,
                         wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
                         plusone, exactlyzero, PScale)

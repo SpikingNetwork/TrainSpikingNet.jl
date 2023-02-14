@@ -1,13 +1,15 @@
 function rls(itask,
-             raug, k, delta, Ncells, Lei, r, s, P, u_bal, utarg,
+             raug, k, delta, Ncells, r, rX, P, u_bal, utarg,
              learn_seq, ncpIn, wpIndexIn, wpIndexConvert, wpWeightX, wpWeightIn,
              wpWeightOut, plusone, exactlyzero, PScale)
 
+    lenrX = length(rX)
     @maybethread for ci = 1:Ncells
-        raug_tid = @view raug[:,Threads.threadid()]
-        raug_tid[1:Lei] = @views r[wpIndexIn[:,ci]]
-        raug_tid[Lei+1:end] = s
-        k_tid = @view k[:,Threads.threadid()]
+        ncpInci = ncpIn[ci]
+        raug_tid = @view raug[1:lenrX+ncpInci, Threads.threadid()]
+        @static p.LX>0 && (raug_tid[1:lenrX] = rX)
+        raug_tid[lenrX+1:end] = @views r[wpIndexIn[1:ncpInci, ci]]
+        k_tid = @view k[1:lenrX+ncpInci, Threads.threadid()]
 
         @static if p.PType == Array
             # k_tid .= P[ci] * raug_tid / PScale
@@ -35,17 +37,17 @@ function rls(itask,
         end
 
         delta_tid = @view delta[:,Threads.threadid()]
-        wpWeightInci = @view wpWeightIn[:,ci]
-        e = wpWeightInci'*view(raug_tid, 1:Lei) + u_bal[ci] - utarg[learn_seq,ci,itask]
+        wpWeightInci = @view wpWeightIn[1:ncpInci, ci]
+        e = wpWeightInci' * (@view raug_tid[lenrX+1:end]) + u_bal[ci] - utarg[learn_seq,ci,itask]
         @static if p.LX>0
               wpWeightXci = @view wpWeightX[ci,:]
-              e += wpWeightXci'*s
+              e += wpWeightXci'*rX
         end
         delta_tid = e.*k_tid.*den
-        wpWeightInci .-= @view delta_tid[1:Lei]
-        @static p.LX>0 && (wpWeightXci .-= @view delta_tid[Lei+1:end])
+        wpWeightInci .-= @view delta_tid[lenrX+1:end]
+        @static p.LX>0 && (wpWeightXci .-= @view delta_tid[1:lenrX])
     end
-    wpWeightOut = convertWgtIn2Out(Ncells,ncpIn,wpIndexIn,wpIndexConvert,wpWeightIn,wpWeightOut)
+    wpWeightIn2Out!(wpWeightOut, Ncells, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn)
 
     return wpWeightIn, wpWeightOut
 end

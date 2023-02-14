@@ -24,8 +24,7 @@ function test(; ntrials = 1,
     wpWeightX = load(joinpath(data_dir,"wpWeightX-ckpt$R.jld2"), "wpWeightX");
     wpWeightIn = load(joinpath(data_dir,"wpWeightIn-ckpt$R.jld2"), "wpWeightIn")
     wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells)
-    wpWeightOut = convertWgtIn2Out(p.Ncells, ncpIn,
-                                   wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut)
+    wpWeightIn2Out!(wpWeightOut, p.Ncells, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn);
 
     # --- set up variables --- #
     nc0 = Array{p.IntPrecision}(nc0)
@@ -58,7 +57,7 @@ function test(; ntrials = 1,
             t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop_test(itask,
                   p.learn_every, p.stim_on, p.stim_off,
                   p.train_time, p.dt, p.Nsteps, p.Ncells,
-                  nothing, nothing, p.LX, p.refrac, learn_step,
+                  nothing, p.LX, p.refrac, learn_step,
                   invtau_bale, invtau_bali, invtau_plas, X_bal, maxTimes,
                   copy_times[Threads.threadid()],
                   copy_ns[Threads.threadid()],
@@ -80,7 +79,7 @@ function test(; ntrials = 1,
                   copy_X[Threads.threadid()],
                   p.wid, p.example_neurons,
                   copy_lastSpike[Threads.threadid()],
-                  nothing, nothing, nothing, nothing, nothing,
+                  nothing, nothing, nothing, nothing, nothing, nothing,
                   copy_v[Threads.threadid()],
                   copy_rng[Threads.threadid()],
                   copy_noise[Threads.threadid()],

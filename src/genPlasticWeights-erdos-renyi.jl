@@ -1,7 +1,7 @@
 #=
 the genPlasticWeights plugin defines the connectivity of the learned synapses.
-this file is the default, and for each neuron simply chooses a random 2*L as
-presynaptic partners and sets their initial weights to predefined values.
+this file is the default, and for each neuron simply chooses a random Lexc + Linh
+as presynaptic partners and sets their initial weights to predefined values.
 =#
 
 #=
@@ -20,11 +20,13 @@ matrices contain the weights and indices of the recurrent presynaptic
 neurons.
 
 the final returned variable is a vector of length Ncells (ncpIn) which
-specifies how many presynaptic connections each neuron has.
+specifies how many presynaptic connections each neuron has, or equivalently,
+the length of each ragged column in the two matrices.  elements beyond the
+ragged edge in wpIndexIn must by zero.
 =#
 
 function genPlasticWeights(args, ns0)
-    @unpack Ncells, frac, Ne, L, Lexc, Linh, LX, wpee, wpie, wpei, wpii, wpX, rng, seed = args
+    @unpack Ncells, frac, Ne, Lexc, Linh, LX, wpee, wpie, wpei, wpii, wpX, rng, seed = args
 
     num_threads = Threads.nthreads()
     copy_rng = [typeof(rng)() for _=1:num_threads];
@@ -49,26 +51,26 @@ function genPlasticWeights(args, ns0)
     function random_plastic_recurrent(I, tid)
         for i in I
             # (1) select consecutive neurons from a random starting point
-            # rnd_start = rand(1:length(exc_selected)-L+1)
-            # indE = sort(exc_selected[rnd_start:rnd_start+L-1])
-            # indI = sort(inh_selected[rnd_start:rnd_start+L-1])
+            # rnd_start = rand(1:length(exc_selected)-Lexc-Linh+1)
+            # indE = sort(exc_selected[rnd_start:rnd_start+Lexc-1])
+            # indI = sort(inh_selected[rnd_start:rnd_start+Linh-1])
 
             # (2) select random neurons
-            indE = sample(copy_rng[tid], exc_selected, L, replace=false)
-            indI = sample(copy_rng[tid], inh_selected, L, replace=false)
+            indE = sample(copy_rng[tid], exc_selected, Lexc, replace=false)
+            indI = sample(copy_rng[tid], inh_selected, Linh, replace=false)
 
             # build wpIndexIn
-            wpIndexIn[1:L, i] = indE
-            wpIndexIn[L+1:end, i] = indI
-            ncpIn[i] = 2L
+            wpIndexIn[1:Lexc, i] = indE
+            wpIndexIn[Lexc+1:end, i] = indI
+            ncpIn[i] = Lexc+Linh
 
             # initial exc and inh plastic weights
             if i <= Ne
                 wpWeightIn[1:Lexc, i] .= wpee
-                wpWeightIn[Lexc.+(1:Linh), i] .= wpei
+                wpWeightIn[Lexc+1:end, i] .= wpei
             else
                 wpWeightIn[1:Lexc, i] .= wpie
-                wpWeightIn[Lexc.+(1:Linh), i] .= wpii
+                wpWeightIn[Lexc+1:end, i] .= wpii
             end
         end
     end

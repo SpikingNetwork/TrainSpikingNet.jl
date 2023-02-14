@@ -109,7 +109,7 @@ LX = 0
 wpscale = sqrt(L) * 2.0
 
 genPlasticWeights_file = "genPlasticWeights-erdos-renyi.jl"
-genPlasticWeights_args = (; Ncells, Ne, L, Lexc, Linh, LX, rng, seed,
+genPlasticWeights_args = (; Ncells, Ne, Lexc, Linh, LX, rng, seed,
                             :frac => 1.0,
                             :wpee => 2.0 * tau_meme * g / wpscale,
                             :wpie => 2.0 * tau_meme * g / wpscale,

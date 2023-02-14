@@ -11,7 +11,7 @@ module Param
             dt, Nsteps,
             Ncells, Ne, Ni,
             tau_meme, tau_memi,
-            K, L, LX, Lexc, Linh,
+            K, LX,
             X_bal,
             vre, threshe, threshi, refrac,
             tau_bale, tau_bali, tau_plas,
@@ -75,7 +75,6 @@ function config(_data_dir, pu::Symbol=:cpu)
     include(joinpath(@__DIR__, "rate2utarg.jl"))
 
     kind = :train
-    include(joinpath(@__DIR__, pu_str, "convertWgtIn2Out.jl"))
     include(joinpath(@__DIR__, pu_str, "loop.jl"))
     include(joinpath(@__DIR__, pu_str, "rls.jl"))
 
@@ -83,10 +82,10 @@ function config(_data_dir, pu::Symbol=:cpu)
     include(joinpath(@__DIR__, pu_str, "loop.jl"))
 
     kind = :test
-    include(joinpath(@__DIR__, pu_str, "convertWgtIn2Out.jl"))
     include(joinpath(@__DIR__, pu_str, "loop.jl"))
     include(joinpath(@__DIR__, pu_str, "rls.jl"))
 
+    include(joinpath(@__DIR__, pu_str, "wpWeightIn2Out.jl"))
     include(joinpath(@__DIR__, pu_str, "trainfn.jl"))
     include(joinpath(@__DIR__, pu_str, "testfn.jl"))
 

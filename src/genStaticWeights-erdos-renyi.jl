@@ -13,7 +13,9 @@ the first returned matrix (called w0Index in the source code) contains the
 index of the postsynaptic neurons and the second (w0Weights) contains the
 synaptic weights.
 
-the vector (nc0) specifies the number of postsynaptic neurons
+the vector (nc0) specifies the number of postsynaptic neurons, or
+equivalently, the length of each ragged column in the two matrices.
+elements beyond the ragged edge in w0Index must by zero.
 =#
 
 skip_autapse(a, i) = i<a ? i : i+1

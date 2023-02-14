@@ -1,4 +1,4 @@
-using TrainSpikingNet, Test, JLD2, SymmetricFormats, CUDA
+using TrainSpikingNet, Test, JLD2, SymmetricFormats, CUDA, PaddedViews
 
 testgpu = true
 try
@@ -51,8 +51,10 @@ function compare_cpu_to_gpu(kind;
     if Pmatrix && testgpu
         cpu_P = load(joinpath(@__DIR__, "scratch", "cpu-$kind", "P-ckpt$nloops.jld2"), "P")
         gpu_P = load(joinpath(@__DIR__, "scratch", "gpu-$kind", "P-ckpt$nloops.jld2"), "P")
-        @test isapprox(kind=="SymmetricPacked" ? cat((x.tri for x in cpu_P)..., dims=2) :
-                                                 cat(cpu_P..., dims=3),
+        cpu_P = paddedviews(0, cpu_P...);
+        @test isapprox(kind=="SymmetricPacked" ?
+                           cat((SymmetricPacked(x).tri for x in cpu_P)..., dims=2) :
+                           cat(cpu_P..., dims=3),
                        gpu_P)
     end
 
@@ -294,4 +296,32 @@ end
     a = redirect_stdout(test, devnull)
     @test hasproperty(a, :nss)
     plot(joinpath(data_dir, "test.jld2"))
+end
+
+@testset "different no. plastic inputs, LX=$LX" for LX in ("0", "L>>1")
+    mkdir(joinpath(@__DIR__,  "scratch", "cpu-diffplastic-LX=$LX"))
+    open(joinpath(@__DIR__,  "scratch", "cpu-diffplastic-LX=$LX",
+                  "genPlasticWeights-diffplastic.jl"), "w") do fileout 
+        for line in readlines(joinpath(@__DIR__, "..", "src", "genPlasticWeights-erdos-renyi.jl"))
+            if contains(line, "return")
+                println(fileout, "ncpIn[1] -=1")
+                println(fileout, "wpIndexIn[end,1] = 0")
+            end
+            println(fileout, line)
+        end
+    end
+    open(joinpath(@__DIR__,  "scratch", "cpu-diffplastic-LX=$LX", "param.jl"), "w") do fileout 
+        for line in readlines(joinpath(@__DIR__, "param.jl"))
+            if startswith(line, "LX")
+                println(fileout, "LX = $LX")
+            elseif startswith(line, "genPlasticWeights_file = ")
+                println(fileout, "genPlasticWeights_file = ",
+                        '"', joinpath(@__DIR__, "scratch", "cpu-diffplastic-LX=$LX",
+                                      "genPlasticWeights-diffplastic.jl"), '"')
+            else
+                println(fileout, line)
+            end
+        end
+    end
+    compare_cpu_to_gpu("diffplastic-LX=$LX")
 end
