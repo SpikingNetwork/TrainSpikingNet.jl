@@ -1,6 +1,7 @@
 using SparseArrays
 using JLD2
-
+using UnicodePlots
+using ProgressMeter
 
 """
 This file consists of a function stack that seemed necessary to achieve a network with Potjans like wiring in Julia using TrainSpikeNet.jl to simulate.
@@ -8,7 +9,7 @@ This code draws heavily on the PyNN OSB Potjans implementation code found here:
 https://github.com/OpenSourceBrain/PotjansDiesmann2014/blob/master/PyNN/network_params.py#L139-L146
 """
 
-function potjans_params(scale_N_cells=1.0::Float64)
+function potjans_params(ccu, scale=1.0::Float64)
     """
     Hard coded stuff.
     Outputs adapted Potjans parameters.
@@ -24,15 +25,7 @@ function potjans_params(scale_N_cells=1.0::Float64)
 
     layer_names = ["23E","23I","4E","4I","5E", "5I", "6E", "6I"]
     transform_matrix_ind = zip(collect(1:8),[1,3,5,7,2,4,6,8])
-    ccu = Dict("23E"=>20683, 
-                "4E"=>21915, 
-                "5E"=>4850, 
-                "6E"=>14395, 
-                "23I"=>5834,
-                "4I"=>5479,
-                "5I"=>1065,
-                "6I"=>2948)
-
+    
     # hard coded stuff is manipulated below:
     columns_conn_probs = [col for col in eachcol(conn_probs)][1]
 
@@ -58,7 +51,7 @@ function potjans_params(scale_N_cells=1.0::Float64)
 
 
     #end
-    ccu = Dict((k,ceil(Int64,v/scale_N_cells)) for (k,v) in pairs(ccu))
+    #ccu = Dict((k,ceil(Int64,v/scale)) for (k,v) in pairs(ccu))
     cumulative = Dict() 
     v_old=1
     for (k,v) in pairs(ccu)
@@ -73,37 +66,76 @@ function build_index(cumulative::Dict{Any, Any}, conn_probs::Vector{Vector{Float
     Build a nested iterator ideally this will flatten the readability of subsequent code.
     """
 
-    tuple_index = []
+
+    edge_dict = Dict() 
+    for src in 1:Ncells
+        edge_dict[src] = Int64[]
+    end
+    
+
+    @time w0Index = spzeros(Int,Ncells,Ncells)
+    w0Weights = spzeros(Float32,Ncells,Ncells)
+
+    Ne = 0 
+    Ni = 0
+ 
     Lexc_ind = []
     Linh_ind = []
 
-    @inbounds for (i,(k,v)) in enumerate(pairs(cumulative))
-        @inbounds for src in v
-            @inbounds for (j,(k1,v1)) in enumerate(pairs(cumulative))
-                @inbounds for tgt in v1
+    @showprogress for (i,(k,v)) in enumerate(pairs(cumulative))
+        for src in v
+            for (j,(k1,v1)) in enumerate(pairs(cumulative))
+                for tgt in v1
                     if src!=tgt
                         prob = conn_probs[i][j]
                         if rand()<prob
-                            push!(tuple_index,src,tgt,k,k1))
+                            item = src,tgt,k,k1
+                            append!(edge_dict[src],tgt)
+                            index_assignment!(item,w0Weights,Ne,Ni)
+    
                         end
                     end
                 end
             end
-            if i<round(length(cumulative)/2.0)
+            
+            if i<=4
                 append!(Lexc_ind,src)
             else
                 append!(Linh_ind,src)
             end
         end
     end
-    return tuple_index,Lexc_ind,Linh_ind
+    return w0Weights,edge_dict,Ne,Ni,Lexc_ind,Linh_ind
+end
+function index_assignment!(item,w0Weights,Ne,Ni)  
+
+    (src,tgt,k,k1) = item
+
+    if occursin("E",k) 
+        if occursin("E",k1)          
+            w0Weights[tgt,src] = jee
+        else# meaning if the same as a logic: occursin("I",k1) is true                   
+            w0Weights[tgt,src] = jei
+        end
+        Ne+=1	
+    else
+    # meaning meaning if the same as a logic: elseif occursin("I",k) is true  
+        if occursin("E",k1)    
+                            
+            w0Weights[tgt,src] = -jie 
+        else# eaning meaning if the same as a logic: if occursin("I",k1)      is true               
+            w0Weights[tgt,src] = -jii  
+
+        end
+        Ni+=1
+
+    end
+
 end
 
-
-
-function potjans_weights(Ncells::Int64, jee::Float64, jie::Float64, jei::Float64, jii::Float64)
-    (cumulative,ccu,layer_names,_,conn_probs) = potjans_params()    
-    w_mean = 87.8e-3  # nA
+function potjans_weights(Ncells::Int64, jee::Float64, jie::Float64, jei::Float64, jii::Float64, ccu, scale=1.0::Float64)
+    @time (cumulative,ccu,layer_names,_,conn_probs) = potjans_params(ccu,scale)    
+    #w_mean = 87.8e-3  # nA
     ###
     # Lower memory footprint motivations.
     # a sparse matrix can be stored as a smaller dense matrix.
@@ -111,48 +143,14 @@ function potjans_weights(Ncells::Int64, jee::Float64, jie::Float64, jei::Float64
     # A 2D weight matrix should be stored as 1 matrix, which is redistributed in loops using 
     # the 1D matrix of srcs,tgts.
     ###
-    Ncells = sum([i for i in values(ccu)]) + 1
     
-
-    w0Index = spzeros(Int,Ncells,Ncells)
-    w0Weights = spzeros(Float32,Ncells,Ncells)
-    edge_dict = Dict() 
-    for src in 1:Ncells
-        edge_dict[src] = Int64[]
-       
-    end
-
-    Ne = 0 
-    Ni = 0
-    tuple_index,Lexc,Linh = build_index(cumulative,conn_probs)
-    @inbounds for (src,tgt,k,k1) in tuple_index
-
-        if occursin("E",k) 
-            if occursin("E",k1)          
-                w0Weights[tgt,src] = jee
-            else# meaning if the same as a logic: occursin("I",k1) is true                   
-                w0Weights[tgt,src] = jei
-            end
-            Ne+=1	
-        else
-        # meaning meaning if the same as a logic: elseif occursin("I",k) is true  
-            if occursin("E",k1)                    
-                w0Weights[tgt,src] = -jie 
-            else# eaning meaning if the same as a logic: if occursin("I",k1)      is true               
-                w0Weights[tgt,src] = -jii  
-            end
-            Ni+=1
-
-        end
-        append!(edge_dict[src],tgt)
-        # w0Index building moved to another function w0Index[tgt,src] = tgt
-
-    end
-    Lexc = w0Weights[Lexc_ind,:]
+    @time w0Weights,edge_dict,Ne,Ni,Lexc_ind,Linh_ind = build_index(cumulative,conn_probs)
+    Lexc = w0Weights[Lexc_ind,:] 
     Linh = w0Weights[Linh_ind,:]
 
-    return (edge_dict,w0Weights,Ne,Ni,Lexc,Linh)
+    (edge_dict,w0Weights,Ne,Ni,Lexc,Linh)
 end
+
 function build_w0Index(edge_dict,Ncells)
     nc0Max = 0
     # what is the maximum out degree of this ragged array?
@@ -178,14 +176,11 @@ function build_w0Index(edge_dict,Ncells)
     nc0,w0Index
     
 end
-
+#=
 function genStaticWeights(args::Dict{Symbol, Real})
     #
     # unpack arguments, this is just going through the motions, mostly not used.
-    Ncells, _, _, _, _, _, jee, jie, jei, jii = map(x->args[x],
-            [:Ncells, :Ne, :pree, :prie, :prei, :prii, :jee, :jie, :jei, :jii])
-
-    (edge_dict,w0Weights,Ne,Ni,Lexc,Linh) = potjans_weights(Ncells, jee, jie, jei, jii)
+    Ncells, _, _, _, _, _, jee, jie, jei, jii = map(x->args[x],potjans_params
     nc0,w0Index = build_w0Index(edge_dict,Ncells)
     return w0Index, w0Weights, nc0
 end
@@ -206,14 +201,14 @@ function genPlasticWeights(args::Dict{Symbol, Real}, w0Index, nc0, ns0)
     
     return wpWeightFfwd, wpWeightIn, wpIndexIn, ncpIn
 end
-
+=#
 
 #include("src/genWeightsPotjans.jl")
 
 ##
 # The following code just gives me the cell count (NCell) upfront, which I need to size arrays in the methods.
 ##
-function get_Ncell()
+function get_Ncell(scale=1.0::Float64)
 	ccu = Dict("23E"=>20683,
 		    "4E"=>21915, 
 		    "5E"=>4850, 
@@ -222,10 +217,10 @@ function get_Ncell()
 		    "23I"=>5834,
 		    "5I"=>1065,
 		    "4I"=>5479)
-	ccu = Dict((k,ceil(Int64,v)) for (k,v) in pairs(ccu))
+	ccu = Dict((k,ceil(Int64,v*scale)) for (k,v) in pairs(ccu))
 	Ncells = sum([i for i in values(ccu)])+1
 	Ne = sum([ccu["23E"],ccu["4E"],ccu["5E"],ccu["6E"]])
-    Ncells, Ne 
+    Ncells, Ne, ccu
 
 end
 
@@ -233,7 +228,11 @@ end
 
 
 if !isfile("potjans_matrix.jld2")
-	Ncells,Ne = get_Ncell()
+
+    scale =1.0/10.0
+	Ncells,Ne, ccu = get_Ncell(scale)
+    @show(Ne)
+
     pree = 0.1
     K = round(Int, Ne*pree)
     sqrtK = sqrt(K)
@@ -247,9 +246,17 @@ if !isfile("potjans_matrix.jld2")
     jei = -0.75ji 
     jii = -ji
 
-    (edge_dict,w0Weights,Ne,Ni,Lexc,Linh) = potjans_weights(Ncells, jee, jie, jei, jii)
+    (edge_dict,w0Weights,Ne,Ni,Lexc,Linh) = potjans_weights(Ncells, jee, jie, jei, jii, ccu, scale)
     nc0,w0Index = build_w0Index(edge_dict,Ncells)
     @save "potjans_matrix.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells jee jie jei jii nc0 w0Index
+    @time UnicodePlots.spy(w0Weights) |> display
+    UnicodePlots.spy(Lexc) |> display
+    UnicodePlots.spy(Linh) |> display
+
 else
 	@load "potjans_matrix.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells jee jie jei jii nc0 w0Index
+    @time UnicodePlots.spy(w0Weights) |> display
+    UnicodePlots.spy(Lexc) |> display
+    UnicodePlots.spy(Linh) |> display
+
 end
