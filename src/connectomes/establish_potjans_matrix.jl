@@ -34,24 +34,7 @@ function potjans_params(ccu, scale=1.0::Float64)
     ## this list gets reorganised to reflect top excitatory bottom inhibitory.
     ## Rearrange the whole matrix so that excitatory connections form a top partition 
     #and inhibitory neurons form a bottom partition.
-    transformed_layer_names = []
 
-    
-    for (i,j) in transform_matrix_ind
-        conn_probs_[i,:] = view(conn_probs,j,:)
-        append!(transformed_layer_names,layer_names[j])
-
-    end
-
-
-    ## Need to debug this!
-    #for (i,j) in transform_matrix_ind
-        # todo use the view syntax here.
-    #    conn_probs_[:,i] = conn_probs[:,j]
-
-
-    #end
-    #ccu = Dict((k,ceil(Int64,v/scale)) for (k,v) in pairs(ccu))
     cumulative = Dict() 
     v_old=1
     for (k,v) in pairs(ccu)
@@ -59,12 +42,10 @@ function potjans_params(ccu, scale=1.0::Float64)
         cumulative[k]=collect(v_old:v+v_old)
         v_old=v+v_old
     end    
-    return (cumulative,ccu,transformed_layer_names,columns_conn_probs,conn_probs_)
+    return (cumulative,ccu,layer_names,columns_conn_probs,conn_probs_)
 end
-function build_index(cumulative::Dict{Any, Any}, conn_probs::Vector{Vector{Float64}})
-    """
-    Build a nested iterator ideally this will flatten the readability of subsequent code.
-    """
+function build_matrix(cumulative::Dict{Any, Any}, conn_probs::Vector{Vector{Float64}})
+
 
 
     edge_dict = Dict() 
@@ -91,35 +72,39 @@ function build_index(cumulative::Dict{Any, Any}, conn_probs::Vector{Vector{Float
                         if rand()<prob
                             item = src,tgt,k,k1
                             append!(edge_dict[src],tgt)
-                            index_assignment!(item,w0Weights,Ne,Ni)
+                            index_assignment!(item,w0Weights,Ne,Ni,Lexc_ind,Linh_ind)
     
                         end
                     end
                 end
             end
             
-            if i<=4
-                append!(Lexc_ind,src)
-            else
-                append!(Linh_ind,src)
-            end
+
         end
     end
     return w0Weights,edge_dict,Ne,Ni,Lexc_ind,Linh_ind
 end
-function index_assignment!(item,w0Weights,Ne,Ni)  
+function index_assignment!(item,w0Weights,Ne,Ni,Lexc_ind,Linh_ind)  
+    """
+    Build a nested iterator ideally this will flatten the readability of subsequent code.
+    """
 
     (src,tgt,k,k1) = item
 
     if occursin("E",k) 
+        append!(Lexc_ind,tgt)
+
         if occursin("E",k1)          
             w0Weights[tgt,src] = jee
         else# meaning if the same as a logic: occursin("I",k1) is true                   
             w0Weights[tgt,src] = jei
+
         end
         Ne+=1	
     else
-    # meaning meaning if the same as a logic: elseif occursin("I",k) is true  
+        append!(Linh_ind,tgt)
+
+        # meaning meaning if the same as a logic: elseif occursin("I",k) is true  
         if occursin("E",k1)    
                             
             w0Weights[tgt,src] = -jie 
@@ -144,7 +129,7 @@ function potjans_weights(Ncells::Int64, jee::Float64, jie::Float64, jei::Float64
     # the 1D matrix of srcs,tgts.
     ###
     
-    @time w0Weights,edge_dict,Ne,Ni,Lexc_ind,Linh_ind = build_index(cumulative,conn_probs)
+    @time w0Weights,edge_dict,Ne,Ni,Lexc_ind,Linh_ind = build_matrix(cumulative,conn_probs)
     Lexc = w0Weights[Lexc_ind,:] 
     Linh = w0Weights[Linh_ind,:]
 
@@ -176,32 +161,6 @@ function build_w0Index(edge_dict,Ncells)
     nc0,w0Index
     
 end
-#=
-function genStaticWeights(args::Dict{Symbol, Real})
-    #
-    # unpack arguments, this is just going through the motions, mostly not used.
-    Ncells, _, _, _, _, _, jee, jie, jei, jii = map(x->args[x],potjans_params
-    nc0,w0Index = build_w0Index(edge_dict,Ncells)
-    return w0Index, w0Weights, nc0
-end
-
-function genPlasticWeights(args::Dict{Symbol, Real}, w0Index, nc0, ns0)
-    #
-    # unpack arguments, this is just going through the motions, mostly not used.
-    Ncells, _, _, _, _, _, Lffwd, wpee, wpie, wpei, wpii, wpffwd = map(x->args[x],
-    [:Ncells, :frac, :Ne, :L, :Lexc, :Linh, :Lffwd, :wpee, :wpie, :wpei, :wpii, :wpffwd])
-    (edge_dict,wpWeightIn,Ne,Ni,Lexc,Linh) =  potjans_weights(Ncells, wpee, wpie, wpei, wpii)
-    ##
-    # nc0Max is the maximum number of post synaptic targets
-    # its a limit on the outdegree.
-    # if this is not known upfront it can be calculated on the a pre-exisiting adjacency matrix as I do below.
-    ##
-    ncpIn,wpIndexIn = build_w0Index(edge_dict,Ncells)
-    wpWeightFfwd = randn(rng, p.Ncells, p.Lffwd) * wpffwd
-    
-    return wpWeightFfwd, wpWeightIn, wpIndexIn, ncpIn
-end
-=#
 
 #include("src/genWeightsPotjans.jl")
 
@@ -227,8 +186,8 @@ end
 
 
 
-if !isfile("potjans_matrix.jld2")
-
+#if !isfile("potjans_matrix.jld2")
+if true
     scale =1.0/10.0
 	Ncells,Ne, ccu = get_Ncell(scale)
     @show(Ne)
@@ -260,3 +219,32 @@ else
     UnicodePlots.spy(Linh) |> display
 
 end
+
+#=
+
+Possibly depreciated
+function genStaticWeights(args::Dict{Symbol, Real})
+    #
+    # unpack arguments, this is just going through the motions, mostly not used.
+    Ncells, _, _, _, _, _, jee, jie, jei, jii = map(x->args[x],potjans_params
+    nc0,w0Index = build_w0Index(edge_dict,Ncells)
+    return w0Index, w0Weights, nc0
+end
+
+function genPlasticWeights(args::Dict{Symbol, Real}, w0Index, nc0, ns0)
+    #
+    # unpack arguments, this is just going through the motions, mostly not used.
+    Ncells, _, _, _, _, _, Lffwd, wpee, wpie, wpei, wpii, wpffwd = map(x->args[x],
+    [:Ncells, :frac, :Ne, :L, :Lexc, :Linh, :Lffwd, :wpee, :wpie, :wpei, :wpii, :wpffwd])
+    (edge_dict,wpWeightIn,Ne,Ni,Lexc,Linh) =  potjans_weights(Ncells, wpee, wpie, wpei, wpii)
+    ##
+    # nc0Max is the maximum number of post synaptic targets
+    # its a limit on the outdegree.
+    # if this is not known upfront it can be calculated on the a pre-exisiting adjacency matrix as I do below.
+    ##
+    ncpIn,wpIndexIn = build_w0Index(edge_dict,Ncells)
+    wpWeightFfwd = randn(rng, p.Ncells, p.Lffwd) * wpffwd
+    
+    return wpWeightFfwd, wpWeightIn, wpIndexIn, ncpIn
+end
+=#
