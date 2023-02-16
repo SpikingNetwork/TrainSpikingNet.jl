@@ -8,6 +8,8 @@ println(BLAS.get_config())
 function ArgParse.parse_item(::Type{Vector{Int}}, x::AbstractString)
     return eval(Meta.parse(x))
 end
+#verbose = false
+verbose = true
 
 aps = ArgParseSettings()
 
@@ -73,6 +75,7 @@ end
 Param.set_data_dir(parsed_args["data_dir"])
 Param.include(joinpath(parsed_args["data_dir"], "param.jl"))
 Param.save_params()
+
 include(joinpath(@__DIR__,"cpu","variables.jl"))
 
 if Param.Ncells == typemax(Param.IntPrecision)
