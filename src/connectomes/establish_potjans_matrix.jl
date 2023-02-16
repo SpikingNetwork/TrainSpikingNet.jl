@@ -1,6 +1,4 @@
 using SparseArrays
-#using ProgressMeter
-using UnicodePlots
 using JLD2
 
 
@@ -10,7 +8,7 @@ This code draws heavily on the PyNN OSB Potjans implementation code found here:
 https://github.com/OpenSourceBrain/PotjansDiesmann2014/blob/master/PyNN/network_params.py#L139-L146
 """
 
-function potjans_params(scale_N_cells=1.0)
+function potjans_params(scale_N_cells=1.0::Float64)
     """
     Hard coded stuff.
     Outputs adapted Potjans parameters.
@@ -36,29 +34,30 @@ function potjans_params(scale_N_cells=1.0)
                 "6I"=>2948)
 
     # hard coded stuff is manipulated below:
+    columns_conn_probs = [col for col in eachcol(conn_probs)][1]
 
     conn_probs_= copy(conn_probs)
-    columns_conn_probs = [col for col in eachcol(conn_probs)][1]
     
     ## this list gets reorganised to reflect top excitatory bottom inhibitory.
-
     ## Rearrange the whole matrix so that excitatory connections form a top partition 
-    and inhibitory neurons form a bottom partition.
+    #and inhibitory neurons form a bottom partition.
     transformed_layer_names = []
 
     
     for (i,j) in transform_matrix_ind
-        # todo use the view syntax here.
-        conn_probs_[i,:] = views(conn_probs,j,:)
+        conn_probs_[i,:] = view(conn_probs,j,:)
         append!(transformed_layer_names,layer_names[j])
 
     end
-    for (i,j) in transform_matrix_ind
+
+
+    ## Need to debug this!
+    #for (i,j) in transform_matrix_ind
         # todo use the view syntax here.
-        conn_probs_[:,i] = views(conn_probs,:,j)
+    #    conn_probs_[:,i] = conn_probs[:,j]
 
 
-    end
+    #end
     ccu = Dict((k,ceil(Int64,v/scale_N_cells)) for (k,v) in pairs(ccu))
     cumulative = Dict() 
     v_old=1
@@ -85,7 +84,7 @@ function build_index(cumulative::Dict{Any, Any}, conn_probs::Vector{Vector{Float
                     if src!=tgt
                         prob = conn_probs[i][j]
                         if rand()<prob
-                            push!(tuple_index,(Int64(src),Int64(tgt),k,k1))
+                            push!(tuple_index,src,tgt,k,k1))
                         end
                     end
                 end
@@ -95,14 +94,9 @@ function build_index(cumulative::Dict{Any, Any}, conn_probs::Vector{Vector{Float
             else
                 append!(Linh_ind,src)
             end
-
         end
-
     end
-    
     return tuple_index,Lexc_ind,Linh_ind
-
-
 end
 
 
@@ -123,7 +117,7 @@ function potjans_weights(Ncells::Int64, jee::Float64, jie::Float64, jei::Float64
     w0Index = spzeros(Int,Ncells,Ncells)
     w0Weights = spzeros(Float32,Ncells,Ncells)
     edge_dict = Dict() 
-    for src in 1:p.Ncells
+    for src in 1:Ncells
         edge_dict[src] = Int64[]
        
     end
@@ -135,32 +129,28 @@ function potjans_weights(Ncells::Int64, jee::Float64, jie::Float64, jei::Float64
 
         if occursin("E",k) 
             if occursin("E",k1)          
-                w0Weights[tgt,src] = jee#/20.
+                w0Weights[tgt,src] = jee
             else# meaning if the same as a logic: occursin("I",k1) is true                   
-                w0Weights[tgt,src] = jei#*2.0
+                w0Weights[tgt,src] = jei
             end
             Ne+=1	
         else
         # meaning meaning if the same as a logic: elseif occursin("I",k) is true  
             if occursin("E",k1)                    
-                w0Weights[tgt,src] = -jie# *10.0 
+                w0Weights[tgt,src] = -jie 
             else# eaning meaning if the same as a logic: if occursin("I",k1)      is true               
-                w0Weights[tgt,src] = -jii#/2.0  
+                w0Weights[tgt,src] = -jii  
             end
             Ni+=1
 
         end
         append!(edge_dict[src],tgt)
-            # w0Index building moved to another function w0Index[tgt,src] = tgt
+        # w0Index building moved to another function w0Index[tgt,src] = tgt
 
     end
     Lexc = w0Weights[Lexc_ind,:]
     Linh = w0Weights[Linh_ind,:]
-    #end
-    ##
-    # TODO make this commented out call work!
-    ##
-    #(w0Weights,w0Index) = repartition_exc_inh(w0Index,w0Weights,layer_names)
+
     return (edge_dict,w0Weights,Ne,Ni,Lexc,Linh)
 end
 function build_w0Index(edge_dict,Ncells)
@@ -254,7 +244,7 @@ if !isfile("potjans_matrix.jld2")
     jx = 0.08 * sqrtK * g 
     jee = 0.15je 
     jie = je 
-    ei = -0.75ji 
+    jei = -0.75ji 
     jii = -ji
 
     (edge_dict,w0Weights,Ne,Ni,Lexc,Linh) = potjans_weights(Ncells, jee, jie, jei, jii)
