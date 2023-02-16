@@ -56,6 +56,7 @@ function compare_cpu_to_gpu(kind;
     end
 end
 
+rm(joinpath(@__DIR__, "scratch"), force=true, recursive=true)
 mkpath(joinpath(@__DIR__, "scratch"))
 
 @testset "$kind" for kind in ("Array", "Symmetric", "SymmetricPacked")
