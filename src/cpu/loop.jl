@@ -1,4 +1,4 @@
-@eval function $(Symbol("loop_",kind))(itask,
+@eval function $(Symbol("loop_", kind))(itask,
     learn_every, stim_on, stim_off, train_time, dt, Nsteps, Ncells, Ne,
     Lei, LX, refrac, learn_step, invtau_bale, invtau_bali, invtau_plas, X_bal,
     maxTimes, times, ns, timesX, nsX, inputsE,
@@ -8,11 +8,11 @@
     plusone, exactlyzero, PScale, raug, k, v, rng, noise, rndX, sig,
     P, w0Index, w0Weights, nc0, X_stim, utarg, wpIndexIn, wpIndexOut,
     wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut, ncpIn, ncpOut,
-    uavg, utmp, rateX, cellModel_args)
+    uavg, ustd, rateX, cellModel_args)
 
     @static kind in [:init, :train, :train_test] && (steps_per_sec = round(Int, 1000/dt))
 
-    @static (kind in [:train, :train_test] && Param.LX>0) && (rateX /= steps_per_sec)
+    @static (kind in [:train, :train_test] && p.LX>0) && (rateX /= steps_per_sec)
 
     @static if kind in [:test, :train_test]
         learn_nsteps = round(Int, (train_time - stim_off)/learn_every)
@@ -38,7 +38,7 @@
         learn_seq = 1
         r .= 0
         spikesPrev .= 0
-        @static if Param.LX>0
+        @static if p.LX>0
             spikesXPrev .= 0
             rX .= 0
         end
@@ -46,14 +46,14 @@
 
     @static if kind in [:test, :train_test]
         times .= 0
-        @static Param.LX>0 && (timesX .= 0)
+        @static p.LX>0 && (timesX .= 0)
     end
 
     ns .= 0
-    @static Param.LX>0 && (nsX .= 0)
+    @static p.LX>0 && (nsX .= 0)
     lastSpike .= -100.0
     randn!(rng, v)
-    @static if Param.K>0
+    @static if p.K>0
         u_bale .= u_bali .= 0
         inputsEPrev .= inputsIPrev .= 0.0
     end
@@ -67,11 +67,11 @@
         t = dt*ti;
 
         # reset spiking activities from the previous time step
-        @static Param.K>0 && (inputsE .= inputsI .= 0.0)
+        @static p.K>0 && (inputsE .= inputsI .= 0.0)
         @static kind in [:train, :test, :train_test] && (inputsP .= 0.0)
         @static if kind in [:train, :train_test]
             spikes .= 0.0
-            @static Param.LX>0 && (spikesX .= 0.0)
+            @static p.LX>0 && (spikesX .= 0.0)
         end
 
         # modify the plastic weights when the stimulus is turned off 
@@ -121,7 +121,7 @@
             u_rollave_cnt[startInd:endInd] .+= 1
         end
 
-        @static Param.sig>0 && randn!(rng, noise)
+        @static p.sig>0 && randn!(rng, noise)
         u_bal .= 0.0
 
         # update network activities:
@@ -132,20 +132,20 @@
         #       * spikes emitted by each neuron (spikes)
         #       * synapse-filtered spikes emitted by each neuron (r)        
         @maybethread for ci = 1:Ncells
-            @static if Param.K>0
+            @static if p.K>0
                 u_bale[ci] += (-dt*u_bale[ci] + inputsEPrev[ci]) * invtau_bale
                 u_bali[ci] += (-dt*u_bali[ci] + inputsIPrev[ci]) * invtau_bali
             end
             @static if kind in [:train, :test, :train_test]
-                @static if typeof(Param.tau_plas)<:Number
+                @static if typeof(p.tau_plas)<:Number
                     uX_plas[ci] += (-dt*uX_plas[ci] + inputsPPrev[ci]) * invtau_plas
                 else
                     uX_plas[ci] += (-dt*uX_plas[ci] + inputsPPrev[ci]) * invtau_plas[ci]
                 end
             end
 
-            @static Param.K>0 && (u_bal[ci] += u_bale[ci] + u_bali[ci])
-            @static if Param.sig>0 && Param.noise_model==:current
+            @static p.K>0 && (u_bal[ci] += u_bale[ci] + u_bali[ci])
+            @static if p.sig>0 && p.noise_model==:current
                 u_bal[ci] += sig[ci] * noise[ci]
             end
             u[ci] = u_bal[ci]
@@ -157,7 +157,7 @@
                 if ti > 1000/dt # 1000 ms
                     uavg[ci] += u[ci] # save u
                     if ci <= 1000
-                        utmp[ti - steps_per_sec, ci] = u[ci]
+                        ustd[ti - steps_per_sec, ci] = u[ci]
                     end
                 end
             end
@@ -187,7 +187,7 @@
 
             # compute synapse-filtered spike trains
             @static if kind in [:train, :train_test]
-                @static if typeof(Param.tau_plas)<:Number
+                @static if typeof(p.tau_plas)<:Number
                     r[ci] += (-dt*r[ci] + spikesPrev[ci]) * invtau_plas
                 else
                     r[ci] += (-dt*r[ci] + spikesPrev[ci]) * invtau_plas[ci]
@@ -207,7 +207,7 @@
             end
             @static kind == :init && (X[ci] = X_bal[ci])
 
-            @static if Param.sig>0 && Param.noise_model==:voltage
+            @static if p.sig>0 && p.noise_model==:voltage
                 v[ci] += sig[ci] * noise[ci]
             end
 
@@ -239,7 +239,7 @@
                 # (1) balanced connections (static)
                 # loop over neurons (indexed by j) postsynaptic to neuron ci.                     
                 # nc0[ci] is the number neurons postsynaptic neuron ci
-                @static Param.K>0 && for j = 1:nc0[ci]                       
+                @static p.K>0 && for j = 1:nc0[ci]                       
                     post_ci = w0Index[j,ci]                 # cell index of j_th postsynaptic neuron
                     wgt = w0Weights[j,ci]                   # synaptic weight of the connection, ci -> post_ci
                     if wgt > 0                              # excitatory synapse
@@ -266,11 +266,11 @@
         #   - spikesXPrev
         # (1) simulation: feed-forward spikes are added to inputsP
         # (2) training: spikesXPrev computes the filtered feed-forward spikes, rX
-        @static Param.LX>0 && if t > stim_off
+        @static p.LX>0 && if t > stim_off
             @static if kind in [:train, :train_test]
                 for ci = 1:LX
                     # if training, filter the spikes
-                    @static if typeof(Param.tau_plas)<:Number
+                    @static if typeof(p.tau_plas)<:Number
                         rX[ci] += (-dt*rX[ci] + spikesXPrev[ci])*invtau_plas
                     else
                         rX[ci] += (-dt*rX[ci] + spikesXPrev[ci])*invtau_plas[ci]
@@ -298,14 +298,14 @@
         # save spiking activities produced at the current time step
         #   - inputsPrev's will be used in the next time step to compute synaptic currents (u_bale, u_bali, uX_plas)
         #   - spikesPrev will be used in the next time step to compute synapse-filter spikes (r)
-        @static if Param.K>0
+        @static if p.K>0
             inputsEPrev .= inputsE
             inputsIPrev .= inputsI
         end
         @static kind in [:train, :test, :train_test] && (inputsPPrev .= inputsP)
         @static if kind in [:train, :train_test]
             spikesPrev .= spikes
-            @static Param.LX>0 && (spikesXPrev .= spikesX)
+            @static p.LX>0 && (spikesXPrev .= spikesX)
         end
 
     end #end loop over time
@@ -314,7 +314,7 @@
         println("mean excitatory firing rate: ", 1000*mean(ns[1:Ne])/train_time, " Hz")
         println("mean inhibitory firing rate: ", 1000*mean(ns[(Ne+1):Ncells])/train_time, " Hz")
                     
-        return uavg ./ (Nsteps - steps_per_sec), ns, mean(std(utmp, dims=1))
+        return uavg ./ (Nsteps - steps_per_sec), ns, mean(std(ustd, dims=1))
     end
 
     @static if kind in [:test, :train_test]

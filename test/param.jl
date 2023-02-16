@@ -17,7 +17,7 @@ seed = 1
 rng_func = (; :gpu => :(MersenneTwister()), :cpu => :(MersenneTwister()))
 rng = eval(rng_func.cpu)
 isnothing(seed) || Random.seed!(rng, seed)
-save(joinpath(data_dir,"rng-init.jld2"), "rng", rng)
+save(joinpath(@__DIR__, "rng-init.jld2"), "rng", rng)
 
 dt = 0.1  # simulation timestep (ms)
 
