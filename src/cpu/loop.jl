@@ -113,8 +113,8 @@
                 learn_seq += 1
             end
         end
-
         @static kind in [:test, :train_test] && if t > stim_off && t <= train_time && mod(t,1.0) == 0
+
             startInd = floor(Int, (t - stim_off - wid)/learn_every + 1)
             endInd = min(startInd + widInc, learn_nsteps)
             startInd = max(startInd, 1)
@@ -241,11 +241,13 @@
                 # nc0[ci] is the number neurons postsynaptic neuron ci
                 @static p.K>0 && for j = 1:nc0[ci]                       
                     post_ci = w0Index[j,ci]                 # cell index of j_th postsynaptic neuron
-                    wgt = w0Weights[j,ci]                   # synaptic weight of the connection, ci -> post_ci
-                    if wgt > 0                              # excitatory synapse
-                        inputsE[post_ci] += wgt      #   - neuron ci spike's excitatory contribution to post_ci's synaptic current
-                    elseif wgt < 0                          # inhibitory synapse
-                        inputsI[post_ci] += wgt      #   - neuron ci spike's inhibitory contribution to post_ci's synaptic current
+                    if post_ci != 0
+                        wgt = w0Weights[j,ci]                   # synaptic weight of the connection, ci -> post_ci
+                        if wgt > 0                              # excitatory synapse
+                            inputsE[post_ci] += wgt      #   - neuron ci spike's excitatory contribution to post_ci's synaptic current
+                        elseif wgt < 0                          # inhibitory synapse
+                            inputsI[post_ci] += wgt      #   - neuron ci spike's inhibitory contribution to post_ci's synaptic current
+                        end
                     end
                 end #end loop over synaptic projections
 
