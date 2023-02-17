@@ -64,11 +64,11 @@ function build_matrix(cumulative::Dict{Any, Any}, conn_probs::Vector{Vector{Floa
         edge_dict[src] = Int64[]
     end    
     w0Index = spzeros(Int,Ncells,Ncells)
-    w0Weights = spzeros(Float32,Ncells,Ncells)
+    w0Weights = spzeros(Float64,Ncells,Ncells)
     Ne = 0 
     Ni = 0
-    Lexc = spzeros(Float32,Ncells,Ncells)
-    Linh = spzeros(Float32,Ncells,Ncells)
+    Lexc = spzeros(Float64,Ncells,Ncells)
+    Linh = spzeros(Float64,Ncells,Ncells)
     @showprogress for (i,(k,v)) in enumerate(pairs(cumulative))
         for src in v
             for (j,(k1,v1)) in enumerate(pairs(cumulative))
@@ -164,7 +164,7 @@ function potjans_weights(Ncells::Int64, jee::Float64, jie::Float64, jei::Float64
     ###
     
     w0Weights,edge_dict,Ne,Ni,Lexc,Linh = build_matrix(cumulative,conn_probs,Ncells,weights)
-    if verbose 
+    if false 
         @show(maximum(Linh.nzval))
         @show(maximum(Lexc.nzval))
         @show(minimum(Linh.nzval))
@@ -220,72 +220,21 @@ function get_Ncell(scale=1.0::Float64)
 end
 
 
-#=
-function build_if_nec()
-    if !isfile("potjans_matrix.jld2")
-        scale =1.0/30.0
-        Ncells,Ne, ccu = get_Ncell(scale)
-        
-        pree = 0.1
-        K = round(Int, Ne*pree)
-        sqrtK = sqrt(K)
-        tau_meme = 10   # (ms)
-        g = 1.0
-        je = 2.0 / sqrtK * tau_meme * g
-        ji = 2.0 / sqrtK * tau_meme * g 
-        jee = 0.15je 
-        jei = je 
-        jie = -0.75ji 
-        jii = -ji
-        (edge_dict,w0Weights,Ne,Ni,Lexc,Linh) = potjans_weights(Ncells, jee, jie, jei, jii, ccu, scale)
-        nc0,w0Index = build_w0Index(edge_dict,Ncells)
-        @save "potjans_matrix.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells jee jie jei jii nc0 w0Index
-        UnicodePlots.spy(w0Weights) |> display
-        if verbose
-            UnicodePlots.spy(Lexc) |> display
-            UnicodePlots.spy(Linh) |> display    
-            println(maximum(Lexc))
-            println(minimum(Lexc))StaticWeights-erdos-renyi
-        end
-        UnicodePlots.spy(Lexc) |> display
-        UnicodePlots.spy(Linh) |> display   
-        if verbose
-    
-            println(maximum(Lexc))
-            println(minimum(Lexc))Ncells, jee, jie, jei, jii, ccu, scale jee jie jei jii nc0 w0Index
-
-    end
-    (edge_dict, w0Weights, Ne, Ni, Lexc, Linh, Ncells, jee, jie, jei, jii, nc0, w0Index) 
-end
-=#
 function genStaticWeights(args)
     # unpack arguments
-    #, this is just going through the motions, mostly not used.
-
-    Ncells, jee, jie, jei, jii, ccu, scale = args#map(x->args[x],[:Ncells, :jee, :jie, :jei, :jii, :ccu, :scale])
-    if true #!isfile("potjans_matrix.jld2")
-        #ccu, scale=1.0::Float64
-        #(Ncells::Int64, jee::Float64, jie::Float64, jei::Float64, jii::Float64, ccu, scale=1.0::Float64)
+    Ncells, jee, jie, jei, jii, ccu, scale = args
+    if !isfile("potjans_matrix.jld2")
         (edge_dict,w0Weights,Ne,Ni,Lexc,Linh) = potjans_weights(Ncells, jee, jie, jei, jii, ccu, scale)
         nc0,w0Index = build_w0Index(edge_dict,Ncells)
-
         @save "potjans_matrix.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells jee jie jei jii nc0 w0Index
-
     else
         @load "potjans_matrix.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells jee jie jei jii nc0 w0Index
 
     end
-    UnicodePlots.spy(w0Weights) |> display
-    if verbose
+    if false
+        UnicodePlots.spy(w0Weights) |> display
         UnicodePlots.spy(Lexc) |> display
         UnicodePlots.spy(Linh) |> display    
-        println(maximum(Lexc))
-        println(minimum(Lexc))
-    end
-        #StaticWeights-erdos-renyi
-    UnicodePlots.spy(Lexc) |> display
-    UnicodePlots.spy(Linh) |> display   
-    if verbose
 
         println(maximum(Lexc))
         println(minimum(Lexc))
@@ -295,12 +244,78 @@ function genStaticWeights(args)
     return w0Index, w0Weights, nc0
 end
 
-function genPlasticWeights(args::Dict{Symbol, Real}, w0Index, nc0, ns0)
 
-    wpWeightFfwd = randn(rng, p.Ncells, p.Lffwd) * wpffwd
-    
-    return wpWeightFfwd, wpWeightIn, wpIndexIn, ncpIn
+function genPlasticWeights(args, ns0)
+    @unpack Ncells, frac, Ne, rng, ccu, scale, wpee, wpie, wpei, wpii, wpX = args
+    if isfile("potjans_matrix_plastic.jld2")
+
+        @load "potjans_matrix_plastic.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells wpee wpie wpei wpii ns0 w0Index
+        
+    else
+        (edge_dict,w0Weights,Ne,Ni,Lexc,Linh) = potjans_weights(Ncells, wpee, wpie, wpei, wpii, ccu, scale)
+        ns0,w0Index = build_w0Index(edge_dict,Ncells)
+
+        @save "potjans_matrix_plastic.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells wpee wpie wpei wpii ns0 w0Index
+
+    end
+    #ns0,w0Index = build_w0Index(edge_dict,Ncells)
+
+    L = Matrix(w0Weights)
+    # order neurons by their firing rate
+    frac_cells = round(Int, frac*Ne)
+    exc_ns0 = ns0[1:Ne]
+    inh_ns0 = ns0[Ne+1:Ncells]
+    exc_ordered = sortperm(exc_ns0)
+    inh_ordered = collect(Ne+1:Ncells)[sortperm(inh_ns0)]
+    exc_selected = sort(exc_ordered[end-frac_cells+1:end])
+    inh_selected = sort(inh_ordered[end-frac_cells+1:end])
+    Lexc_plus_Linh = Matrix(Lexc+Linh)
+    # define weights_plastic
+
+    wpWeightIn = Array{Float64}(w0Weights.nzval[:])
+    wpIndexIn = Array{Int}(spzeros(Int,Ncells,Ncells))
+    #wpWeightIn = Array{Float64}(undef, Lexc_plus_Linh, Ncells)
+    #wpIndexIn = Array{Int}(undef, Ncells, Lexc_plus_Linh)
+    ncpIn = Array{Int}(undef, Ncells)
+    LX = 0
+
+    wpWeightX = randn(rng, Ncells, LX) * wpX
+
+    return wpWeightX, wpWeightIn, wpIndexIn, ncpIn
 end
+
+    # select random exc and inh presynaptic neurons
+    #=
+    for postCell = 1:Ncells
+        # (1) select consecutive neurons from a random starting point
+        # rnd_start = rand(1:length(exc_selected)-L+1)
+        # indE = sort(exc_selected[rnd_start:rnd_start+L-1])
+        # indI = sort(inh_selected[rnd_start:rnd_start+L-1])
+
+        # (2) select random neurons
+        indE = sample(rng, Lexc, replace=false, ordered=true)
+        indI = sample(rng, Linh, replace=false, ordered=true)
+
+        # build wpIndexIn
+        ind  = [indE; indI]
+        wpIndexIn[postCell,:] = ind
+        ncpIn[postCell] = length(ind)
+
+        # initial exc and inh plastic weights
+        if postCell <= Ne
+            wpWeightIn[1:Lexc, postCell] .= wpee
+            wpWeightIn[Lexc.+(1:Linh), postCell] .= wpei
+        else
+            wpWeightIn[1:Lexc, postCell] .= wpie
+            wpWeightIn[Lexc.+(1:Linh), postCell] .= wpii
+        end
+    end
+
+    # define feedforward weights to all neurons
+    #       - wpWeightX = randn(Ncells, LX) * wpX
+    #       - initial weights, wpX = 0
+    wpWeightX = randn(rng, Ncells, LX) * wpX
+    =#
 
 
 function as_yet_unused_but_should_be_used_param()
