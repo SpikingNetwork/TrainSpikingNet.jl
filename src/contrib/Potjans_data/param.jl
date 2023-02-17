@@ -23,9 +23,7 @@ dt = 0.1  # simulation timestep (ms)
 
 
 # --- network --- #
-Ncells = 4096
-Ne = floor(Int, Ncells*0.5)
-Ni = ceil(Int, Ncells*0.5)
+#Ncells = 4096
 
 
 # --- epoch --- #
@@ -36,6 +34,25 @@ train_time     = stim_off + train_duration
 
 Nsteps = round(Int, train_time/dt)
 
+scale =1.0/30.0
+
+function get_Ncell(scale=1.0::Float64)
+	ccu = Dict("23E"=>20683,
+		    "4E"=>21915, 
+		    "5E"=>4850, 
+		    "6E"=>14395, 
+		    "6I"=>2948, 
+		    "23I"=>5834,
+		    "5I"=>1065,
+		    "4I"=>5479)
+	ccu = Dict((k,ceil(Int64,v*scale)) for (k,v) in pairs(ccu))
+	Ncells = sum([i for i in values(ccu)])+1
+	Ne = sum([ccu["23E"],ccu["4E"],ccu["5E"],ccu["6E"]])
+    Ni = Ncells - Ne
+    Ncells, Ne, Ni, ccu
+
+end
+Ncells,Ne,Ni, ccu = get_Ncell(scale)    
 
 # --- external stimulus plugin --- #
 genXStim_file = "genXStim-ornstein-uhlenbeck.jl"
@@ -78,24 +95,8 @@ je = 2.0 / sqrtK * tau_meme * g
 ji = 2.0 / sqrtK * tau_meme * g 
 jx = 0.08 * sqrtK * g 
 
-scale =1.0/30.0
-
-function get_Ncell(scale=1.0::Float64)
-	ccu = Dict("23E"=>20683,
-		    "4E"=>21915, 
-		    "5E"=>4850, 
-		    "6E"=>14395, 
-		    "6I"=>2948, 
-		    "23I"=>5834,
-		    "5I"=>1065,
-		    "4I"=>5479)
-	ccu = Dict((k,ceil(Int64,v*scale)) for (k,v) in pairs(ccu))
-	Ncells = sum([i for i in values(ccu)])+1
-	Ne = sum([ccu["23E"],ccu["4E"],ccu["5E"],ccu["6E"]])
-    Ncells, Ne, ccu
-
-end
-Ncells,Ne, ccu = get_Ncell(scale)
+#Ne = floor(Int, Ncells*0.5)
+#ceil(Int, Ncells*0.5)
 
 
 tau_meme = 10   # (ms)
@@ -112,8 +113,8 @@ jii = -ji
 scale=30.0
 genStaticWeights_file = "/home/rjjarvis/build_testing/depth1/TrainSpikingNet.jl/src/contrib/genPotjansConnectivity.jl"
 genStaticWeights_args = [Ncells, jee,jie,jei,jii,ccu,scale]
-
-Ncells, jee, jie, jei, jii, ccu, scale
+spikerate_file = "/home/rjjarvis/build_testing/depth1/TrainSpikingNet.jl/src/contrib/spikes.jld"
+#Ncells, jee, jie, jei, jii, ccu, scale
 # --- learning --- #
 penlambda   = 0.8   # 1 / learning rate
 penlamFF    = 1.0
@@ -139,8 +140,13 @@ LX = 0
 
 wpscale = sqrt(L) * 2.0
 
-genPlasticWeights_file = "genPlasticWeights-erdos-renyi.jl"
-genPlasticWeights_args = (; Ncells, Ne, L, Lexc, Linh, LX, rng,
+#genPlasticWeights_file = "genPlasticWeights-erdos-renyi.jl"
+genPlasticWeights_file = "/home/rjjarvis/build_testing/depth1/TrainSpikingNet.jl/src/contrib/genPotjansConnectivity.jl"
+#Ncells, frac, Ne, wpee, wpie, wpei, wpii, wpX, rng
+frac =0.25
+#@unpack Ncells, frac, Ne, L, Lexc, Linh, LX, wpee, wpie, wpei, wpii, wpX, rng = args
+
+genPlasticWeights_args = (; Ncells, frac, Ne, rng, ccu, scale,
                             :frac => 1.0,
                             :wpee => 2.0 * tau_meme * g / wpscale,
                             :wpie => 2.0 * tau_meme * g / wpscale,
