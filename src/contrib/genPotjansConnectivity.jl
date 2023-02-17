@@ -3,8 +3,8 @@ using JLD2
 using UnicodePlots
 using ProgressMeter
 using Distributions, Random
-global verbose
-verbose = false
+#global verbose
+#verbose = false
 
 """
 This file consists of a function stack that seemed necessary to achieve a network with Potjans like wiring in Julia using TrainSpikeNet.jl to simulate.
@@ -53,6 +53,256 @@ function potjans_params(ccu, scale=1.0::Float64)
     return (cumulative,ccu,layer_names,columns_conn_probs,conn_probs_)
 end
 
+function build_matrix(cumulative::Dict{Any, Any}, conn_probs::Vector{Vector{Float64}},Ncells,weights)
+    """
+    Iteration logic seperated from synapse selection logic for readability only.
+    """
+    #Ncells +=1
+
+    edge_dict = Dict() 
+    for src in 1:Ncells
+        edge_dict[src] = Int64[]
+    end    
+    w0Index = spzeros(Int,Ncells,Ncells)
+    w0Weights = spzeros(Float32,Ncells,Ncells)
+    Ne = 0 
+    Ni = 0
+    Lexc = spzeros(Float32,Ncells,Ncells)
+    Linh = spzeros(Float32,Ncells,Ncells)
+    @showprogress for (i,(k,v)) in enumerate(pairs(cumulative))
+        for src in v
+            for (j,(k1,v1)) in enumerate(pairs(cumulative))
+                for tgt in v1
+                    #src+=1
+                    #tgt+=1
+                    if src!=tgt
+                        prob = conn_probs[i][j]
+                        if rand()<prob
+                            item = src,tgt,k,k1
+                            append!(edge_dict[src],tgt)
+                            index_assignment!(item,w0Weights,Ne,Ni,Lexc,Linh,weights)
+    
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return w0Weights,edge_dict,Ne,Ni,Lexc,Linh
+end
+function index_assignment!(item,w0Weights,Ne,Ni,Lexc,Linh,weights)  
+    """
+    Use a nested iterator ideally this will flatten the readability of subsequent code.
+
+
+    """
+    (jee,jie,jei,jii) = weights
+
+    # Mean synaptic weight for all excitatory projections except L4e->L2/3e
+    w_mean = 87.8e-3  # nA
+    w_ext = 87.8e-3  # nA
+    # Mean synaptic weight for L4e->L2/3e connections 
+    # See p. 801 of the paper, second paragraph under 'Model Parameterization', 
+    # and the caption to Supplementary Fig. 7
+    w_234 = 2 * w_mean  # nA
+    # Standard deviation of weight distribution relative to mean for L4e->L2/3e
+    # This value is not mentioned in the paper, but is chosen to match the 
+    # original code by Tobias Potjans
+    w_rel_234 = 0.05
+    # Relative inhibitory synaptic weight
+    wig = -4.
+    (src,tgt,k,k1) = item
+    if occursin("E",k) 
+        if occursin("E",k1)   
+            if occursin("4E",k) & occursin("23E",k)
+                d = Normal(w_234,w_rel_234)
+                td = truncated(d, 0.0, Inf)
+                weight = abs(rand(td, 1))
+                w0Weights[tgt,src] = weight 
+            else         
+                w0Weights[tgt,src] = jee
+            end
+        else# meaning if the same as a logic: occursin("I",k1) is true                   
+            w0Weights[tgt,src] = jei
+        end
+        Lexc[tgt,src] = copy(w0Weights[tgt,src])
+        Ne+=1	
+    else
+        @assert occursin("I",k) 
+        # meaning meaning if the same as a logic: elseif occursin("I",k) is true  
+        if occursin("E",k1)    
+            w0Weights[tgt,src] = wig# -jie 
+        else# eaning meaning if the same as a logic: if occursin("I",k1)      is true               
+            w0Weights[tgt,src] = wig# -jii  
+            @assert occursin("I",k1) 
+        end
+        Linh[tgt,src] = copy(w0Weights[tgt,src])
+        Ni+=1
+    end
+    # if verbose
+    if false
+        if Lexc[tgt,src] <0.0
+            @show(k,k1,Lexc[tgt,src])
+        end
+        if Lexc[tgt,src] <0.0
+            @show(k,k1,Lexc[tgt,src])
+        end
+    end        
+
+end
+
+function potjans_weights(Ncells::Int64, jee::Float64, jie::Float64, jei::Float64, jii::Float64, ccu, scale=1.0::Float64)
+    (cumulative,ccu,layer_names,_,conn_probs) = potjans_params(ccu,scale)    
+    weights = [jee,jie,jei,jii]
+    #w_mean = 87.8e-3  # nA
+    ###
+    # Lower memory footprint motivations.
+    # a sparse matrix can be stored as a smaller dense matrix.
+    # A 2D matrix should be stored as 1D matrix of srcs,tgts
+    # A 2D weight matrix should be stored as 1 matrix, which is redistributed in loops using 
+    # the 1D matrix of srcs,tgts.
+    ###
+    
+    w0Weights,edge_dict,Ne,Ni,Lexc,Linh = build_matrix(cumulative,conn_probs,Ncells,weights)
+    if verbose 
+        @show(maximum(Linh.nzval))
+        @show(maximum(Lexc.nzval))
+        @show(minimum(Linh.nzval))
+        @show(minimum(Lexc.nzval))
+    end
+    (edge_dict,w0Weights,Ne,Ni,Lexc,Linh)
+end
+
+function build_w0Index(edge_dict,Ncells)
+    nc0Max = 0
+    # what is the maximum out degree of this ragged array?
+    for (k,v) in pairs(edge_dict)
+        templength = length(v)
+        if templength>nc0Max
+            nc0Max=templength
+        end
+    end
+
+    # outdegree
+    nc0 = Int.(nc0Max*ones(Ncells))
+
+    ##
+    # Force ragged array into smallest dense rectangle (contains zeros for undefined synapses) 
+    ##
+    w0Index = spzeros(Int64,nc0Max,Ncells)
+    for pre_cell = 1:Ncells
+
+        post_cells = edge_dict[pre_cell]
+        w0Index[1:length(edge_dict[pre_cell]),pre_cell] = post_cells
+    end
+    nc0,w0Index
+    
+end
+
+
+##
+# The following code just gives me the cell count (NCell) upfront, which I need to size arrays in the methods.
+##
+function get_Ncell(scale=1.0::Float64)
+	ccu = Dict("23E"=>20683,
+		    "4E"=>21915, 
+		    "5E"=>4850, 
+		    "6E"=>14395, 
+		    "6I"=>2948, 
+		    "23I"=>5834,
+		    "5I"=>1065,
+		    "4I"=>5479)
+	ccu = Dict((k,ceil(Int64,v*scale)) for (k,v) in pairs(ccu))
+	Ncells = sum([i for i in values(ccu)])+1
+	Ne = sum([ccu["23E"],ccu["4E"],ccu["5E"],ccu["6E"]])
+    Ncells, Ne, ccu
+
+end
+
+
+#=
+function build_if_nec()
+    if !isfile("potjans_matrix.jld2")
+        scale =1.0/30.0
+        Ncells,Ne, ccu = get_Ncell(scale)
+        
+        pree = 0.1
+        K = round(Int, Ne*pree)
+        sqrtK = sqrt(K)
+        tau_meme = 10   # (ms)
+        g = 1.0
+        je = 2.0 / sqrtK * tau_meme * g
+        ji = 2.0 / sqrtK * tau_meme * g 
+        jee = 0.15je 
+        jei = je 
+        jie = -0.75ji 
+        jii = -ji
+        (edge_dict,w0Weights,Ne,Ni,Lexc,Linh) = potjans_weights(Ncells, jee, jie, jei, jii, ccu, scale)
+        nc0,w0Index = build_w0Index(edge_dict,Ncells)
+        @save "potjans_matrix.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells jee jie jei jii nc0 w0Index
+        UnicodePlots.spy(w0Weights) |> display
+        if verbose
+            UnicodePlots.spy(Lexc) |> display
+            UnicodePlots.spy(Linh) |> display    
+            println(maximum(Lexc))
+            println(minimum(Lexc))StaticWeights-erdos-renyi
+        end
+        UnicodePlots.spy(Lexc) |> display
+        UnicodePlots.spy(Linh) |> display   
+        if verbose
+    
+            println(maximum(Lexc))
+            println(minimum(Lexc))Ncells, jee, jie, jei, jii, ccu, scale jee jie jei jii nc0 w0Index
+
+    end
+    (edge_dict, w0Weights, Ne, Ni, Lexc, Linh, Ncells, jee, jie, jei, jii, nc0, w0Index) 
+end
+=#
+function genStaticWeights(args)
+    # unpack arguments
+    #, this is just going through the motions, mostly not used.
+
+    Ncells, jee, jie, jei, jii, ccu, scale = args#map(x->args[x],[:Ncells, :jee, :jie, :jei, :jii, :ccu, :scale])
+    if true #!isfile("potjans_matrix.jld2")
+        #ccu, scale=1.0::Float64
+        #(Ncells::Int64, jee::Float64, jie::Float64, jei::Float64, jii::Float64, ccu, scale=1.0::Float64)
+        (edge_dict,w0Weights,Ne,Ni,Lexc,Linh) = potjans_weights(Ncells, jee, jie, jei, jii, ccu, scale)
+        nc0,w0Index = build_w0Index(edge_dict,Ncells)
+
+        @save "potjans_matrix.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells jee jie jei jii nc0 w0Index
+
+    else
+        @load "potjans_matrix.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells jee jie jei jii nc0 w0Index
+
+    end
+    UnicodePlots.spy(w0Weights) |> display
+    if verbose
+        UnicodePlots.spy(Lexc) |> display
+        UnicodePlots.spy(Linh) |> display    
+        println(maximum(Lexc))
+        println(minimum(Lexc))
+    end
+        #StaticWeights-erdos-renyi
+    UnicodePlots.spy(Lexc) |> display
+    UnicodePlots.spy(Linh) |> display   
+    if verbose
+
+        println(maximum(Lexc))
+        println(minimum(Lexc))
+        println(maximum(Linh))
+        println(minimum(Linh))
+    end
+    return w0Index, w0Weights, nc0
+end
+
+function genPlasticWeights(args::Dict{Symbol, Real}, w0Index, nc0, ns0)
+
+    wpWeightFfwd = randn(rng, p.Ncells, p.Lffwd) * wpffwd
+    
+    return wpWeightFfwd, wpWeightIn, wpIndexIn, ncpIn
+end
+
+
 function as_yet_unused_but_should_be_used_param()
     """
     Again... :This file consists of a function stack that seemed necessary to achieve a network with Potjans like wiring in Julia using TrainSpikeNet.jl to simulate.
@@ -72,10 +322,7 @@ function as_yet_unused_but_should_be_used_param()
         'tau_syn_I' : 0.5,   # ms
         'v_reset'   : -65.0,  # mV
         'v_rest'    : -65.0,  # mV
-        'v_thresh'  : -50.0  # mV
-    )
-
-    layers = Dict('L23': 0, 'L4': 1, 'L5': 2, 'L6': 3)
+        'v_thresh'  : -50.0  # mVccu, scale=1.0::Float64 2, 'L6': 3)
     n_layers = len(layers)
     pops = Dict('E': 0, 'I': 1)
     n_pops_per_layer = len(pops)
@@ -183,251 +430,3 @@ function as_yet_unused_but_should_be_used_param()
     """
 end
 
-function build_matrix(cumulative::Dict{Any, Any}, conn_probs::Vector{Vector{Float64}})
-    """
-    Iteration logic seperated from synapse selection logic for readability only.
-    """
-
-
-    edge_dict = Dict() 
-    for src in 1:Ncells
-        edge_dict[src] = Int64[]
-    end
-    
-    w0Index = spzeros(Int,Ncells,Ncells)
-    w0Weights = spzeros(Float32,Ncells,Ncells)
-    Ne = 0 
-    Ni = 0
-    Lexc = spzeros(Float32,Ncells,Ncells)
-    Linh = spzeros(Float32,Ncells,Ncells)
-
-    @showprogress for (i,(k,v)) in enumerate(pairs(cumulative))
-        for src in v
-            for (j,(k1,v1)) in enumerate(pairs(cumulative))
-                for tgt in v1
-                    if src!=tgt
-                        prob = conn_probs[i][j]
-                        if rand()<prob
-                            item = src,tgt,k,k1
-                            append!(edge_dict[src],tgt)
-                            index_assignment!(item,w0Weights,Ne,Ni,Lexc,Linh)
-    
-                        end
-                    end
-                end
-            end
-            
-
-        end
-    end
-    return w0Weights,edge_dict,Ne,Ni,Lexc,Linh
-end
-function index_assignment!(item,w0Weights,Ne,Ni,Lexc,Linh)  
-    """
-    Use a nested iterator ideally this will flatten the readability of subsequent code.
-
-
-    """
-    # Mean synaptic weight for all excitatory projections except L4e->L2/3e
-    w_mean = 87.8e-3  # nA
-    w_ext = 87.8e-3  # nA
-    # Mean synaptic weight for L4e->L2/3e connections 
-    # See p. 801 of the paper, second paragraph under 'Model Parameterization', 
-    # and the caption to Supplementary Fig. 7
-    w_234 = 2 * w_mean  # nA
-    # Standard deviation of weight distribution relative to mean for L4e->L2/3e
-    # This value is not mentioned in the paper, but is chosen to match the 
-    # original code by Tobias Potjans
-    w_rel_234 = 0.05
-    # Relative inhibitory synaptic weight
-    wig = -4.
-    
-
-    (src,tgt,k,k1) = item
-
-
-    if occursin("E",k) 
-        if occursin("E",k1)   
-            if occursin("4E",k) & occursin("23E",k)
-                d = Normal(w_234,w_rel_234)
-                td = truncated(d, 0.0, Inf)
-                weight = abs(rand(td, 1))
-            
-                w0Weights[tgt,src] = weight 
-
-            else         
-                w0Weights[tgt,src] = jee
-            end
-        else# meaning if the same as a logic: occursin("I",k1) is true                   
-            w0Weights[tgt,src] = jei
-
-        end
-        Lexc[tgt,src] = copy(w0Weights[tgt,src])
-        Ne+=1	
-
-    else
-        @assert occursin("I",k) 
-        # meaning meaning if the same as a logic: elseif occursin("I",k) is true  
-        if occursin("E",k1)    
-                                
-            w0Weights[tgt,src] = wig# -jie 
-        else# eaning meaning if the same as a logic: if occursin("I",k1)      is true               
-            w0Weights[tgt,src] = wig# -jii  
-            @assert occursin("I",k1) 
-
-
-        end
-        Linh[tgt,src] = copy(w0Weights[tgt,src])
-
-        Ni+=1
-
-
-    end
-    if verbose
-        if Lexc[tgt,src] <0.0
-            @show(k,k1,Lexc[tgt,src])
-        end
-        if Lexc[tgt,src] <0.0
-            @show(k,k1,Lexc[tgt,src])
-        end
-    end        
-
-end
-
-function potjans_weights(Ncells::Int64, jee::Float64, jie::Float64, jei::Float64, jii::Float64, ccu, scale=1.0::Float64)
-    (cumulative,ccu,layer_names,_,conn_probs) = potjans_params(ccu,scale)    
-    #w_mean = 87.8e-3  # nA
-    ###
-    # Lower memory footprint motivations.
-    # a sparse matrix can be stored as a smaller dense matrix.
-    # A 2D matrix should be stored as 1D matrix of srcs,tgts
-    # A 2D weight matrix should be stored as 1 matrix, which is redistributed in loops using 
-    # the 1D matrix of srcs,tgts.
-    ###
-    
-    w0Weights,edge_dict,Ne,Ni,Lexc,Linh = build_matrix(cumulative,conn_probs)
-    if verbose 
-        @show(maximum(Linh.nzval))
-        @show(maximum(Lexc.nzval))
-        @show(minimum(Linh.nzval))
-        @show(minimum(Lexc.nzval))
-    end
-    (edge_dict,w0Weights,Ne,Ni,Lexc,Linh)
-end
-
-function build_w0Index(edge_dict,Ncells)
-    nc0Max = 0
-    # what is the maximum out degree of this ragged array?
-    for (k,v) in pairs(edge_dict)
-        templength = length(v)
-        if templength>nc0Max
-            nc0Max=templength
-        end
-    end
-
-    # outdegree
-    nc0 = Int.(nc0Max*ones(Ncells))
-
-    ##
-    # Force ragged array into smallest dense rectangle (contains zeros for undefined synapses) 
-    ##
-    w0Index = spzeros(Int64,nc0Max,Ncells)
-    for pre_cell = 1:Ncells
-
-        post_cells = edge_dict[pre_cell]
-        w0Index[1:length(edge_dict[pre_cell]),pre_cell] = post_cells
-    end
-    nc0,w0Index
-    
-end
-
-
-##
-# The following code just gives me the cell count (NCell) upfront, which I need to size arrays in the methods.
-##
-function get_Ncell(scale=1.0::Float64)
-	ccu = Dict("23E"=>20683,
-		    "4E"=>21915, 
-		    "5E"=>4850, 
-		    "6E"=>14395, 
-		    "6I"=>2948, 
-		    "23I"=>5834,
-		    "5I"=>1065,
-		    "4I"=>5479)
-	ccu = Dict((k,ceil(Int64,v*scale)) for (k,v) in pairs(ccu))
-	Ncells = sum([i for i in values(ccu)])+1
-	Ne = sum([ccu["23E"],ccu["4E"],ccu["5E"],ccu["6E"]])
-    Ncells, Ne, ccu
-
-end
-
-
-
-function build_if_nec()
-    if !isfile("potjans_matrix.jld2")
-        scale =1.0/30.0
-        Ncells,Ne, ccu = get_Ncell(scale)
-        
-        pree = 0.1
-        K = round(Int, Ne*pree)
-        sqrtK = sqrt(K)
-        tau_meme = 10   # (ms)
-        g = 1.0
-        je = 2.0 / sqrtK * tau_meme * g
-        ji = 2.0 / sqrtK * tau_meme * g 
-        jee = 0.15je 
-        jei = je 
-        jie = -0.75ji 
-        jii = -ji
-        build_if_nec()
-        (edge_dict,w0Weights,Ne,Ni,Lexc,Linh) = potjans_weights(Ncells, jee, jie, jei, jii, ccu, scale)
-        nc0,w0Index = build_w0Index(edge_dict,Ncells)
-
-        @save "potjans_matrix.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells jee jie jei jii nc0 w0Index
-        UnicodePlots.spy(w0Weights) |> display
-        if verbose
-            UnicodePlots.spy(Lexc) |> display
-            UnicodePlots.spy(Linh) |> display    
-            println(maximum(Lexc))
-            println(minimum(Lexc))
-            println(maximum(Linh))
-            println(minimum(Linh))
-        end
-    else
-        @load "potjans_matrix.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells jee jie jei jii nc0 w0Index
-        UnicodePlots.spy(w0Weights) |> display
-        UnicodePlots.spy(Lexc) |> display
-        UnicodePlots.spy(Linh) |> display   
-        if verbose
-    
-            println(maximum(Lexc))
-            println(minimum(Lexc))
-            println(maximum(Linh))
-            println(minimum(Linh))
-        end
-    end
-    (edge_dict, w0Weights, Ne, Ni, Lexc, Linh, Ncells, jee, jie, jei, jii, nc0, w0Index) 
-end
-
-function genStaticWeights(args::Dict{Symbol, Real})
-    Ncells, _, _, _, _, _, Lffwd, wpee, wpie, wpei, wpii, wpffwd = map(x->args[x],
-    [:Ncells, :frac, :Ne, :L, :Lexc, :Linh, :Lffwd, :wpee, :wpie, :wpei, :wpii, :wpffwd])
-    (edge_dict, w0Weights, Ne, Ni, Lexc, Linh, Ncells, jee, jie, jei, jii, nc0, w0Index) = build_if_nec()
-    #
-    # unpack arguments, this is just going through the motions, mostly not used.
-    
-    return w0Index, w0Weights, nc0
-end
-
-function genPlasticWeights(args::Dict{Symbol, Real}, w0Index, nc0, ns0)
-    #
-    # unpack arguments, this is just going through the motions, mostly not used.
-    Ncells, _, _, _, _, _, Lffwd, wpee, wpie, wpei, wpii, wpffwd = map(x->args[x],
-    [:Ncells, :frac, :Ne, :L, :Lexc, :Linh, :Lffwd, :wpee, :wpie, :wpei, :wpii, :wpffwd])
-
-    (edge_dict, w0Weights, Ne, Ni, Lexc, Linh, Ncells, jee, jie, jei, jii, ncpIn, wpIndexIn) = build_if_nec()
-        
-    wpWeightFfwd = randn(rng, p.Ncells, p.Lffwd) * wpffwd
-    
-    return wpWeightFfwd, wpWeightIn, wpIndexIn, ncpIn
-end

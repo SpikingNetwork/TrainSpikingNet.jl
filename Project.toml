@@ -22,7 +22,10 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 SymmetricFormats = "a91e544d-b3d6-4431-ae28-0549b1291c16"
 UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
-
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
+ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 [compat]
 CUDA = "3.4, 4"
 NNlib = "0.7.28, 0.8"
