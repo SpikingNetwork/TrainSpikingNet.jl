@@ -143,7 +143,7 @@ Now use `config` to load simulation code that is customized to your particular
 model architecture and machine hardware:
 
 ```
-julia config("my-data", :cpu)  # 2nd arg can also be :gpu
+julia> config("my-data", :cpu)  # 2nd arg can also be :gpu
 ```
 
 While `param` only needs to be called again if you change "params.jl",
@@ -462,9 +462,9 @@ optional arguments:
   -h, --help            show this help message and exit
 ```
 
-Don't hesitate to file an issue on Github if you find a bug or have a feature request.
-The best place for usage help is either https://discourse.julialang.org/ or to contact
-one of the authors directly.
+Don't hesitate to file an issue on Github if you find a bug or have a feature
+request.  The best place for usage help is either a GitHub discussion,
+https://discourse.julialang.org/, or to contact one of the authors directly.
 
 # Custom Usage #
 
