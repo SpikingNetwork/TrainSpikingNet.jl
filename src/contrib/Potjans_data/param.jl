@@ -154,7 +154,6 @@ genPlasticWeights_args = (; Ncells, frac, Ne, rng, ccu, scale,
                             :wpii => -2.0 * tau_meme * g / wpscale,
                             :wpX => 0)
 
-
 # --- feed forward neuron plugin --- #
 genRateX_file = "genRateX-ornstein-uhlenbeck.jl"
 genRateX_args = (; train_time, stim_off, dt, rng, LX,

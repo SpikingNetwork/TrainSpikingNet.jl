@@ -32,12 +32,12 @@ function potjans_params(ccu, scale=1.0::Float64)
                 [0.0364,   0.001,  0.0034, 0.0005, 0.0277, 0.008,  0.0658, 0.1443]]
 
     layer_names = ["23E","23I","4E","4I","5E", "5I", "6E", "6I"]
-    transform_matrix_ind = zip(collect(1:8),[1,3,5,7,2,4,6,8])
+    #transform_matrix_ind = zip(collect(1:8),[1,3,5,7,2,4,6,8])
     
     # hard coded stuff is manipulated below:
     columns_conn_probs = [col for col in eachcol(conn_probs)][1]
 
-    conn_probs_= copy(conn_probs)
+    #conn_probs_= copy(conn_probs)
     
     ## this list gets reorganised to reflect top excitatory bottom inhibitory.
     ## Rearrange the whole matrix so that excitatory connections form a top partition 
@@ -50,53 +50,68 @@ function potjans_params(ccu, scale=1.0::Float64)
         cumulative[k]=collect(v_old:v+v_old)
         v_old=v+v_old
     end    
-    return (cumulative,ccu,layer_names,columns_conn_probs,conn_probs_)
+    return (cumulative,ccu,layer_names,columns_conn_probs,conn_probs)
 end
 
-function build_matrix(cumulative::Dict{Any, Any}, conn_probs::Vector{Vector{Float64}},Ncells,weights)
+function build_matrix(cumulative::Dict{Any, Any}, conn_probs::Vector{Vector{Float64}},Ncells,g_strengths)
     """
     Iteration logic seperated from synapse selection logic for readability only.
     """
-    #Ncells +=1
 
     edge_dict = Dict() 
     for src in 1:Ncells
         edge_dict[src] = Int64[]
     end    
-    w0Index = spzeros(Int,Ncells,Ncells)
     w0Weights = spzeros(Float64,Ncells,Ncells)
-    Ne = 0 
-    Ni = 0
+    WpWeights = spzeros(Float64,Ncells,Ncells)
+    Nsyne = 0 
+    Nsyni = 0
     Lexc = spzeros(Float64,Ncells,Ncells)
     Linh = spzeros(Float64,Ncells,Ncells)
+    Lexcp = spzeros(Float64,Ncells,Ncells)
+    Linhp = spzeros(Float64,Ncells,Ncells)
+
     @showprogress for (i,(k,v)) in enumerate(pairs(cumulative))
         for src in v
             for (j,(k1,v1)) in enumerate(pairs(cumulative))
                 for tgt in v1
-                    #src+=1
-                    #tgt+=1
                     if src!=tgt
+                        @assert src!=0
+                        @assert tgt!=0
+                        item = src,tgt,k,k1
                         prob = conn_probs[i][j]
                         if rand()<prob
-                            item = src,tgt,k,k1
+                            #@show(rand())
+
                             append!(edge_dict[src],tgt)
-                            index_assignment!(item,w0Weights,Ne,Ni,Lexc,Linh,weights)
-    
+                            (Nsyne,Nsyni) = index_assignment!(item,w0Weights,Lexc,Linh,g_strengths,Nsyne,Nsyni)
+                        else
+                            if rand()<0.000125
+                                
+                                ##
+                                # If static synapse probability fails.
+                                # consider placing an a plastic synapse at the failed static location.
+                                # The result should be a more
+                                # sparsely populate a weight matrix given a second random number draw
+                                ##
+       
+                                (Nsyne,Nsyni) = index_assignment!(item,WpWeights,Lexcp,Linhp,g_strengths,Nsyne,Nsyni)
+
+                            end
                         end
                     end
                 end
             end
         end
     end
-    return w0Weights,edge_dict,Ne,Ni,Lexc,Linh
+
+    return w0Weights,WpWeights,edge_dict,Nsyne,Nsyni,Lexc,Linh
 end
-function index_assignment!(item,w0Weights,Ne,Ni,Lexc,Linh,weights)  
+function index_assignment!(item,w0Weights,Lexc,Linh,g_strengths,Ne,Ni)  
     """
     Use a nested iterator ideally this will flatten the readability of subsequent code.
-
-
     """
-    (jee,jie,jei,jii) = weights
+    (jee,jie,jei,jii) = g_strengths
 
     # Mean synaptic weight for all excitatory projections except L4e->L2/3e
     w_mean = 87.8e-3  # nA
@@ -126,7 +141,7 @@ function index_assignment!(item,w0Weights,Ne,Ni,Lexc,Linh,weights)
             w0Weights[tgt,src] = jei
         end
         Lexc[tgt,src] = copy(w0Weights[tgt,src])
-        Ne+=1	
+        Ne=Ne+1
     else
         @assert occursin("I",k) 
         # meaning meaning if the same as a logic: elseif occursin("I",k) is true  
@@ -137,10 +152,9 @@ function index_assignment!(item,w0Weights,Ne,Ni,Lexc,Linh,weights)
             @assert occursin("I",k1) 
         end
         Linh[tgt,src] = copy(w0Weights[tgt,src])
-        Ni+=1
+        Ni=Ni+1
     end
-    # if verbose
-    if false
+    if false    # if verbose
         if Lexc[tgt,src] <0.0
             @show(k,k1,Lexc[tgt,src])
         end
@@ -148,13 +162,15 @@ function index_assignment!(item,w0Weights,Ne,Ni,Lexc,Linh,weights)
             @show(k,k1,Lexc[tgt,src])
         end
     end        
-
+    (Ne,Ni)
 end
 
-function potjans_weights(Ncells::Int64, jee::Float64, jie::Float64, jei::Float64, jii::Float64, ccu, scale=1.0::Float64)
+function potjans_weights(args)
+    #
+    #(Ncells::Int64, jee::Float64, jie::Float64, jei::Float64, jii::Float64, ccu, scale=1.0::Float64) = args
+    Ncells, jee, jie, jei, jii, ccu, scale = args
     (cumulative,ccu,layer_names,_,conn_probs) = potjans_params(ccu,scale)    
-    weights = [jee,jie,jei,jii]
-    #w_mean = 87.8e-3  # nA
+    g_strengths = [jee,jie,jei,jii]
     ###
     # Lower memory footprint motivations.
     # a sparse matrix can be stored as a smaller dense matrix.
@@ -163,14 +179,14 @@ function potjans_weights(Ncells::Int64, jee::Float64, jie::Float64, jei::Float64
     # the 1D matrix of srcs,tgts.
     ###
     
-    w0Weights,edge_dict,Ne,Ni,Lexc,Linh = build_matrix(cumulative,conn_probs,Ncells,weights)
+    w0Weights,WpWeights,edge_dict,Ne,Ni,Lexc,Linh = build_matrix(cumulative,conn_probs,Ncells,g_strengths)
     if false 
         @show(maximum(Linh.nzval))
         @show(maximum(Lexc.nzval))
         @show(minimum(Linh.nzval))
         @show(minimum(Lexc.nzval))
     end
-    (edge_dict,w0Weights,Ne,Ni,Lexc,Linh)
+    (edge_dict,w0Weights,WpWeights,Ne,Ni,Lexc,Linh)
 end
 
 function build_w0Index(edge_dict,Ncells)
@@ -182,10 +198,8 @@ function build_w0Index(edge_dict,Ncells)
             nc0Max=templength
         end
     end
-
     # outdegree
     nc0 = Int.(nc0Max*ones(Ncells))
-
     ##
     # Force ragged array into smallest dense rectangle (contains zeros for undefined synapses) 
     ##
@@ -196,13 +210,14 @@ function build_w0Index(edge_dict,Ncells)
         w0Index[1:length(edge_dict[pre_cell]),pre_cell] = post_cells
     end
     nc0,w0Index
-    
 end
 
 
 ##
 # The following code just gives me the cell count (NCell) upfront, which I need to size arrays in the methods.
 ##
+#=
+moved else where
 function get_Ncell(scale=1.0::Float64)
 	ccu = Dict("23E"=>20683,
 		    "4E"=>21915, 
@@ -218,21 +233,30 @@ function get_Ncell(scale=1.0::Float64)
     Ncells, Ne, ccu
 
 end
-
+=#
 
 function genStaticWeights(args)
     # unpack arguments
-    Ncells, jee, jie, jei, jii, ccu, scale = args
-    if !isfile("potjans_matrix.jld2")
-        (edge_dict,w0Weights,Ne,Ni,Lexc,Linh) = potjans_weights(Ncells, jee, jie, jei, jii, ccu, scale)
-        nc0,w0Index = build_w0Index(edge_dict,Ncells)
-        @save "potjans_matrix.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells jee jie jei jii nc0 w0Index
-    else
-        @load "potjans_matrix.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells jee jie jei jii nc0 w0Index
+    
+    #if !isfile("potjans_matrix.jld2")
+    #(edge_dict,w0Weights,Ne,Ni,Lexc,Linh) = potjans_weights(args)#Ncells, jee, jie, jei, jii, ccu, scale)
+    (edge_dict,w0Weights,WpWeights,Ne,Ni,Lexc,Linh) = potjans_weights(args)
+    dropzeros!(w0Weights)
+    Ncells = args[1]
+    #Ncells = Ne+Ni
+    nc0,w0Index = build_w0Index(edge_dict,Ncells)
+    #    @save "potjans_matrix.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells jee jie jei jii nc0 w0Index
+    #else
+    #    @load "potjans_matrix.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells jee jie jei jii nc0 w0Index
 
+    #end
+    if !isfile("potjansPlastiCMatrix.jld2")
+        @save "potjansPlastiCMatrix.jld2" WpWeights edge_dict
+        UnicodePlots.spy(WpWeights) |> display
     end
-    if false
+    if true
         UnicodePlots.spy(w0Weights) |> display
+        UnicodePlots.spy(WpWeights) |> display
         UnicodePlots.spy(Lexc) |> display
         UnicodePlots.spy(Linh) |> display    
 
@@ -246,20 +270,70 @@ end
 
 
 function genPlasticWeights(args, ns0)
+    #@unpack Ncells, _, _, rng, ccu, scale, wpee, wpie, wpei, wpii, wpX = args
     @unpack Ncells, frac, Ne, rng, ccu, scale, wpee, wpie, wpei, wpii, wpX = args
+
+    if isfile("potjansPlastiCMatrix.jld2")
+        @load "potjansPlastiCMatrix.jld2" WpWeights edge_dict
+        ns0,_ = build_w0Index(edge_dict,Ncells)
+   
+    end
+    wpWeightIn = Array{Float64}(WpWeights)
+    wpIndexIn = Array{Int}(spzeros(Int,Ncells,Ncells))
+    for (pre_cell,post_cells,k) in collect(findnz(WpWeights))
+        @show(pre_cell,post_cells,k)
+        post_cells = wpIndexIn[pre_cell,:]
+        wpIndexIn[pre_cell,:] .= collect(1:length(post_cells))
+    end
+    ncpIn = Array{Int}(undef, Ncells)
+    LX = 0
+    wpWeightX = randn(rng, Ncells, LX) * wpX
+
+
+    # get indices of postsynaptic cells for each presynaptic cell
+    wpIndexConvert = zeros(Int, p.Ncells, p.Ncells)#p.Lexc+p.Linh)
+    wpIndexOutD = Dict{Int,Array{Int,1}}()
+    ncpOut = Array{Int}(undef, p.Ncells)
+    for i = 1:p.Ncells
+        wpIndexOutD[i] = []
+    end
+    for postCell = 1:p.Ncells
+        for i = 1:ncpIn[postCell]
+            preCell = wpIndexIn[postCell,i]
+            push!(wpIndexOutD[preCell], postCell)
+            wpIndexConvert[postCell,i] = length(wpIndexOutD[preCell])
+        end
+    end
+    for preCell = 1:p.Ncells
+        ncpOut[preCell] = length(wpIndexOutD[preCell])
+    end
+
+    # get weight, index of outgoing connections
+    wpIndexOut = zeros(Int, maximum(ncpOut), p.Ncells)
+    for preCell = 1:p.Ncells
+        wpIndexOut[1:ncpOut[preCell],preCell] = wpIndexOutD[preCell]
+    end
+
+    return wpWeightX, wpWeightIn, wpIndexIn, ncpIn
+end
+
+    #else:
+
+    #(edge_dict,w0Weights,Ne,Ni,Lexc,Linh) = potjans_weights(Ncells, wpee, wpie, wpei, wpii, ccu, scale)
+     #=
     if isfile("potjans_matrix_plastic.jld2")
 
         @load "potjans_matrix_plastic.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells wpee wpie wpei wpii ns0 w0Index
         
     else
-        (edge_dict,w0Weights,Ne,Ni,Lexc,Linh) = potjans_weights(Ncells, wpee, wpie, wpei, wpii, ccu, scale)
-        ns0,w0Index = build_w0Index(edge_dict,Ncells)
+
 
         @save "potjans_matrix_plastic.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells wpee wpie wpei wpii ns0 w0Index
 
     end
+    =#
     #ns0,w0Index = build_w0Index(edge_dict,Ncells)
-
+    #=
     L = Matrix(w0Weights)
     # order neurons by their firing rate
     frac_cells = round(Int, frac*Ne)
@@ -271,18 +345,8 @@ function genPlasticWeights(args, ns0)
     inh_selected = sort(inh_ordered[end-frac_cells+1:end])
     Lexc_plus_Linh = Matrix(Lexc+Linh)
     # define weights_plastic
+    =#
 
-    wpWeightIn = Array{Float64}(w0Weights.nzval[:])
-    wpIndexIn = Array{Int}(spzeros(Int,Ncells,Ncells))
-    #wpWeightIn = Array{Float64}(undef, Lexc_plus_Linh, Ncells)
-    #wpIndexIn = Array{Int}(undef, Ncells, Lexc_plus_Linh)
-    ncpIn = Array{Int}(undef, Ncells)
-    LX = 0
-
-    wpWeightX = randn(rng, Ncells, LX) * wpX
-
-    return wpWeightX, wpWeightIn, wpIndexIn, ncpIn
-end
 
     # select random exc and inh presynaptic neurons
     #=
