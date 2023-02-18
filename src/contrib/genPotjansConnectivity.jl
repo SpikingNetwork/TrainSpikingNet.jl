@@ -83,12 +83,11 @@ function build_matrix(cumulative::Dict{Any, Any}, conn_probs::Vector{Vector{Floa
                         item = src,tgt,k,k1
                         prob = conn_probs[i][j]
                         if rand()<prob
-                            #@show(rand())
 
                             append!(edge_dict[src],tgt)
                             (Nsyne,Nsyni) = index_assignment!(item,w0Weights,Lexc,Linh,g_strengths,Nsyne,Nsyni)
                         else
-                            if rand()<0.000125
+                            if rand()<0.000225
                                 
                                 ##
                                 # If static synapse probability fails.
