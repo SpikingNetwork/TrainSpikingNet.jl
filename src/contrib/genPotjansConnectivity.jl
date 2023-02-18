@@ -66,6 +66,8 @@ function build_matrix(cumulative::Dict{Any, Any}, conn_probs::Vector{Vector{Floa
     WpWeights = spzeros(Float64,Ncells,Ncells)
     Nsyne = 0 
     Nsyni = 0
+    Nsynep = 0 
+    Nsynip = 0
     Lexc = spzeros(Float64,Ncells,Ncells)
     Linh = spzeros(Float64,Ncells,Ncells)
     Lexcp = spzeros(Float64,Ncells,Ncells)
@@ -95,7 +97,7 @@ function build_matrix(cumulative::Dict{Any, Any}, conn_probs::Vector{Vector{Floa
                                 # sparsely populate a weight matrix given a second random number draw
                                 ##
        
-                                (Nsyne,Nsyni) = index_assignment!(item,WpWeights,Lexcp,Linhp,g_strengths,Nsyne,Nsyni)
+                                (Nsynep,Nsynip) = index_assignment!(item,WpWeights,Lexcp,Linhp,g_strengths,Nsynep,Nsynip)
 
                             end
                         end
@@ -212,44 +214,13 @@ function build_w0Index(edge_dict,Ncells)
     nc0,w0Index
 end
 
-
-##
-# The following code just gives me the cell count (NCell) upfront, which I need to size arrays in the methods.
-##
-#=
-moved else where
-function get_Ncell(scale=1.0::Float64)
-	ccu = Dict("23E"=>20683,
-		    "4E"=>21915, 
-		    "5E"=>4850, 
-		    "6E"=>14395, 
-		    "6I"=>2948, 
-		    "23I"=>5834,
-		    "5I"=>1065,
-		    "4I"=>5479)
-	ccu = Dict((k,ceil(Int64,v*scale)) for (k,v) in pairs(ccu))
-	Ncells = sum([i for i in values(ccu)])+1
-	Ne = sum([ccu["23E"],ccu["4E"],ccu["5E"],ccu["6E"]])
-    Ncells, Ne, ccu
-
-end
-=#
-
 function genStaticWeights(args)
     # unpack arguments
-    
-    #if !isfile("potjans_matrix.jld2")
-    #(edge_dict,w0Weights,Ne,Ni,Lexc,Linh) = potjans_weights(args)#Ncells, jee, jie, jei, jii, ccu, scale)
     (edge_dict,w0Weights,WpWeights,Ne,Ni,Lexc,Linh) = potjans_weights(args)
     dropzeros!(w0Weights)
     Ncells = args[1]
-    #Ncells = Ne+Ni
     nc0,w0Index = build_w0Index(edge_dict,Ncells)
-    #    @save "potjans_matrix.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells jee jie jei jii nc0 w0Index
-    #else
-    #    @load "potjans_matrix.jld2" edge_dict w0Weights Ne Ni Lexc Linh Ncells jee jie jei jii nc0 w0Index
 
-    #end
     if !isfile("potjansPlastiCMatrix.jld2")
         @save "potjansPlastiCMatrix.jld2" WpWeights edge_dict
         UnicodePlots.spy(WpWeights) |> display
@@ -270,7 +241,6 @@ end
 
 
 function genPlasticWeights(args, ns0)
-    #@unpack Ncells, _, _, rng, ccu, scale, wpee, wpie, wpei, wpii, wpX = args
     @unpack Ncells, frac, Ne, rng, ccu, scale, wpee, wpie, wpei, wpii, wpX = args
 
     if isfile("potjansPlastiCMatrix.jld2")
