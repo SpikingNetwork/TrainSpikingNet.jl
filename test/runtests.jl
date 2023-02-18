@@ -163,8 +163,8 @@ end
 end
 
 @testset "Int16" begin
-    mkdir(joinpath(@__DIR__,  "scratch", "cpu-Int16"))
-    open(joinpath(@__DIR__,  "scratch", "cpu-Int16", "param.jl"), "w") do fileout 
+    mkdir(joinpath(@__DIR__,  "scratch", "Int16"))
+    open(joinpath(@__DIR__,  "scratch", "Int16", "param.jl"), "w") do fileout 
         for line in readlines(joinpath(@__DIR__, "param.jl"))
             if startswith(line, "PPrecision")
                 println(fileout, "PPrecision=Int16")
@@ -175,7 +175,23 @@ end
             end
         end
     end
-    compare_cpu_to_gpu("Int16")
+
+    init_out = readlines(`$(Base.julia_cmd()) -t 2
+                          $(joinpath(@__DIR__, "..", "src", "init.jl"))
+                          $(joinpath(@__DIR__, "scratch", "Int16"))`)
+    write(joinpath(@__DIR__, "scratch", "Int16", "init.log"), join(init_out, '\n'))
+    for iHz in findall(contains("Hz"), init_out)
+      @test 0 < parse(Float64, match(r"([.0-9]+) Hz", init_out[iHz]).captures[1]) < 10
+    end
+
+    if testgpu
+        gpu_out = readlines(`$(Base.julia_cmd())
+                             $(joinpath(@__DIR__, "..", "src", "train.jl")) -g
+                             $(joinpath(@__DIR__, "scratch", "Int16"))`)
+        write(joinpath(@__DIR__, "scratch", "Int16", "train.log"), join(gpu_out, '\n'))
+        iHz = findlast(contains("Hz"), gpu_out)
+        @test 0 < parse(Float64, match(r"([.0-9]+) Hz", gpu_out[iHz]).captures[1]) < 10
+    end
 end
 
 @testset "feed forward" begin
