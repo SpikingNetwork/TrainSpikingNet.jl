@@ -24,7 +24,12 @@ specifies how many presynaptic connections each neuron has.
 =#
 
 function genPlasticWeights(args, ns0)
-    @unpack Ncells, frac, Ne, L, Lexc, Linh, LX, wpee, wpie, wpei, wpii, wpX, rng = args
+    @unpack Ncells, frac, Ne, L, Lexc, Linh, LX, wpee, wpie, wpei, wpii, wpX, rng, seed = args
+
+    num_threads = Threads.nthreads()
+    copy_rng = [typeof(rng)() for _=1:num_threads];
+    isnothing(seed) || Random.seed!.(copy_rng, seed .+ (1:num_threads))
+    save(joinpath(data_dir,"rng-genPlasticWeights.jld2"), "rng", copy_rng)
 
     # order neurons by their firing rate
     frac_cells = round(Int, frac*Ne)
@@ -39,36 +44,49 @@ function genPlasticWeights(args, ns0)
     wpWeightIn = Array{Float64}(undef, Lexc+Linh, Ncells)
     wpIndexIn = Array{Int}(undef, Ncells, Lexc+Linh)
     ncpIn = Array{Int}(undef, Ncells)
+
     # select random exc and inh presynaptic neurons
-    for postCell = 1:Ncells
-        # (1) select consecutive neurons from a random starting point
-        # rnd_start = rand(1:length(exc_selected)-L+1)
-        # indE = sort(exc_selected[rnd_start:rnd_start+L-1])
-        # indI = sort(inh_selected[rnd_start:rnd_start+L-1])
+    function random_plastic_recurrent(I, tid)
+        for i in I
+            # (1) select consecutive neurons from a random starting point
+            # rnd_start = rand(1:length(exc_selected)-L+1)
+            # indE = sort(exc_selected[rnd_start:rnd_start+L-1])
+            # indI = sort(inh_selected[rnd_start:rnd_start+L-1])
 
-        # (2) select random neurons
-        indE = sample(rng, exc_selected, L, replace=false, ordered=true)
-        indI = sample(rng, inh_selected, L, replace=false, ordered=true)
+            # (2) select random neurons
+            indE = sample(copy_rng[tid], exc_selected, L, replace=false)
+            indI = sample(copy_rng[tid], inh_selected, L, replace=false)
 
-        # build wpIndexIn
-        ind  = [indE; indI]
-        wpIndexIn[postCell,:] = ind
-        ncpIn[postCell] = length(ind)
+            # build wpIndexIn
+            wpIndexIn[i, 1:L] = indE
+            wpIndexIn[i, L+1:end] = indI
+            ncpIn[i] = 2L
 
-        # initial exc and inh plastic weights
-        if postCell <= Ne
-            wpWeightIn[1:Lexc, postCell] .= wpee
-            wpWeightIn[Lexc.+(1:Linh), postCell] .= wpei
-        else
-            wpWeightIn[1:Lexc, postCell] .= wpie
-            wpWeightIn[Lexc.+(1:Linh), postCell] .= wpii
+            # initial exc and inh plastic weights
+            if i <= Ne
+                wpWeightIn[1:Lexc, i] .= wpee
+                wpWeightIn[Lexc.+(1:Linh), i] .= wpei
+            else
+                wpWeightIn[1:Lexc, i] .= wpie
+                wpWeightIn[Lexc.+(1:Linh), i] .= wpii
+            end
         end
+    end
+    tasks = Vector{Task}(undef, num_threads)
+    partitions = [floor.(Int, collect(1:(Ncells/num_threads):Ncells)); Ncells+1]
+    for i=1:num_threads
+        # Threads.@threads does NOT guarantee a particular threadid for each partition
+        # so the RNG seed might be different
+        tasks[i] = Threads.@spawn random_plastic_recurrent(partitions[i]:partitions[i+1]-1, i)
+    end
+    for i = 1:num_threads
+        wait(tasks[i])
     end
 
     # define feedforward weights to all neurons
     #       - wpWeightX = randn(Ncells, LX) * wpX
     #       - initial weights, wpX = 0
-    wpWeightX = randn(rng, Ncells, LX) * wpX
+    wpWeightX = randn(copy_rng[1], Ncells, LX) * wpX
     
     return wpWeightX, wpWeightIn, wpIndexIn, ncpIn
 end

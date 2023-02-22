@@ -59,22 +59,18 @@ function config(_data_dir, pu::Symbol=:cpu)
 
     global data_dir = _data_dir
     global p = load(joinpath(_data_dir, "param.jld2"), "param")
-    
+    global choose_task = eval(p.choose_task_func)
+    global kind
+
     # --- load code --- #
+    kind = :init
     include(p.genStaticWeights_file)
     include(p.genPlasticWeights_file)
     include(p.genRateX_file)
     include(p.genUTarget_file)
     include(p.genXStim_file)
     include(p.cellModel_file)
-
     include(joinpath(@__DIR__, pu_str, "variables.jl"))
-
-    global choose_task = eval(p.choose_task_func)
-
-    global kind
-
-    kind = :init
     include(joinpath(@__DIR__, pu_str, "loop.jl"))
     include(joinpath(@__DIR__, "rate2utarg.jl"))
 

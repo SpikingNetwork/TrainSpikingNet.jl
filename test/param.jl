@@ -39,7 +39,7 @@ Nsteps = round(Int, train_time/dt)
 
 # --- external stimulus plugin --- #
 genXStim_file = "genXStim-ornstein-uhlenbeck.jl"
-genXStim_args = (; stim_on, stim_off, dt, Ncells, rng,
+genXStim_args = (; stim_on, stim_off, dt, Ncells, rng, seed,
                    :mu => 0.0, :b => 1/20, :sig => 0.2)
 
 
@@ -79,7 +79,7 @@ ji = 2.0 / sqrtK * tau_meme * g
 jx = 0.08 * sqrtK * g 
 
 genStaticWeights_file = "genStaticWeights-erdos-renyi.jl"
-genStaticWeights_args = (; K, Ncells, Ne, pree, prie, prei, prii, rng,
+genStaticWeights_args = (; K, Ncells, Ne, rng, seed,
                            :jee => 0.15je, :jie => je, :jei => -0.75ji, :jii => -ji)
 
 
@@ -96,7 +96,7 @@ choose_task_func = :((iloop, ntasks) -> iloop % ntasks + 1)   # or e.g. rand(1:n
 
 # --- target synaptic current plugin --- #
 genUTarget_file = "genUTarget-sinusoids.jl"
-genUTarget_args = (; train_time, stim_off, learn_every, Ncells, Nsteps, dt, rng,
+genUTarget_args = (; train_time, stim_off, learn_every, Ncells, Nsteps, dt, rng, seed,
                      :A => 0.5, :period => 1000.0, :biasType => :zero,
                      :mu_ou_bias => 0.0, :b_ou_bias => 1/400, :sig_ou_bias => 0.02)
 
@@ -110,7 +110,7 @@ LX = 0
 wpscale = sqrt(L) * 2.0
 
 genPlasticWeights_file = "genPlasticWeights-erdos-renyi.jl"
-genPlasticWeights_args = (; Ncells, Ne, L, Lexc, Linh, LX, rng,
+genPlasticWeights_args = (; Ncells, Ne, L, Lexc, Linh, LX, rng, seed,
                             :frac => 1.0,
                             :wpee => 2.0 * tau_meme * g / wpscale,
                             :wpie => 2.0 * tau_meme * g / wpscale,

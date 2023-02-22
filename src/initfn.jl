@@ -23,28 +23,23 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
 
     # get indices of postsynaptic cells for each presynaptic cell
     wpIndexConvert = zeros(Int, p.Ncells, p.Lexc+p.Linh)
-    wpIndexOutD = Dict{Int,Array{Int,1}}()
-    ncpOut = Array{Int}(undef, p.Ncells)
-    for i = 1:p.Ncells
-        wpIndexOutD[i] = []
-    end
+    wpIndexOutV = Vector{Int}[Int[] for _ in 1:p.Ncells]
     for postCell = 1:p.Ncells
         for i = 1:ncpIn[postCell]
-            preCell = wpIndexIn[postCell,i]
-            push!(wpIndexOutD[preCell], postCell)
-            wpIndexConvert[postCell,i] = length(wpIndexOutD[preCell])
+            preCell = wpIndexIn[i,postCell]
+            push!(wpIndexOutV[preCell], postCell)
+            wpIndexConvert[postCell,i] = length(wpIndexOutV[preCell])
         end
     end
-    for preCell = 1:p.Ncells
-        ncpOut[preCell] = length(wpIndexOutD[preCell])
-    end
+    ncpOut = [length(wpIndexOutV[preCell]) for preCell = 1:p.Ncells]
 
     # get weight, index of outgoing connections
     wpIndexOut = zeros(Int, maximum(ncpOut), p.Ncells)
     for preCell = 1:p.Ncells
-        wpIndexOut[1:ncpOut[preCell],preCell] = wpIndexOutD[preCell]
+        wpIndexOut[1:ncpOut[preCell],preCell] = wpIndexOutV[preCell]
     end
 
+    # load or calculate target synaptic currents
     Ntime = floor(Int, (p.train_time - p.stim_off) / p.learn_every)
     if utarg_file !== nothing
         utarg_dict = load(utarg_file)
