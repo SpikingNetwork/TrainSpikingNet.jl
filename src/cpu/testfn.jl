@@ -27,18 +27,17 @@ function test(; ntrials = 1,
     wpWeightOut = convertWgtIn2Out(p.Ncells, ncpIn,
                                    wpIndexIn, wpIndexConvert, wpWeightIn, wpWeightOut)
 
-    rng = eval(p.rng_func.cpu)
-    isnothing(p.seed) || Random.seed!(rng, p.seed)
-    save(joinpath(data_dir,"rng-test.jld2"), "rng", rng)
-
     # --- set up variables --- #
-    X_stim = Array{p.FloatPrecision}(X_stim);
     nc0 = Array{p.IntPrecision}(nc0)
     ncpOut = Array{p.IntPrecision}(ncpOut);
+    X_stim = Array{p.FloatPrecision}(X_stim);
     w0Index = Array{p.IntPrecision}(w0Index);
     w0Weights = Array{p.FloatPrecision}(w0Weights);
     wpIndexOut = Array{p.IntPrecision}(wpIndexOut);
     wpWeightOut = Array{p.FloatPrecision}(wpWeightOut);
+    wpWeightX = Array{p.FloatPrecision}(wpWeightX);
+
+    rng = eval(p.rng_func.cpu)
 
     # --- test the network --- #
     ntasks = size(X_stim,3)
@@ -46,7 +45,8 @@ function test(; ntrials = 1,
     timess = Array{Any}(undef, ntrials, ntasks);
     utotals = Array{Any}(undef, ntrials, ntasks);
     copy_rng = [typeof(rng)() for _=1:Threads.nthreads()];
-    isnothing(p.seed) || Random.seed!.(copy_rng, p.seed)
+    isnothing(p.seed) || Random.seed!.(copy_rng, p.seed .+ (1:Threads.nthreads()))
+    save(joinpath(data_dir,"rng-test.jld2"), "rng", copy_rng)
     for var in [:times, :ns, :timesX, :nsX,
                 :inputsE, :inputsI, :inputsP, :inputsEPrev, :inputsIPrev, :inputsPPrev,
                 :u_bale, :u_bali, :uX_plas, :u_bal, :u,

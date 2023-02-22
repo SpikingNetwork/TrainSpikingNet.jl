@@ -40,8 +40,6 @@ function test(; ntrials = 1,
     global wpWeightX = CuArray{p.FloatPrecision}(wpWeightX);
 
     rng = eval(p.rng_func.gpu)
-    isnothing(p.seed) || Random.seed!(rng, p.seed)
-    save(joinpath(data_dir,"rng-test.jld2"), "rng", rng)
 
     # --- test the network --- #
     ntasks = size(X_stim,3)
@@ -49,7 +47,8 @@ function test(; ntrials = 1,
     timess = Array{Any}(undef, ntrials, ntasks);
     utotals = Array{Any}(undef, ntrials, ntasks);
     copy_rng = [typeof(rng)() for _=1:ndevices()];
-    isnothing(p.seed) || Random.seed!.(copy_rng, p.seed)
+    isnothing(p.seed) || Random.seed!.(copy_rng, p.seed .+ (1:Threads.nthreads()))
+    save(joinpath(data_dir,"rng-test.jld2"), "rng", copy_rng)
     for var in [:times, :ns, :timesX, :nsX, :X_stim, :nc0,
                 :w0Index, :w0Weights, :wpWeightX, :wpIndexOut, :wpWeightOut, :X_bal,
                 :inputsE, :inputsI, :inputsP, :inputsEPrev, :inputsIPrev, :inputsPPrev,
