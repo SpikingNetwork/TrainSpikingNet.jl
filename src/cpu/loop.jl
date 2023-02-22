@@ -268,7 +268,7 @@
         # (2) training: spikesXPrev computes the filtered feed-forward spikes, rX
         @static p.LX>0 && if t > stim_off
             @static if kind in [:train, :train_test]
-                for ci = 1:LX
+                @maybethread for ci = 1:LX
                     # if training, filter the spikes
                     @static if typeof(p.tau_plas)<:Number
                         rX[ci] += (-dt*rX[ci] + spikesXPrev[ci])*invtau_plas
