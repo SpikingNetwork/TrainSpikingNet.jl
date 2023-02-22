@@ -88,8 +88,8 @@
         #             - ith col, wpWeightIn[:,i]:
         #                 - weights of the incoming connections to neuron i
         #                 - each row of wpWeightIn will be updated independently by the RLS algorithm.
-        # wpIndexIn:  - Ncell x Kin matrix where Kin = Lexc + Linh
-        #             - ith row, wpIndexIn[i,:]:
+        # wpIndexIn:  - Kin x Ncell matrix where Kin = Lexc + Linh
+        #             - ith col, wpIndexIn[:,i]:
         #                 - Indices of presynaptic neurons that connect to neuron i
         #                 - Fixed throughout the simulation
         # wpWeightOut: - plastic weights used for simulating network activities

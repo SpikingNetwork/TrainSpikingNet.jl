@@ -15,7 +15,7 @@ the first returned matrix (called wpWeightX in the source code) is
 Ncells x LX and contains the (initial) weights of the feed forward
 presynaptic neurons.
 
-the second (wpWeightIn, Ncells columns) and third (wpIndexIn, Ncells rows)
+the second (wpWeightIn, Ncells columns) and third (wpIndexIn, Ncells columns)
 matrices contain the weights and indices of the recurrent presynaptic
 neurons.
 
@@ -42,7 +42,7 @@ function genPlasticWeights(args, ns0)
     
     # define weights_plastic
     wpWeightIn = Array{Float64}(undef, Lexc+Linh, Ncells)
-    wpIndexIn = Array{Int}(undef, Ncells, Lexc+Linh)
+    wpIndexIn = Array{Int}(undef, Lexc+Linh, Ncells)
     ncpIn = Array{Int}(undef, Ncells)
 
     # select random exc and inh presynaptic neurons
@@ -58,8 +58,8 @@ function genPlasticWeights(args, ns0)
             indI = sample(copy_rng[tid], inh_selected, L, replace=false)
 
             # build wpIndexIn
-            wpIndexIn[i, 1:L] = indE
-            wpIndexIn[i, L+1:end] = indI
+            wpIndexIn[1:L, i] = indE
+            wpIndexIn[L+1:end, i] = indI
             ncpIn[i] = 2L
 
             # initial exc and inh plastic weights

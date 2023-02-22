@@ -22,13 +22,13 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
         genPlasticWeights(p.genPlasticWeights_args, ns0)
 
     # get indices of postsynaptic cells for each presynaptic cell
-    wpIndexConvert = zeros(Int, p.Ncells, p.Lexc+p.Linh)
+    wpIndexConvert = zeros(Int, p.Lexc+p.Linh, p.Ncells)
     wpIndexOutV = Vector{Int}[Int[] for _ in 1:p.Ncells]
     for postCell = 1:p.Ncells
         for i = 1:ncpIn[postCell]
             preCell = wpIndexIn[i,postCell]
             push!(wpIndexOutV[preCell], postCell)
-            wpIndexConvert[postCell,i] = length(wpIndexOutV[preCell])
+            wpIndexConvert[i,postCell] = length(wpIndexOutV[preCell])
         end
     end
     ncpOut = [length(wpIndexOutV[preCell]) for preCell = 1:p.Ncells]

@@ -3,7 +3,7 @@ function rls(itask,
              utarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightX, wpWeightIn,
              wpWeightOut, plusone, minusone, exactlyzero, PScale)
 
-    raug[1:Lei,:] = @view r[wpIndexIn']
+    raug[1:Lei,:] = @view r[wpIndexIn]
     raug[Lei+1:end,:] .= s
 
     @static if p.PType == Array

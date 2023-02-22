@@ -5,7 +5,7 @@ function rls(itask,
 
     @maybethread for ci = 1:Ncells
         raug_tid = @view raug[:,Threads.threadid()]
-        raug_tid[1:Lei] = @views r[wpIndexIn[ci,:]]
+        raug_tid[1:Lei] = @views r[wpIndexIn[:,ci]]
         raug_tid[Lei+1:end] = s
         k_tid = @view k[:,Threads.threadid()]
 
