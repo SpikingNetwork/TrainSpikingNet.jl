@@ -26,7 +26,16 @@ function test(; ntrials = 1,
     end
     wpWeightX = load(joinpath(data_dir,"wpWeightX.jld2"), "wpWeightX")
     wpWeightIn = load(joinpath(data_dir,"wpWeightIn-ckpt$R.jld2"))["wpWeightIn"]
-    wpWeightOut = zeros(maximum(wpIndexConvert)+1, p.Ncells+1)
+
+    wpWeightOut = zeros(maximum([length(x) for x in wpIndexOut])+1, p.Ncells+1);
+
+    w0Index = vv2m(w0Index);
+    w0Weights = vv2m(w0Weights);
+    wpIndexIn = vv2m(wpIndexIn);
+    wpIndexOut = vv2m(wpIndexOut);
+    wpIndexConvert = vv2m(wpIndexConvert);
+    wpWeightIn = vv2m(wpWeightIn);
+
     wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn);
 
     # --- set up variables --- #

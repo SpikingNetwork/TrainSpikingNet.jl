@@ -1,9 +1,9 @@
-function wpWeightIn2Out!(wpWeightOut, Ncells, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn)
-    for postCell = 1:Ncells
-        for i = 1:ncpIn[postCell]
-            preCell = wpIndexIn[i, postCell]
-            postCellConvert = wpIndexConvert[i, postCell]
-            wpWeightOut[postCellConvert, preCell] = wpWeightIn[i, postCell]
+function wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn)
+    for postCell in eachindex(wpIndexIn)
+        for i in eachindex(wpIndexIn[postCell])
+            preCell = wpIndexIn[postCell][i]
+            postCellConvert = wpIndexConvert[postCell][i]
+            wpWeightOut[preCell][postCellConvert] = wpWeightIn[postCell][i]
         end
     end
 end

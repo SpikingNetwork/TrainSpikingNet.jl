@@ -6,24 +6,19 @@ function train(; nloops = 1,
                  return_P = false)
 
     # --- load initialization --- #
-    w0Index = load(joinpath(data_dir,"w0Index.jld2"), "w0Index");
-    w0Weights = load(joinpath(data_dir,"w0Weights.jld2"), "w0Weights");
     X_stim = load(joinpath(data_dir,"X_stim.jld2"), "X_stim");
     utarg = load(joinpath(data_dir,"utarg.jld2"), "utarg");
+    w0Index = load(joinpath(data_dir,"w0Index.jld2"), "w0Index");
+    w0Weights = load(joinpath(data_dir,"w0Weights.jld2"), "w0Weights");
     wpIndexIn = load(joinpath(data_dir,"wpIndexIn.jld2"), "wpIndexIn");
     wpIndexOut = load(joinpath(data_dir,"wpIndexOut.jld2"), "wpIndexOut");
     wpIndexConvert = load(joinpath(data_dir,"wpIndexConvert.jld2"), "wpIndexConvert");
     rateX = load(joinpath(data_dir,"rateX.jld2"), "rateX");
-    pLtot = size(wpIndexIn,1) + p.LX
     if isnothing(restore_from_checkpoint)
         R=0
         wpWeightX = load(joinpath(data_dir,"wpWeightX.jld2"), "wpWeightX");
         wpWeightIn = load(joinpath(data_dir,"wpWeightIn.jld2"), "wpWeightIn");
-        P = load(joinpath(data_dir,"P.jld2"), "P");
-        P = paddedviews(0, P...);
-        P = p.PType==SymmetricPacked ?
-                cat((SymmetricPacked(p).tri for p in P)..., dims=2) :
-                cat(P..., dims=3);
+        P = vm2a(load(joinpath(data_dir,"P.jld2"), "P"));
         if p.PPrecision<:Integer
             P .= round.(P .* p.PScale)
         end
@@ -33,7 +28,16 @@ function train(; nloops = 1,
         wpWeightIn = load(joinpath(data_dir,"wpWeightIn-ckpt$R.jld2"), "wpWeightIn");
         P = load(joinpath(data_dir,"P-ckpt$R.jld2"), "P");
     end;
-    wpWeightOut = zeros(maximum(wpIndexConvert)+1, p.Ncells+1);
+
+    wpWeightOut = zeros(maximum([length(x) for x in wpIndexOut])+1, p.Ncells+1);
+
+    w0Index = vv2m(w0Index);
+    w0Weights = vv2m(w0Weights);
+    wpIndexIn = vv2m(wpIndexIn);
+    wpIndexOut = vv2m(wpIndexOut);
+    wpIndexConvert = vv2m(wpIndexConvert);
+    wpWeightIn = vv2m(wpWeightIn);
+
     wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn);
 
     rng = eval(p.rng_func.gpu)
@@ -56,6 +60,7 @@ function train(; nloops = 1,
     wpWeightOut = CuArray{p.FloatPrecision}(wpWeightOut);
     rateX = CuArray{p.FloatPrecision}(rateX);
 
+    pLtot = size(wpIndexIn,1) + p.LX
     raug = CuArray{p.FloatPrecision}(undef, pLtot, p.Ncells)
     k = CuArray{p.FloatPrecision}(undef, pLtot, p.Ncells)
     den = CuArray{p.FloatPrecision}(undef, p.Ncells)

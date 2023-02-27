@@ -28,7 +28,7 @@ function rls(itask,
 
     batched_dot!(e, wpWeightIn, raug[lenrX+1:end,:])
     e .+= u_bal .- @view utarg[learn_seq,:,itask]
-    @static p.LX>0 && (e .+= wpWeightX*rX)
+    @static p.LX>0 && (e .+= wpWeightX * rX)
     delta .= e' .* k .* den'
     wpWeightIn .-= @view delta[lenrX+1:end,:]
     @static p.LX>0 && (wpWeightX .-= (@view delta[1:lenrX,:])')

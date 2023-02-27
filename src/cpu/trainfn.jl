@@ -8,9 +8,6 @@ function train(; nloops = 1,
     # --- load initialization --- #
     w0Index = load(joinpath(data_dir,"w0Index.jld2"), "w0Index");
     w0Weights = load(joinpath(data_dir,"w0Weights.jld2"), "w0Weights");
-    nc0 = load(joinpath(data_dir,"nc0.jld2"), "nc0");
-    ncpIn = load(joinpath(data_dir,"ncpIn.jld2"), "ncpIn");
-    ncpOut = load(joinpath(data_dir,"ncpOut.jld2"), "ncpOut");
     X_stim = load(joinpath(data_dir,"X_stim.jld2"), "X_stim");
     utarg = load(joinpath(data_dir,"utarg.jld2"), "utarg");
     wpIndexIn = load(joinpath(data_dir,"wpIndexIn.jld2"), "wpIndexIn");
@@ -31,8 +28,9 @@ function train(; nloops = 1,
         wpWeightIn = load(joinpath(data_dir,"wpWeightIn-ckpt$R.jld2"), "wpWeightIn");
         P = load(joinpath(data_dir,"P-ckpt$R.jld2"), "P");
     end;
-    wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells);
-    wpWeightIn2Out!(wpWeightOut, p.Ncells, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn);
+
+    wpWeightOut = [Vector{Float64}(undef, length(x)) for x in wpIndexOut];
+    wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn);
 
     rng = eval(p.rng_func.cpu)
     isnothing(p.seed) || Random.seed!(rng, p.seed)
@@ -45,20 +43,17 @@ function train(; nloops = 1,
     P = Vector{PType}(P);
     X_stim = Array{p.FloatPrecision}(X_stim);
     utarg = Array{p.FloatPrecision}(utarg);
-    nc0 = Array{p.IntPrecision}(nc0);
-    ncpIn = Array{p.IntPrecision}(ncpIn);
-    ncpOut = Array{p.IntPrecision}(ncpOut);
-    w0Index = Array{p.IntPrecision}(w0Index);
-    w0Weights = Array{p.FloatPrecision}(w0Weights);
-    wpIndexIn = Array{p.IntPrecision}(wpIndexIn);
-    wpIndexConvert = Array{p.IntPrecision}(wpIndexConvert);
-    wpIndexOut = Array{p.IntPrecision}(wpIndexOut);
-    wpWeightIn = Array{p.FloatPrecision}(wpWeightIn);
+    w0Index = Vector{Vector{p.IntPrecision}}(w0Index);
+    w0Weights = Vector{Vector{p.FloatPrecision}}(w0Weights);
+    wpIndexIn = Vector{Vector{p.IntPrecision}}(wpIndexIn);
+    wpIndexConvert = Vector{Vector{p.IntPrecision}}(wpIndexConvert);
+    wpIndexOut = Vector{Vector{p.IntPrecision}}(wpIndexOut);
+    wpWeightIn = Vector{Vector{p.FloatPrecision}}(wpWeightIn);
+    wpWeightOut = Vector{Vector{p.FloatPrecision}}(wpWeightOut);
     wpWeightX = Array{p.FloatPrecision}(wpWeightX);
-    wpWeightOut = Array{p.FloatPrecision}(wpWeightOut);
     rateX = Array{p.FloatPrecision}(rateX);
 
-    pLtot = maximum(ncpIn) + p.LX
+    pLtot = maximum([length(x) for x in wpIndexIn]) + p.LX
     raug = Matrix{p.FloatPrecision}(undef, pLtot, Threads.nthreads())
     k = Matrix{p.FloatPrecision}(undef, pLtot, Threads.nthreads())
     delta = Matrix{p.FloatPrecision}(undef, pLtot, Threads.nthreads())
@@ -105,9 +100,9 @@ function train(; nloops = 1,
                 spikes, spikesPrev, spikesX, spikesXPrev, u_bale, u_bali,
                 uX_plas, u_bal, u, r, rX, X, nothing, nothing,
                 lastSpike, plusone, exactlyzero, p.PScale, raug, k, delta, v, rng, noise,
-                rndX, sig, P, w0Index, w0Weights, nc0, X_stim, utarg,
+                rndX, sig, P, w0Index, w0Weights, X_stim, utarg,
                 wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightX, wpWeightIn,
-                wpWeightOut, ncpIn, ncpOut, nothing, nothing, rateX,
+                wpWeightOut, nothing, nothing, rateX,
                 cellModel_args)
         else
             _, _, _, _, utotal, _, _, uplastic, _ = loop_train_test(itask,
@@ -121,8 +116,8 @@ function train(; nloops = 1,
                 uX_plas, u_bal, u, r, rX, X, p.wid,
                 p.example_neurons, lastSpike, plusone, exactlyzero, p.PScale,
                 raug, k, delta, v, rng, noise, rndX, sig, P, w0Index, w0Weights,
-                nc0, X_stim, utarg, wpIndexIn, wpIndexOut, wpIndexConvert,
-                wpWeightX, wpWeightIn, wpWeightOut, ncpIn, ncpOut, nothing,
+                X_stim, utarg, wpIndexIn, wpIndexOut, wpIndexConvert,
+                wpWeightX, wpWeightIn, wpWeightOut, nothing,
                 nothing, rateX, cellModel_args)
 
             if p.correlation_var == :utotal

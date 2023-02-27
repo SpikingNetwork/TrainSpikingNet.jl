@@ -6,16 +6,13 @@ sets their weights to predefined values.
 =#
 
 #=
-returned are two matrices each with Ncells columns and a vector of length
-Ncells specifying the static connectivity.
+returned are two vectors of vectors specifying the static connectivity.
 
-the first returned matrix (called w0Index in the source code) contains the
+the first returned vector (called w0Index in the source code) is of length Ncells
+and contains the
 index of the postsynaptic neurons and the second (w0Weights) contains the
 synaptic weights.
 
-the vector (nc0) specifies the number of postsynaptic neurons, or
-equivalently, the length of each ragged column in the two matrices.
-elements beyond the ragged edge in w0Index must by zero.
 =#
 
 skip_autapse(a, i) = i<a ? i : i+1
@@ -29,20 +26,20 @@ function genStaticWeights(args)
     save(joinpath(data_dir,"rng-genStaticWeights.jld2"), "rng", copy_rng)
 
     nc0Max = 2*K  # outdegree
-    nc0 = fill(nc0Max, Ncells)
-    w0Index = zeros(Int, nc0Max, Ncells)
-    w0Weights = zeros(nc0Max, Ncells)
+    w0Index = Vector{Vector{Int}}(undef, Ncells)
+    w0Weights = Vector{Vector{Float64}}(undef, Ncells)
     postcells = 1:Ncells-1
 
-    nc0Max == 0 && return w0Index, w0Weights, nc0
+    nc0Max == 0 && return w0Index, w0Weights
 
     function random_static_recurrent(I, tid)
         for i in I
-            w0Index[1:nc0Max,i] = skip_autapse.(i, sample(copy_rng[tid], postcells, nc0Max, replace=false)) # fixed outdegree nc0Max
+            w0Index[i] = skip_autapse.(i, sample(copy_rng[tid], postcells, nc0Max, replace=false)) # fixed outdegree nc0Max
+            w0Weights[i] = Array{Float64}(undef, nc0Max)
             if i <= Ne
-                @views w0Weights[:,i] .= ifelse.(w0Index[:,i].<=Ne, jee, jie)
+                @views w0Weights[i] .= ifelse.(w0Index[i].<=Ne, jee, jie)
             else
-                @views w0Weights[:,i] .= ifelse.(w0Index[:,i].<=Ne, jei, jii)
+                @views w0Weights[i] .= ifelse.(w0Index[i].<=Ne, jei, jii)
             end
         end
     end
@@ -57,5 +54,5 @@ function genStaticWeights(args)
         wait(tasks[i])
     end
 
-    return w0Index, w0Weights, nc0
+    return w0Index, w0Weights
 end

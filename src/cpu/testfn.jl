@@ -4,9 +4,6 @@ function test(; ntrials = 1,
                 no_plot = false)
 
     # --- load initialization --- #
-    nc0 = load(joinpath(data_dir,"nc0.jld2"), "nc0")
-    ncpIn = load(joinpath(data_dir,"ncpIn.jld2"), "ncpIn")
-    ncpOut = load(joinpath(data_dir,"ncpOut.jld2"), "ncpOut")
     X_stim = load(joinpath(data_dir,"X_stim.jld2"), "X_stim")
     w0Index = load(joinpath(data_dir,"w0Index.jld2"), "w0Index")
     w0Weights = load(joinpath(data_dir,"w0Weights.jld2"), "w0Weights")
@@ -23,17 +20,16 @@ function test(; ntrials = 1,
     end
     wpWeightX = load(joinpath(data_dir,"wpWeightX-ckpt$R.jld2"), "wpWeightX");
     wpWeightIn = load(joinpath(data_dir,"wpWeightIn-ckpt$R.jld2"), "wpWeightIn")
-    wpWeightOut = zeros(maximum(wpIndexConvert), p.Ncells)
-    wpWeightIn2Out!(wpWeightOut, p.Ncells, ncpIn, wpIndexIn, wpIndexConvert, wpWeightIn);
+
+    wpWeightOut = [Vector{Float64}(undef, length(x)) for x in wpIndexOut];
+    wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn);
 
     # --- set up variables --- #
-    nc0 = Array{p.IntPrecision}(nc0)
-    ncpOut = Array{p.IntPrecision}(ncpOut);
     X_stim = Array{p.FloatPrecision}(X_stim);
-    w0Index = Array{p.IntPrecision}(w0Index);
-    w0Weights = Array{p.FloatPrecision}(w0Weights);
-    wpIndexOut = Array{p.IntPrecision}(wpIndexOut);
-    wpWeightOut = Array{p.FloatPrecision}(wpWeightOut);
+    w0Index = Vector{Vector{p.IntPrecision}}(w0Index);
+    w0Weights = Vector{Vector{p.FloatPrecision}}(w0Weights);
+    wpIndexOut = Vector{Vector{p.IntPrecision}}(wpIndexOut);
+    wpWeightOut = Vector{Vector{p.FloatPrecision}}(wpWeightOut);
     wpWeightX = Array{p.FloatPrecision}(wpWeightX);
 
     rng = eval(p.rng_func.cpu)
@@ -83,9 +79,9 @@ function test(; ntrials = 1,
                   copy_v[Threads.threadid()],
                   copy_rng[Threads.threadid()],
                   copy_noise[Threads.threadid()],
-                  nothing, sig, nothing, w0Index, w0Weights, nc0, X_stim, nothing,
-                  nothing, wpIndexOut, nothing, wpWeightX, nothing, wpWeightOut, nothing,
-                  ncpOut, nothing, nothing, nothing, cellModel_args)
+                  nothing, sig, nothing, w0Index, w0Weights, X_stim, nothing,
+                  nothing, wpIndexOut, nothing, wpWeightX, nothing, wpWeightOut,
+                  nothing, nothing, nothing, cellModel_args)
             nss[itrial, itask] = thisns[ineurons_to_test]
             timess[itrial, itask] = thistimes[ineurons_to_test,:]
             utotals[itrial, itask] = thisutotal[:,ineurons_to_test]

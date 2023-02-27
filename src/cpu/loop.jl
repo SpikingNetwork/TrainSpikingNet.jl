@@ -6,8 +6,8 @@
     spikesPrev, spikesX, spikesXPrev, u_bale, u_bali, uX_plas,
     u_bal, u, r, rX, X, wid, example_neurons, lastSpike,
     plusone, exactlyzero, PScale, raug, k, delta, v, rng, noise, rndX, sig,
-    P, w0Index, w0Weights, nc0, X_stim, utarg, wpIndexIn, wpIndexOut,
-    wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut, ncpIn, ncpOut,
+    P, w0Index, w0Weights, X_stim, utarg, wpIndexIn, wpIndexOut,
+    wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
     uavg, ustd, rateX, cellModel_args)
 
     @static kind in [:init, :train, :train_test] && (steps_per_sec = round(Int, 1000/dt))
@@ -84,30 +84,29 @@
         #   - convertWgtIn2Out() converts wpWeightIn to wpWeightOut at the end of rls()
         #
         # wpWeightIn: - plastic weights used for and modified by the RLS training algorithm 
-        #             - Kin x Ncell matrix where Kin = Lexc + Linh is the number of incoming plastic synapses to each neuron
-        #             - ith col, wpWeightIn[:,i]:
+        #             - length Ncell vector of length Kin = Lexc + Linh vectors
+        #             - wpWeightIn[i]:
         #                 - weights of the incoming connections to neuron i
-        #                 - each row of wpWeightIn will be updated independently by the RLS algorithm.
-        # wpIndexIn:  - Kin x Ncell matrix where Kin = Lexc + Linh
-        #             - ith col, wpIndexIn[:,i]:
+        #                 - each i updated independently by the RLS algorithm.
+        # wpIndexIn:  - length Ncell vector of length Kin = Lexc + Linh vectors
+        #             - wpIndexIn[i]:
         #                 - Indices of presynaptic neurons that connect to neuron i
         #                 - Fixed throughout the simulation
         # wpWeightOut: - plastic weights used for simulating network activities
-        #              - Kout x Ncell matrix where Kout is the number of outgoing plastic synapses from each neuron
-        #              - the actual number of outgoing plastic synapses is different across neurons, so we chose a fixed number Kout >= Lexc + Linh
-        #              - ith column, wpWeightOut[:,i]:
+        #              - length Ncell vector of length Kout vectors, where Kout is the number of outgoing plastic synapses from each neuron
+        #              - wpWeightOut[i]:
         #                  - weights of the outgoing connections from neuron i
         #                  - Used to compute inputsP
-        # wpIndexOut:  - Kout x Ncell matrix
-        #              - ith column, wpIndexOut[:,i]:
-        #                  - Indices of postsynaptic neurons that neuron i connect to
+        # wpIndexOut:  - length Ncell vector of length Kout vectors
+        #              - wpIndexOut[i]:
+        #                  - Indices of postsynaptic neurons that neuron i connects to
         #                  - Fixed throughout the simulation. Used to compute inputsP
 
         @static if kind in [:train, :train_test]
             if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
                 wpWeightIn, wpWeightOut = rls(itask,
                         raug, k, delta, Ncells, r, rX, P,
-                        u_bal, utarg, learn_seq, ncpIn, wpIndexIn,
+                        u_bal, utarg, learn_seq, wpIndexIn,
                         wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
                         plusone, exactlyzero, PScale)
                 learn_seq += 1
@@ -233,28 +232,26 @@
         for ci = 1:Ncells
             if lastSpike[ci] == t
                 # network connectivity is divided into two parts:
-                #   - balanced connections (static) 
+                #   - balanced connections (static)
                 #   - plastic connections
 
                 # (1) balanced connections (static)
-                # loop over neurons (indexed by j) postsynaptic to neuron ci.                     
-                # nc0[ci] is the number neurons postsynaptic neuron ci
-                @static p.K>0 && for j = 1:nc0[ci]                       
-                    post_ci = w0Index[j,ci]                 # cell index of j_th postsynaptic neuron
-                    wgt = w0Weights[j,ci]                   # synaptic weight of the connection, ci -> post_ci
-                    if wgt > 0                              # excitatory synapse
+                # loop over neurons (indexed by j) postsynaptic to neuron ci.
+                @static p.K>0 && for j in eachindex(w0Index[ci])
+                    post_ci = w0Index[ci][j]         # cell index of j_th postsynaptic neuron
+                    wgt = w0Weights[ci][j]           # synaptic weight of the connection, ci -> post_ci
+                    if wgt > 0                       # excitatory synapse
                         inputsE[post_ci] += wgt      #   - neuron ci spike's excitatory contribution to post_ci's synaptic current
-                    elseif wgt < 0                          # inhibitory synapse
+                    elseif wgt < 0                   # inhibitory synapse
                         inputsI[post_ci] += wgt      #   - neuron ci spike's inhibitory contribution to post_ci's synaptic current
                     end
                 end #end loop over synaptic projections
 
                 # (2) plastic connections
                 # loop over neurons (indexed by j) postsynaptic to neuron ci. 
-                # ncpOut[ci] is the number neurons postsynaptic neuron ci
-                @static kind in [:train, :test, :train_test] && for j = 1:ncpOut[ci]
-                    post_ci = wpIndexOut[j,ci]                 # cell index of j_th postsynaptic neuron
-                    inputsP[post_ci] += wpWeightOut[j,ci]    # neuron ci spike's contribution to post_ci's synaptic current
+                @static kind in [:train, :test, :train_test] && for j in eachindex(wpIndexOut[ci])
+                    post_ci = wpIndexOut[ci][j]                 # cell index of j_th postsynaptic neuron
+                    inputsP[post_ci] += wpWeightOut[ci][j]    # neuron ci spike's contribution to post_ci's synaptic current
                 end
             end
         end #end loop over neurons

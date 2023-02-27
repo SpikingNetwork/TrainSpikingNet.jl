@@ -1,6 +1,6 @@
 module TrainSpikingNet
 
-using LinearAlgebra, LinearAlgebra.BLAS, Random, JLD2, StatsBase, Statistics, SymmetricFormats, UnPack, PaddedViews
+using LinearAlgebra, LinearAlgebra.BLAS, Random, JLD2, StatsBase, Statistics, SymmetricFormats, UnPack
 using CUDA, NNlib, NNlibCUDA, BatchedBLAS
 
 using NLsolve
@@ -18,6 +18,29 @@ macro maybethread(loop)
     else
         quote $(esc(loop)); end 
     end
+end
+
+function vv2m(vv)
+    m = zeros(eltype(eltype(vv)), maximum(length(x) for x in vv), length(vv))
+    for i in eachindex(vv)
+        m[1:length(vv[i]), i] .= vv[i]
+    end
+    return m
+end
+
+function vm2a(_P)
+    if typeof(_P[1])<:SymmetricPacked
+        P = zeros(eltype(_P[1]), maximum(length(x.tri) for x in _P), length(_P))
+        for i in eachindex(_P)
+            P[1:length(_P[i].tri), i] .= _P[i].tri
+        end
+    else
+        P = zeros(eltype(_P[1]), maximum(size(x) for x in _P)..., length(_P))
+        for i in eachindex(_P)
+            P[1:size(_P[i],1), 1:size(_P[i],2), i] .= _P[i]
+        end
+    end
+    return P
 end
 
 include("paramfn.jl")

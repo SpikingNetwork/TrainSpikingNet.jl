@@ -2,7 +2,7 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
     @assert utarg_file === nothing || spikerate_file === nothing
 
     # --- initialization --- #
-    w0Index, w0Weights, nc0 = genStaticWeights(p.genStaticWeights_args)
+    w0Index, w0Weights = genStaticWeights(p.genStaticWeights_args)
     rateX = genRateX(p.genRateX_args)
 
     itask = 1
@@ -15,29 +15,23 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
         u_bale, u_bali, nothing, u_bal, u, nothing, nothing,
         X, nothing, nothing, lastSpike, nothing, nothing, nothing, nothing,
         nothing, nothing, v, p.rng, noise, rndX, sig, nothing, w0Index,
-        w0Weights, nc0, nothing, nothing, nothing, nothing, nothing, nothing,
-        nothing, nothing, nothing, nothing, uavg, ustd, rateX, cellModel_args)
+        w0Weights, nothing, nothing, nothing, nothing, nothing, nothing,
+        nothing, nothing, uavg, ustd, rateX, cellModel_args)
 
-    wpWeightX, wpWeightIn, wpIndexIn, ncpIn =
+    wpWeightX, wpWeightIn, wpIndexIn =
         genPlasticWeights(p.genPlasticWeights_args, ns0)
 
     # get indices of postsynaptic cells for each presynaptic cell
-    ncpInMax = maximum(ncpIn)
-    wpIndexConvert = zeros(Int, ncpInMax, p.Ncells)
-    wpIndexOutV = Vector{Int}[Int[] for _ in 1:p.Ncells]
+    ncpInMax = maximum([length(x) for x in wpIndexIn])
+    wpIndexOut = Vector{Int}[Int[] for _ in 1:p.Ncells]
+    wpIndexConvert = Vector{Vector{Int}}(undef, p.Ncells)
     for postCell = 1:p.Ncells
-        for i = 1:ncpIn[postCell]
-            preCell = wpIndexIn[i,postCell]
-            push!(wpIndexOutV[preCell], postCell)
-            wpIndexConvert[i,postCell] = length(wpIndexOutV[preCell])
+        wpIndexConvert[postCell] = Vector{Int}(undef, length(wpIndexIn[postCell]))
+        for i in eachindex(wpIndexIn[postCell])
+            preCell = wpIndexIn[postCell][i]
+            push!(wpIndexOut[preCell], postCell)
+            wpIndexConvert[postCell][i] = length(wpIndexOut[preCell])
         end
-    end
-    ncpOut = [length(wpIndexOutV[preCell]) for preCell = 1:p.Ncells]
-
-    # get weight, index of outgoing connections
-    wpIndexOut = zeros(Int, maximum(ncpOut), p.Ncells)
-    for preCell = 1:p.Ncells
-        wpIndexOut[1:ncpOut[preCell],preCell] = wpIndexOutV[preCell]
     end
 
     # load or calculate target synaptic currents
@@ -77,11 +71,12 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
     Pinv_X = Diagonal(repeat([p.penlamFF], p.LX))
     P = Array{p.PType}(undef, p.Ncells)
     Threads.@threads for i = 1:p.Ncells
-        Pinv_L2 = Diagonal(repeat([p.penlambda], ncpIn[i]));
-        vec10 = wpWeightIn[1:ncpIn[i], i] .> 0
-        vec01 = wpWeightIn[1:ncpIn[i], i] .< 0
+        ncpIn = length(wpIndexIn[i])
+        Pinv_L2 = Diagonal(repeat([p.penlambda], ncpIn));
+        vec10 = wpWeightIn[i] .> 0
+        vec01 = wpWeightIn[i] .< 0
         Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01')
-        Pinv = zeros(p.LX+ncpIn[i], p.LX+ncpIn[i])
+        Pinv = zeros(p.LX+ncpIn, p.LX+ncpIn)
         Pinv[1:p.LX, 1:p.LX] = Pinv_X
         Pinv[p.LX+1:end, p.LX+1:end] = Pinv_L2 + Pinv_rowsum
         P[i] = p.PType(Symmetric(UpperTriangular(Pinv) \ I))
@@ -90,7 +85,6 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
     #----------- save initialization --------------#
     save(joinpath(data_dir,"w0Index.jld2"), "w0Index", w0Index)
     save(joinpath(data_dir,"w0Weights.jld2"), "w0Weights", w0Weights)
-    save(joinpath(data_dir,"nc0.jld2"), "nc0", nc0)
     save(joinpath(data_dir,"X_stim.jld2"), "X_stim", X_stim)
     save(joinpath(data_dir,"utarg.jld2"), "utarg", utarg)
     save(joinpath(data_dir,"wpIndexIn.jld2"), "wpIndexIn", wpIndexIn)
@@ -98,11 +92,9 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
     save(joinpath(data_dir,"wpIndexConvert.jld2"), "wpIndexConvert", wpIndexConvert)
     save(joinpath(data_dir,"wpWeightX.jld2"), "wpWeightX", wpWeightX)
     save(joinpath(data_dir,"wpWeightIn.jld2"), "wpWeightIn", wpWeightIn)
-    save(joinpath(data_dir,"ncpIn.jld2"), "ncpIn", ncpIn)
-    save(joinpath(data_dir,"ncpOut.jld2"), "ncpOut", ncpOut)
     save(joinpath(data_dir,"P.jld2"), "P", P)
     save(joinpath(data_dir,"rateX.jld2"), "rateX", rateX)
 
     return (; w0Index, w0Weights, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightX, wpWeightIn,
-              nc0, X_stim, utarg, ncpIn, ncpOut, P, rateX)
+              X_stim, utarg, P, rateX)
 end

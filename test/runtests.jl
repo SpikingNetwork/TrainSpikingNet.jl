@@ -1,4 +1,4 @@
-using TrainSpikingNet, Test, JLD2, SymmetricFormats, CUDA, PaddedViews
+using TrainSpikingNet, Test, JLD2, SymmetricFormats, CUDA
 
 testgpu = true
 try
@@ -51,11 +51,7 @@ function compare_cpu_to_gpu(kind;
     if Pmatrix && testgpu
         cpu_P = load(joinpath(@__DIR__, "scratch", "cpu-$kind", "P-ckpt$nloops.jld2"), "P")
         gpu_P = load(joinpath(@__DIR__, "scratch", "gpu-$kind", "P-ckpt$nloops.jld2"), "P")
-        cpu_P = paddedviews(0, cpu_P...);
-        @test isapprox(kind=="SymmetricPacked" ?
-                           cat((SymmetricPacked(x).tri for x in cpu_P)..., dims=2) :
-                           cat(cpu_P..., dims=3),
-                       gpu_P)
+        @test isapprox(TrainSpikingNet.vm2a(cpu_P), gpu_P)
     end
 
     if weights && testgpu
@@ -63,7 +59,7 @@ function compare_cpu_to_gpu(kind;
                               "wpWeightIn")
         gpu_wpWeightIn = load(joinpath(@__DIR__, "scratch", "gpu-$kind", "wpWeightIn-ckpt$nloops.jld2"),
                               "wpWeightIn")
-        @test isapprox(cpu_wpWeightIn, gpu_wpWeightIn)
+        @test isapprox(TrainSpikingNet.vv2m(cpu_wpWeightIn), gpu_wpWeightIn)
     end
 
     if correlation != nothing
@@ -304,8 +300,8 @@ end
                   "genPlasticWeights-diffplastic.jl"), "w") do fileout 
         for line in readlines(joinpath(@__DIR__, "..", "src", "genPlasticWeights-erdos-renyi.jl"))
             if contains(line, "return")
-                println(fileout, "ncpIn[1] -=1")
-                println(fileout, "wpIndexIn[end,1] = 0")
+                println(fileout, "pop!(wpIndexIn[1])")
+                println(fileout, "pop!(wpWeightIn[1])")
             end
             println(fileout, line)
         end
