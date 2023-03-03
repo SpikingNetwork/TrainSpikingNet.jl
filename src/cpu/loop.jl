@@ -1,6 +1,6 @@
 @eval function $(Symbol("loop_", kind))(itask,
-    learn_every, stim_on, stim_off, train_time, dt, Nsteps, Ncells, Ne,
-    LX, refrac, learn_step, invtau_bale, invtau_bali, invtau_plas, X_bal,
+    learn_every, stim_on, stim_off, train_time, dt, Nsteps, u0_skip_steps, u0_ncells,
+    Ncells, Ne, LX, refrac, learn_step, invtau_bale, invtau_bali, invtau_plas, X_bal,
     maxTimes, times, ns, timesX, nsX, inputsE,
     inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes,
     spikesPrev, spikesX, spikesXPrev, u_bale, u_bali, uX_plas,
@@ -10,9 +10,7 @@
     wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
     uavg, ustd, rateX, cellModel_args)
 
-    @static kind in [:init, :train, :train_test] && (steps_per_sec = round(Int, 1000/dt))
-
-    @static (kind in [:train, :train_test] && p.LX>0) && (rateX /= steps_per_sec)
+    @static (kind in [:train, :train_test] && p.LX>0) && (rateX *= dt/1000)
 
     @static if kind in [:test, :train_test]
         learn_nsteps = round(Int, (train_time - stim_off)/learn_every)
@@ -153,10 +151,10 @@
             end
 
             @static if kind == :init
-                if ti > 1000/dt # 1000 ms
-                    uavg[ci] += u[ci] # save u
-                    if ci <= 1000
-                        ustd[ti - steps_per_sec, ci] = u[ci]
+                if ti > u0_skip_steps 
+                    uavg[ci] += u[ci]
+                    if ci <= u0_ncells
+                        ustd[ti - u0_skip_steps, ci] = u[ci]
                     end
                 end
             end
@@ -311,7 +309,7 @@
         println("mean excitatory firing rate: ", 1000*mean(ns[1:Ne])/train_time, " Hz")
         println("mean inhibitory firing rate: ", 1000*mean(ns[(Ne+1):Ncells])/train_time, " Hz")
                     
-        return uavg ./ (Nsteps - steps_per_sec), ns, mean(std(ustd, dims=1))
+        return uavg ./ (Nsteps - u0_skip_steps), ns, mean(std(ustd, dims=1))
     end
 
     @static if kind in [:test, :train_test]

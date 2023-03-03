@@ -35,6 +35,8 @@ stim_off       = 1000.0
 train_time     = stim_off + train_duration
 
 Nsteps = round(Int, train_time/dt)
+u0_skip_time = 1000  # (ms)
+u0_ncells = 1000
 
 
 # --- external stimulus plugin --- #

@@ -52,7 +52,7 @@ function test(; ntrials = 1,
         for itask = 1:ntasks
             t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop_test(itask,
                   p.learn_every, p.stim_on, p.stim_off,
-                  p.train_time, p.dt, p.Nsteps, p.Ncells,
+                  p.train_time, p.dt, p.Nsteps, nothing, nothing, p.Ncells,
                   nothing, p.LX, p.refrac, learn_step,
                   invtau_bale, invtau_bali, invtau_plas, X_bal, maxTimes,
                   copy_times[Threads.threadid()],

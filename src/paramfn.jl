@@ -8,7 +8,7 @@ module Param
             penlambda, penlamFF, penmu,
             learn_every,
             train_duration, stim_on, stim_off, train_time,
-            dt, Nsteps,
+            dt, Nsteps, u0_skip_time, u0_ncells,
             Ncells, Ne, Ni,
             tau_meme, tau_memi,
             K, LX,

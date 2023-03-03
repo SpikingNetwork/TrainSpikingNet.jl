@@ -7,8 +7,8 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
 
     itask = 1
     uavg0, ns0, ustd0 = loop_init(itask,
-        nothing, nothing, p.stim_off, p.train_time, p.dt,
-        p.Nsteps, p.Ncells, p.Ne, p.LX, p.refrac,
+        nothing, nothing, p.stim_off, p.train_time, p.dt, p.Nsteps,
+        u0_skip_steps, p.u0_ncells, p.Ncells, p.Ne, p.LX, p.refrac,
         learn_step, invtau_bale, invtau_bali, nothing, X_bal, nothing,
         nothing, ns, nothing, nsX, inputsE, inputsI, nothing,
         inputsEPrev, inputsIPrev, nothing, nothing, nothing, nothing, nothing,
