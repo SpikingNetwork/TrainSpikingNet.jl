@@ -134,7 +134,7 @@ Linh = L
 LX = 0
 
 wpscale = sqrt(L) * 2.0
-genPlasticWeights_file  = "contrib/genPlasticWeights-erdos-renyi-with-Potjans.jl"
+genPlasticWeights_file  = "contrib/genPlasticWeights-erdos-renyi-potjans.jl"
 
 frac =0.25
 genPlasticWeights_args = (; Ncells, Ne, L, Lexc, Linh, LX, rng,
