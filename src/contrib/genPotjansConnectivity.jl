@@ -25,16 +25,16 @@ function potjans_params(ccu, scale=1.0::Float64)
     #0  0]
     #Vector{Vector{Float32}}
 
-    conn_probs = Matrix{Float32}[0.1009,  0.1689, 0.0437, 0.0818, 0.0323, 0.,     0.0076, 0.   
-                                    0.1346,   0.1371, 0.0316, 0.0515, 0.0755, 0.,     0.0042, 0.    
-                                    0.0077,   0.0059, 0.0497, 0.135,  0.0067, 0.0003, 0.0453, 0.    
-                                    0.0691,   0.0029, 0.0794, 0.1597, 0.0033, 0.,     0.1057, 0.    
-                                    0.1004,   0.0622, 0.0505, 0.0057, 0.0831, 0.3726, 0.0204, 0.    
-                                    0.0548,   0.0269, 0.0257, 0.0022, 0.06,   0.3158, 0.0086, 0.    
-                                    0.0156,   0.0066, 0.0211, 0.0166, 0.0572, 0.0197, 0.0396, 0.2252
-                                    0.0364,   0.001,  0.0034, 0.0005, 0.0277, 0.008,  0.0658, 0.1443 ]
+    conn_probs = Matrix{Float64}([0.1009  0.1689 0.0437 0.0818 0.0323 0.0     0.0076 0.    
+                                    0.1346   0.1371 0.0316 0.0515 0.0755 0.     0.0042 0.    
+                                    0.0077   0.0059 0.0497 0.135  0.0067 0.0003 0.0453 0.    
+                                    0.0691   0.0029 0.0794 0.1597 0.0033 0.     0.1057 0.    
+                                    0.1004   0.0622 0.0505 0.0057 0.0831 0.3726 0.0204 0.    
+                                    0.0548   0.0269 0.0257 0.0022 0.06   0.3158 0.0086 0.    
+                                    0.0156   0.0066 0.0211 0.0166 0.0572 0.0197 0.0396 0.2252
+                                    0.0364   0.001  0.0034 0.0005 0.0277 0.008  0.0658 0.1443 ])
 
-    layer_names = Vector{String}["23E","23I","4E","4I","5E", "5I", "6E", "6I"]
+    layer_names = Vector{String}(["23E","23I","4E","4I","5E", "5I", "6E", "6I"])
     #transform_matrix_ind = zip(collect(1:8),[1,3,5,7,2,4,6,8])
     
     # hard coded stuff is manipulated below:
@@ -46,7 +46,7 @@ function potjans_params(ccu, scale=1.0::Float64)
     ## Rearrange the whole matrix so that excitatory connections form a top partition 
     #and inhibitory neurons form a bottom partition.
 
-    cumulative = Dict{String, Float32}() 
+    cumulative = Dict{String, Vector{Int64}}() 
     v_old=1
     for (k,v) in pairs(ccu)
         ## A cummulative cell count
@@ -56,7 +56,8 @@ function potjans_params(ccu, scale=1.0::Float64)
     return (cumulative,ccu,layer_names,columns_conn_probs,conn_probs)
 end
 
-function build_matrix(cumulative::Dict{String, Float32}, conn_probs::Matrix{Float32},Ncells,g_strengths)
+#function build_matrix(cumulative::Dict{String, Float32}, conn_probs::Matrix{Float32},Ncells,g_strengths)
+function build_matrix(cumulative::Dict{String, Vector{Int64}}, conn_probs::Matrix{Float64}, Ncells::Int32, g_strengths::Vector{Float64})    
     """
     Iteration logic seperated from synapse selection logic for readability only.
     """
@@ -76,7 +77,7 @@ function build_matrix(cumulative::Dict{String, Float32}, conn_probs::Matrix{Floa
     Lexcp = spzeros(Float64,Ncells,Ncells)
     Linhp = spzeros(Float64,Ncells,Ncells)
 
-    @showprogress for (i,(k,v)) in enumerate(pairs(cumulative))
+    @inbounds for (i,(k,v)) in enumerate(pairs(cumulative))
         @inbounds for src in v
             @inbounds for (j,(k1,v1)) in enumerate(pairs(cumulative))
                 @inbounds for tgt in v1
@@ -84,7 +85,7 @@ function build_matrix(cumulative::Dict{String, Float32}, conn_probs::Matrix{Floa
                         @assert src!=0
                         @assert tgt!=0
                         
-                        prob = conn_probs[i][j]
+                        prob = conn_probs[i,j]#[1]
                         if rand()<prob
                             #setindex!(A, X, inds...)
                             append!(edge_dict[src],tgt)
@@ -125,21 +126,23 @@ function index_assignment!(item,w0Weights,Lexc,Linh,g_strengths,Ne,Ni)
                 d = Normal(w_234,w_rel_234)
                 td = truncated(d, 0.0, Inf)
                 weight = abs(rand(td, 1))
-                setindex!(w0Weights, tgt, src, weight)
-                #w0Weights[tgt,src] = weight 
+                #setindex!(w0Weights, tgt, src, weight)
+                w0Weights[tgt,src] = weight 
             else         
-                setindex!(w0Weights, tgt, src, jee)
+                #setindex!(w0Weights, tgt, src, jee)
 
-                #w0Weights[tgt,src] = jee
+                w0Weights[tgt,src] = jee
             end
         else# meaning if the same as a logic: occursin("I",k1) is true                   
-            #w0Weights[tgt,src] = jei
-            setindex!(w0Weights, tgt, src, jei)
+            w0Weights[tgt,src] = jei
+            #setindex!(w0Weights, tgt, src, jei)
 
         end
-        #Lexc[tgt,src] = view(w0Weights,tgt,src)
-        setindex!(Lexc, tgt, src, view(w0Weights,tgt,src))
+        Lexc[tgt,src] = w0Weights[tgt,src]
 
+        #Lexc[tgt,src] = view(w0Weights,tgt,src)[:]
+        #setindex!(Lexc, tgt, src, view(w0Weights,tgt,src))
+        #copyto!(Lexc, CartesianIndices(tgt,src), w0Weights, CartesianIndices(tgt,src))
         Ne=Ne+1
     else
         @assert occursin("I",k) 
@@ -150,21 +153,12 @@ function index_assignment!(item,w0Weights,Lexc,Linh,g_strengths,Ne,Ni)
             w0Weights[tgt,src] = wig# -jii  
             @assert occursin("I",k1) 
         end
-        #Linh[tgt,src] = view(w0Weights,tgt,src)
-        setindex!(Linh, tgt, src, view(w0Weights,tgt,src))
+        Linh[tgt,src] = w0Weights[tgt,src]
+        #setindex!(Linh, tgt, src, view(w0Weights,tgt,src))
+        #copyto!(Linh, CartesianIndices(tgt,src), w0Weights, CartesianIndices(tgt,src))
 
         Ni=Ni+1
-    end
-    """
-    if false    # if verbose
-        if Lexc[tgt,src] <0.0
-            @show(k,k1,Lexc[tgt,src])
-        end
-        if Lexc[tgt,src] <0.0
-            @show(k,k1,Lexc[tgt,src])
-        end
-    end
-    """        
+    end        
     (Ne,Ni)
 end
 
@@ -231,7 +225,6 @@ function genStaticWeights(args)
     end
     if true
         UnicodePlots.spy(w0Weights) |> display
-        UnicodePlots.spy(WpWeights) |> display
         UnicodePlots.spy(Lexc) |> display
         UnicodePlots.spy(Linh) |> display    
 
