@@ -48,45 +48,6 @@ function potjans_params(ccu, scale=1.0::Float64)
     return (cumulative,ccu,layer_names,columns_conn_probs,conn_probs)
 end
 """
-This function contains iteration logic seperated from synapse selection logic for readability only.
-"""
-function build_matrix(cumulative::Dict{String, Vector{Int64}}, conn_probs::Matrix{Float64}, Ncells::Int32, g_strengths::Vector{Float64})    
-
-    edge_dict = Dict{Float32, Array}()
-    for src in 1:Ncells
-        edge_dict[src] = Int64[]
-    end    
-    w0Weights = spzeros(Float64,Ncells,Ncells)
-    Nsyne = 0 
-    Nsyni = 0
-    Nsynep = 0 
-    Nsynip = 0
-    Lexc = spzeros(Float64,Ncells,Ncells)
-    Linh = spzeros(Float64,Ncells,Ncells)
-    Lexcp = spzeros(Float64,Ncells,Ncells)
-    Linhp = spzeros(Float64,Ncells,Ncells)
-
-    @inbounds for (i,(k,v)) in enumerate(pairs(cumulative))
-        @inbounds for src in v
-            @inbounds for (j,(k1,v1)) in enumerate(pairs(cumulative))
-                @inbounds for tgt in v1
-                    if src!=tgt                        
-                        prob = conn_probs[i,j]#[1]
-                        if rand()<prob
-                            append!(edge_dict[src],tgt)
-                            item = src,tgt,k,k1
-                            (Nsyne,Nsyni) = index_assignment!(item,w0Weights,Lexc,Linh,g_strengths,Nsyne,Nsyni)
-                        end
-                        @assert src!=0
-                        @assert tgt!=0
-                    end
-                end
-            end
-        end
-    end
-    return w0Weights,edge_dict,Nsyne,Nsyni,Lexc,Linh
-end
-"""
 This function contains synapse selection logic seperated from iteration logic for readability only.
 Used inside the nested iterator inside build_matrix.
 Ideally iteration could flatten to support the readability of subsequent code.
@@ -136,7 +97,47 @@ function index_assignment!(item,w0Weights,Lexc,Linh,g_strengths,Ne,Ni)
     end        
     (Ne,Ni)
 end
+"""
+This function contains iteration logic seperated from synapse selection logic for readability only.
+"""
+function build_matrix(cumulative::Dict{String, Vector{Int64}}, conn_probs::Matrix{Float64}, Ncells::Int32, g_strengths::Vector{Float64})    
 
+    edge_dict = Dict{Float32, Array}()
+    for src in 1:Ncells
+        edge_dict[src] = Int64[]
+    end    
+    #w0Weights = spzeros(Float64,Ncells,Ncells)
+    w0Weights = zeros(Float64, (Ncells, Ncells))
+    Nsyne = 0 
+    Nsyni = 0
+    Nsynep = 0 
+    Nsynip = 0
+    Lexc = zeros(Float64, (Ncells, Ncells))
+    Linh = zeros(Float64, (Ncells, Ncells))
+
+    #Lexc = spzeros(Float64,Ncells,Ncells)
+    #Linh = spzeros(Float64,Ncells,Ncells)
+
+    @inbounds for (i,(k,v)) in enumerate(pairs(cumulative))
+        @inbounds for src in v
+            @inbounds for (j,(k1,v1)) in enumerate(pairs(cumulative))
+                @inbounds for tgt in v1
+                    if src!=tgt                        
+                        prob = conn_probs[i,j]
+                        if rand()<prob
+                            append!(edge_dict[src],tgt)
+                            item = src,tgt,k,k1
+                            (Nsyne,Nsyni) = index_assignment!(item,w0Weights,Lexc,Linh,g_strengths,Nsyne,Nsyni)
+                        end
+                        @assert src!=0
+                        @assert tgt!=0
+                    end
+                end
+            end
+        end
+    end
+    return w0Weights,edge_dict,Nsyne,Nsyni,Lexc,Linh
+end
 """
 Build the matrix from the Potjans parameters.
 ###
@@ -187,7 +188,7 @@ end
 
 function genStaticWeights(args)
     (edge_dict,w0Weights,Ne,Ni,Lexc,Linh) = potjans_weights(args)
-    dropzeros!(w0Weights)
+    #dropzeros!(w0Weights)
     Ncells = args[1]
     nc0,w0Index = build_w0Index(edge_dict,Ncells)
     return w0Index, w0Weights, nc0
