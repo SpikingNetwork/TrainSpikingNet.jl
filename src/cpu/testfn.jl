@@ -21,16 +21,16 @@ function test(; ntrials = 1,
     wpWeightX = load(joinpath(data_dir,"wpWeightX-ckpt$R.jld2"), "wpWeightX");
     wpWeightIn = load(joinpath(data_dir,"wpWeightIn-ckpt$R.jld2"), "wpWeightIn")
 
-    wpWeightOut = [Vector{Float64}(undef, length(x)) for x in wpIndexOut];
+    wpWeightOut = [Vector{TCharge}(undef, length(x)) for x in wpIndexOut];
     wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn);
 
     # --- set up variables --- #
-    X_stim = Array{p.FloatPrecision}(X_stim);
+    X_stim = Array{TCurrent}(X_stim);
     w0Index = Vector{Vector{p.IntPrecision}}(w0Index);
-    w0Weights = Vector{Vector{p.FloatPrecision}}(w0Weights);
+    w0Weights = Vector{Vector{TCharge}}(w0Weights);
     wpIndexOut = Vector{Vector{p.IntPrecision}}(wpIndexOut);
-    wpWeightOut = Vector{Vector{p.FloatPrecision}}(wpWeightOut);
-    wpWeightX = Array{p.FloatPrecision}(wpWeightX);
+    wpWeightOut = Vector{Vector{TCharge}}(wpWeightOut);
+    wpWeightX = Array{TCharge}(wpWeightX);
 
     rng = eval(p.rng_func.cpu)
 
@@ -81,7 +81,8 @@ function test(; ntrials = 1,
                   copy_noise[Threads.threadid()],
                   nothing, sig, nothing, w0Index, w0Weights, X_stim, nothing,
                   nothing, wpIndexOut, nothing, wpWeightX, nothing, wpWeightOut,
-                  nothing, nothing, nothing, cellModel_args)
+                  nothing, nothing, nothing, cellModel_args,
+                  TCurrent, TCharge, TTime)
             nss[itrial, itask] = thisns[ineurons_to_test]
             timess[itrial, itask] = thistimes[ineurons_to_test,:]
             utotals[itrial, itask] = thisutotal[:,ineurons_to_test]
@@ -91,7 +92,8 @@ function test(; ntrials = 1,
 
     save(joinpath(data_dir,"test.jld2"),
          "ineurons_to_test", ineurons_to_test,
-         "nss", nss, "timess", timess, "utotals", utotals)
+         "nss", nss, "timess", timess, "utotals", utotals,
+         "init_code", init_code)
 
     no_plot || plot(joinpath(data_dir, "test.jld2"), ineurons_to_plot = ineurons_to_test)
 

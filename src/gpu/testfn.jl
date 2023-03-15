@@ -27,7 +27,7 @@ function test(; ntrials = 1,
     wpWeightX = load(joinpath(data_dir,"wpWeightX.jld2"), "wpWeightX")
     wpWeightIn = load(joinpath(data_dir,"wpWeightIn-ckpt$R.jld2"))["wpWeightIn"]
 
-    wpWeightOut = zeros(maximum([length(x) for x in wpIndexOut])+1, p.Ncells+1);
+    wpWeightOut = zeros(TCharge, maximum([length(x) for x in wpIndexOut])+1, p.Ncells+1);
 
     w0Index = vv2m(w0Index);
     w0Weights = vv2m(w0Weights);
@@ -39,12 +39,12 @@ function test(; ntrials = 1,
     wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn);
 
     # --- set up variables --- #
-    global X_stim = CuArray{p.FloatPrecision}(X_stim);
+    global X_stim = CuArray{TCurrent}(X_stim);
     global w0Index = CuArray{p.IntPrecision}(w0Index);
-    global w0Weights = CuArray{p.FloatPrecision}(w0Weights);
+    global w0Weights = CuArray{TCharge}(w0Weights);
     global wpIndexOut = CuArray{p.IntPrecision}(wpIndexOut);
-    global wpWeightOut = CuArray{p.FloatPrecision}(wpWeightOut);
-    global wpWeightX = CuArray{p.FloatPrecision}(wpWeightX);
+    global wpWeightOut = CuArray{TCharge}(wpWeightOut);
+    global wpWeightX = CuArray{TCharge}(wpWeightX);
 
     rng = eval(p.rng_func.gpu)
 
@@ -121,7 +121,8 @@ function test(; ntrials = 1,
                   nothing, nothing,
                   copy_wpWeightOut[idevice],
                   nothing,
-                  cellModel_args);
+                  cellModel_args,
+                  TCurrent, TCharge, TTime);
             nss[itrial, itask] = Array(thisns[ineurons_to_test])
             timess[itrial, itask] = Array(thistimes[ineurons_to_test,:])
             utotals[itrial, itask] = Array(thisutotal[:,ineurons_to_test])
@@ -131,12 +132,10 @@ function test(; ntrials = 1,
 
     save(joinpath(data_dir, "test.jld2"),
          "ineurons_to_test", ineurons_to_test,
-         "nss", nss, "timess", timess, "utotals", utotals)
+         "nss", nss, "timess", timess, "utotals", utotals,
+         "init_code", init_code)
 
-    no_plot || run(`$(Base.julia_cmd())
-                    $(joinpath(@__DIR__, "..", "plot.jl"))
-                    -i $(repr(ineurons_to_test))
-                    $(joinpath(data_dir, "test.jld2"))`);
+    no_plot || plot(joinpath(data_dir, "test.jld2"), ineurons_to_plot = ineurons_to_test)
 
     return (; nss, timess, utotals)
 end

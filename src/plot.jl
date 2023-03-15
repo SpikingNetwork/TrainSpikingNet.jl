@@ -22,4 +22,6 @@ end
 
 parsed_args = parse_args(aps)
 
-plot(parsed_args["test_file"], ineurons_to_plot = parsed_args["ineurons_to_plot"])
+plot(parsed_args["test_file"],
+     ineurons_to_plot = parsed_args["ineurons_to_plot"],
+     load_init_code=true)

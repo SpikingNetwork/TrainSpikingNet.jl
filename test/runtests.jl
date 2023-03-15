@@ -1,4 +1,8 @@
-using TrainSpikingNet, Test, JLD2, SymmetricFormats, CUDA
+using TrainSpikingNet, Test, JLD2, SymmetricFormats, CUDA, Unitful
+
+# https://github.com/PainterQubits/Unitful.jl/issues/644
+import Unitful: ustrip
+@inline ustrip(A::StridedArray{Q}) where {Q <: Quantity} = reinterpret(Unitful.numtype(Q), A)
 
 testgpu = true
 try
@@ -95,6 +99,12 @@ mkpath(joinpath(@__DIR__, "scratch"))
         cpu_wpWeightIn_kind = load(joinpath(@__DIR__, "scratch", "cpu-$kind", "wpWeightIn-ckpt1.jld2"),
                                    "wpWeightIn")
         @test isapprox(cpu_wpWeightIn_Array, cpu_wpWeightIn_kind)
+
+        cpu_P_Array = load(joinpath(@__DIR__, "scratch", "cpu-Array", "P-ckpt1.jld2"),
+                                    "P")
+        cpu_P_kind = load(joinpath(@__DIR__, "scratch", "cpu-$kind", "P-ckpt1.jld2"),
+                                   "P")
+        @test isapprox(cpu_P_Array, cpu_P_kind)
     end
 end
 
@@ -320,4 +330,79 @@ end
         end
     end
     compare_cpu_to_gpu("diffplastic-LX=$LX")
+end
+
+@testset "units" begin
+    mkdir(joinpath(@__DIR__, "scratch", "cpu-units"))
+    cp(joinpath(@__DIR__, "param-units.jl"),
+       joinpath(@__DIR__, "scratch", "cpu-units", "param.jl"))
+    compare_cpu_to_gpu("units", Pmatrix=false, weights=false)
+
+    cpu_wpWeightIn_Symmetric = load(joinpath(@__DIR__, "scratch", "cpu-Symmetric", "wpWeightIn-ckpt1.jld2"),
+                                    "wpWeightIn")
+    cpu_wpWeightIn_units = load(joinpath(@__DIR__, "scratch", "cpu-units", "wpWeightIn-ckpt1.jld2"),
+                                "wpWeightIn")
+    @test isapprox(cpu_wpWeightIn_Symmetric, ustrip.(cpu_wpWeightIn_units))
+
+    cpu_P_Symmetric = load(joinpath(@__DIR__, "scratch", "cpu-Symmetric", "P-ckpt1.jld2"),
+                           "P")
+    cpu_P_units = load(joinpath(@__DIR__, "scratch", "cpu-units", "P-ckpt1.jld2"),
+                       "P")
+    @test isapprox(cpu_P_Symmetric, cpu_P_units)
+
+    if testgpu
+        gpu_wpWeightIn_Symmetric = load(joinpath(@__DIR__, "scratch", "gpu-Symmetric", "wpWeightIn-ckpt1.jld2"),
+                                        "wpWeightIn")
+        gpu_wpWeightIn_units = load(joinpath(@__DIR__, "scratch", "gpu-units", "wpWeightIn-ckpt1.jld2"),
+                                    "wpWeightIn")
+        @test isapprox(gpu_wpWeightIn_Symmetric, ustrip(gpu_wpWeightIn_units))
+
+        gpu_P_Symmetric = load(joinpath(@__DIR__, "scratch", "gpu-Symmetric", "P-ckpt1.jld2"),
+                               "P")
+        gpu_P_units = load(joinpath(@__DIR__, "scratch", "gpu-units", "P-ckpt1.jld2"),
+                           "P")
+        @test isapprox(gpu_P_Symmetric, gpu_P_units)
+    end
+
+    run(pipeline(`$(Base.julia_cmd())
+                  $(joinpath(@__DIR__, "..", "src", "test.jl"))
+                  $(joinpath(@__DIR__, "scratch", "cpu-units"))`, stdout=devnull))
+
+    if testgpu
+        run(pipeline(`$(Base.julia_cmd()) -t 1
+                      $(joinpath(@__DIR__, "..", "src", "test.jl")) -g
+                      $(joinpath(@__DIR__, "scratch", "gpu-units"))`, stdout=devnull))
+
+        dcpu = load(joinpath(@__DIR__, "scratch", "cpu-units", "test.jld2"))
+        dgpu = load(joinpath(@__DIR__, "scratch", "gpu-units", "test.jld2"))
+        @test dcpu["nss"] == dgpu["nss"]
+        @test dcpu["ineurons_to_test"] == dgpu["ineurons_to_test"]
+        @test isapprox(dcpu["utotals"][1], dgpu["utotals"][1])
+        @test isapprox(dcpu["timess"], dgpu["timess"])
+    end
+
+    mkdir(joinpath(@__DIR__,  "scratch", "cpu-units-learns"))
+    open(joinpath(@__DIR__,  "scratch", "cpu-units-learns", "param.jl"), "w") do fileout 
+        for line in readlines(joinpath(@__DIR__, "param-units.jl"))
+            if startswith(line, "Ncells =")
+                println(fileout, "Ncells = 4096")
+            else
+                println(fileout, line)
+            end
+        end
+    end
+    compare_cpu_to_gpu("units-learns", nloops=100,
+                       spikerate=false, Pmatrix=false, weights=false, correlation=0.6)
+
+    mkdir(joinpath(@__DIR__, "scratch", "cpu-units-LX"))
+    open(joinpath(@__DIR__, "scratch", "cpu-units-LX", "param.jl"), "w") do fileout 
+        for line in readlines(joinpath(@__DIR__, "param-units.jl"))
+            if startswith(line, "LX")
+                println(fileout, "LX = L>>1")
+            else
+                println(fileout, line)
+            end
+        end
+    end
+    compare_cpu_to_gpu("units-LX", Pmatrix=false, weights=false)
 end

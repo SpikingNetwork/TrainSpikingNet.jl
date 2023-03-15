@@ -27,7 +27,7 @@ function genStaticWeights(args)
 
     nc0Max = 2*K  # outdegree
     w0Index = Vector{Vector{Int}}(undef, Ncells)
-    w0Weights = Vector{Vector{Float64}}(undef, Ncells)
+    w0Weights = Vector{Vector{eltype(jee)}}(undef, Ncells)
     postcells = 1:Ncells-1
 
     nc0Max == 0 && return w0Index, w0Weights
@@ -35,7 +35,7 @@ function genStaticWeights(args)
     function random_static_recurrent(I, tid)
         for i in I
             w0Index[i] = skip_autapse.(i, sample(copy_rng[tid], postcells, nc0Max, replace=false)) # fixed outdegree nc0Max
-            w0Weights[i] = Array{Float64}(undef, nc0Max)
+            w0Weights[i] = Array{eltype(jee)}(undef, nc0Max)
             if i <= Ne
                 @views w0Weights[i] .= ifelse.(w0Index[i].<=Ne, jee, jie)
             else

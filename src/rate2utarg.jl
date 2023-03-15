@@ -19,7 +19,8 @@ function rate2utarg(itasks, spikerate_file,
 
     # initial condition to Ricciardi
     initial_mu = 0.5*ones(Ntime)
-    invtau = 1000.0/taue_mem
+    invtau = 1/taue_mem
+    typeof(taue_mem)<:Real && (invtau *= 1000)
     VT = threshe
     Vr = vre
 

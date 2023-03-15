@@ -8,37 +8,41 @@
     plusone, exactlyzero, PScale, raug, k, delta, v, rng, noise, rndX, sig,
     P, w0Index, w0Weights, X_stim, utarg, wpIndexIn, wpIndexOut,
     wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
-    uavg, ustd, rateX, cellModel_args)
-
-    @static (kind in [:train, :train_test] && p.LX>0) && (rateX *= dt/1000)
+    uavg, ustd, rateX, cellModel_args,
+    ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime}) where {TCurrent, TCharge, TTime}
 
     @static if kind in [:test, :train_test]
         learn_nsteps = round(Int, (train_time - stim_off)/learn_every)
         widInc = round(Int, 2*wid/learn_every - 1)
                 
-        u_exccell = zeros(eltype(u), Nsteps,example_neurons)
-        u_inhcell = zeros(eltype(u), Nsteps,example_neurons)
-        u_bale_exccell = zeros(eltype(u), Nsteps,example_neurons)
-        u_bali_exccell = zeros(eltype(u), Nsteps,example_neurons)
-        u_bale_inhcell = zeros(eltype(u), Nsteps,example_neurons)
-        u_bali_inhcell = zeros(eltype(u), Nsteps,example_neurons)
-        u_plas_exccell = zeros(eltype(u), Nsteps,example_neurons)
-        u_plas_inhcell = zeros(eltype(u), Nsteps,example_neurons)
+        u_exccell = zeros(TCurrent, Nsteps,example_neurons)
+        u_inhcell = zeros(TCurrent, Nsteps,example_neurons)
+        u_bale_exccell = zeros(TCurrent, Nsteps,example_neurons)
+        u_bali_exccell = zeros(TCurrent, Nsteps,example_neurons)
+        u_bale_inhcell = zeros(TCurrent, Nsteps,example_neurons)
+        u_bali_inhcell = zeros(TCurrent, Nsteps,example_neurons)
+        u_plas_exccell = zeros(TCurrent, Nsteps,example_neurons)
+        u_plas_inhcell = zeros(TCurrent, Nsteps,example_neurons)
 
-        u_rollave = zeros(eltype(u), learn_nsteps,Ncells)
-        u_bale_rollave = zeros(eltype(u), learn_nsteps,Ncells)
-        u_bali_rollave = zeros(eltype(u), learn_nsteps,Ncells)
-        u_plas_rollave = zeros(eltype(u), learn_nsteps,Ncells)
+        u_rollave = zeros(TCurrent, learn_nsteps,Ncells)
+        u_bale_rollave = zeros(TCurrent, learn_nsteps,Ncells)
+        u_bali_rollave = zeros(TCurrent, learn_nsteps,Ncells)
+        u_plas_rollave = zeros(TCurrent, learn_nsteps,Ncells)
         u_rollave_cnt = zeros(Int, learn_nsteps)
     end
 
+    current0 = TCurrent(0)
+    charge0 = TCharge(0)
+    time0 = TTime(0)
+    time1 = TTime(1)
+
     @static if kind in [:train, :train_test]
         learn_seq = 1
-        r .= 0
+        r .= 0/time1
         spikesPrev .= 0
         @static if p.LX>0
             spikesXPrev .= 0
-            rX .= 0
+            rX .= 0/time1
         end
     end
 
@@ -49,18 +53,18 @@
 
     ns .= 0
     @static p.LX>0 && (nsX .= 0)
-    lastSpike .= -100.0
+    lastSpike .= TTime(-100.0)
     cellModel_init!(v, rng, cellModel_args)
     @static if p.K>0
-        u_bale .= u_bali .= 0
-        inputsEPrev .= inputsIPrev .= 0.0
+        u_bale .= u_bali .= current0
+        inputsEPrev .= inputsIPrev .= charge0
     end
     @static if kind in [:train, :test, :train_test]
-        uX_plas .= 0
-        inputsPPrev .= 0.0
+        uX_plas .= current0
+        inputsPPrev .= charge0
     end
 
-    @static kind in [:train, :test, :train_test] && (stim_on_steps = round(Int,stim_on/dt))
+    @static kind in [:train, :test, :train_test] && (stim_on_steps = round(Int, stim_on/dt))
     @static p.LX>0 && (stim_off_steps =  round(Int, stim_off/dt))
 
     # start the actual training
@@ -68,11 +72,11 @@
         t = dt*ti;
 
         # reset spiking activities from the previous time step
-        @static p.K>0 && (inputsE .= inputsI .= 0.0)
-        @static kind in [:train, :test, :train_test] && (inputsP .= 0.0)
+        @static p.K>0 && (inputsE .= inputsI .= charge0)
+        @static kind in [:train, :test, :train_test] && (inputsP .= charge0)
         @static if kind in [:train, :train_test]
-            spikes .= 0.0
-            @static p.LX>0 && (spikesX .= 0.0)
+            spikes .= 0
+            @static p.LX>0 && (spikesX .= 0)
         end
 
         # modify the plastic weights when the stimulus is turned off 
@@ -114,15 +118,17 @@
             end
         end
 
-        @static kind in [:test, :train_test] && if t > stim_off && t <= train_time && mod(t,1.0) == 0
-            startInd = floor(Int, (t - stim_off - wid)/learn_every + 1)
-            endInd = min(startInd + widInc, learn_nsteps)
-            startInd = max(startInd, 1)
-            u_rollave_cnt[startInd:endInd] .+= 1
+        @static if kind in [:test, :train_test]
+            if t > stim_off && t <= train_time && mod(t, time1) == time0
+                startInd = floor(Int, (t - stim_off - wid) / learn_every + 1)
+                endInd = min(startInd + widInc, learn_nsteps)
+                startInd = max(startInd, 1)
+                u_rollave_cnt[startInd:endInd] .+= 1
+            end
         end
 
-        @static p.sig>0 && randn!(rng, noise)
-        u_bal .= 0.0
+        @static p.sig>0 && randn!(rng, TTime<:Real ? noise : ustrip(noise))
+        u_bal .= current0
 
         # update network activities:
         #   - synaptic currents (u_bale, u_bali, uX_plas)
@@ -177,7 +183,7 @@
                 end
 
                 # save rolling average for analysis
-                if t > stim_off && t <= train_time && mod(t,1.0) == 0
+                if t > stim_off && t <= train_time && mod(t, time1) == time0
                     u_rollave[startInd:endInd,ci] .+= u[ci]
                     u_bale_rollave[startInd:endInd,ci] .+= u_bale[ci]
                     u_bali_rollave[startInd:endInd,ci] .+= u_bali[ci]
@@ -241,9 +247,9 @@
                 @static p.K>0 && for j in eachindex(w0Index[ci])
                     post_ci = w0Index[ci][j]         # cell index of j_th postsynaptic neuron
                     wgt = w0Weights[ci][j]           # synaptic weight of the connection, ci -> post_ci
-                    if wgt > 0                       # excitatory synapse
+                    if wgt > charge0                 # excitatory synapse
                         inputsE[post_ci] += wgt      #   - neuron ci spike's excitatory contribution to post_ci's synaptic current
-                    elseif wgt < 0                   # inhibitory synapse
+                    elseif wgt < charge0             # inhibitory synapse
                         inputsI[post_ci] += wgt      #   - neuron ci spike's inhibitory contribution to post_ci's synaptic current
                     end
                 end #end loop over synaptic projections
@@ -251,7 +257,7 @@
                 # (2) plastic connections
                 # loop over neurons (indexed by j) postsynaptic to neuron ci. 
                 @static kind in [:train, :test, :train_test] && for j in eachindex(wpIndexOut[ci])
-                    post_ci = wpIndexOut[ci][j]                 # cell index of j_th postsynaptic neuron
+                    post_ci = wpIndexOut[ci][j]               # cell index of j_th postsynaptic neuron
                     inputsP[post_ci] += wpWeightOut[ci][j]    # neuron ci spike's contribution to post_ci's synaptic current
                 end
             end
@@ -309,8 +315,17 @@
     end #end loop over time
 
     @static if kind == :init
-        println("mean excitatory firing rate: ", 1000*mean(ns[1:Ne])/train_time, " Hz")
-        println("mean inhibitory firing rate: ", 1000*mean(ns[(Ne+1):Ncells])/train_time, " Hz")
+        mean_exc_rate = mean(ns[1:Ne]) / train_time
+        mean_inh_rate = mean(ns[Ne+1:Ncells]) / train_time
+        if TTime <: Real
+            mean_exc_rate_conv = string(1000*mean_exc_rate, " Hz")
+            mean_inh_rate_conv = string(1000*mean_inh_rate, " Hz")
+        else
+            mean_exc_rate_conv = uconvert(HzUnit, mean_exc_rate)
+            mean_inh_rate_conv = uconvert(HzUnit, mean_inh_rate)
+        end
+        println("mean excitatory firing rate: ", mean_exc_rate_conv)
+        println("mean inhibitory firing rate: ", mean_inh_rate_conv)
                     
         return uavg ./ (Nsteps - u0_skip_steps), ns, mean(std(ustd, dims=1))
     end

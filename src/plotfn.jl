@@ -1,10 +1,11 @@
-function plot(test_file; ineurons_to_plot = 1:16)
+function plot(test_file; ineurons_to_plot = 1:16, load_init_code=false)
 
     d = load(test_file)
+
+    load_init_code && eval(d["init_code"])
+
     ineurons_to_test = d["ineurons_to_test"]
-
     ineurons_to_plot = something(ineurons_to_plot, ineurons_to_test)
-
     all(in.(ineurons_to_plot,[ineurons_to_test])) || error("ineurons_to_plot must be the same or a subset of ineurons_to_test in test.jl")
 
     if all(in.(ineurons_to_test,[ineurons_to_plot]))
@@ -43,10 +44,24 @@ function plot(test_file; ineurons_to_plot = 1:16)
     nrows = isqrt(nneurons)
     ncols = cld(nneurons, nrows)
 
+    if typeof(Param.learn_every)<:Real
+        _learn_every = Param.learn_every/1000
+        _stim_off =  Param.stim_off/1000
+        _train_time =  Param.train_time/1000
+        _unit = "s"
+        _dt = Param.dt
+    else
+        _learn_every = ustrip(Param.learn_every)
+        _stim_off = ustrip(Param.stim_off)
+        _train_time = ustrip(Param.train_time)
+        _unit = string(unit(Param.learn_every))
+        _dt = ustrip(Param.dt)
+    end
+
     for itask = 1:ntasks
         ps = Union{Plot,Context}[]
         for ci=1:nneurons
-            df = DataFrame((t = (1:size(utarg,1)) .* Param.learn_every/1000,
+            df = DataFrame((t = (1:size(utarg,1)) .* _learn_every,
                             utarg = utarg[:,ineurons_to_plot[ci],itask],
                             utotal1 = utotals[1,itask][:,ci]))
             utotal_ci = hcat((x[:,ci] for x in utotals[:,itask])...)
@@ -60,7 +75,7 @@ function plot(test_file; ineurons_to_plot = 1:16)
                                   Geom.line, Geom.ribbon,
                                   Guide.colorkey(title="", labels=["data","model","model1"]),
                                   Guide.title(string("neuron #", ineurons_to_plot[ci])),
-                                  Guide.xlabel("time (sec)", orientation=:horizontal),
+                                  Guide.xlabel("time ($_unit)", orientation=:horizontal),
                                   Guide.ylabel("synaptic input", orientation=:vertical),
                                   Guide.xticks(orientation=:horizontal)))
         end
@@ -71,10 +86,10 @@ function plot(test_file; ineurons_to_plot = 1:16)
         timess_cat = hcat(timess[:,itask]...)
         ps = Union{Plot,Context}[]
         for ci=1:nneurons
-            psth = fit(Histogram, vec(timess_cat[ci,:] * Param.dt),
-                       Param.stim_off : Param.learn_every : Param.train_time)
-            df = DataFrame(t=Param.learn_every/1000 : Param.learn_every/1000 : Param.train_time/1000-1,
-                           model=psth.weights ./ ntrials ./ Param.learn_every * 1000)
+            psth = fit(Histogram, vec(timess_cat[ci,:]) * _dt,
+                       _stim_off : _learn_every : _train_time)
+            df = DataFrame(t=_learn_every : _learn_every : _train_time-_stim_off,
+                           model=psth.weights ./ ntrials ./ _learn_every)
             if ismissing(rate)
                 scale_color = Scale.color_discrete(n->Scale.default_discrete_colors(n+1)[2:end])
                 cols = (:model, )
@@ -88,7 +103,7 @@ function plot(test_file; ineurons_to_plot = 1:16)
                                   scale_color,
                                   Guide.colorkey(title=""),
                                   Guide.title(string("neuron #", ineurons_to_plot[ci])),
-                                  Guide.xlabel("time (sec)", orientation=:horizontal),
+                                  Guide.xlabel("time ($_unit)", orientation=:horizontal),
                                   Guide.ylabel("spike rate", orientation=:vertical),
                                   Guide.xticks(orientation=:horizontal)))
         end

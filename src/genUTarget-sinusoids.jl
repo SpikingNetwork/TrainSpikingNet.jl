@@ -6,28 +6,30 @@ random phase.
 =#
 
 #=
-return a T x Ncells matrix representing the desired synaptic currents to
+return a Nsteps_learned x Ncells matrix representing the desired synaptic currents to
 be learned
 =#
 
 function genUTarget(args, uavg)
-    @unpack train_time, stim_off, learn_every, Ncells, Nsteps, dt, A, period, biasType, mu_ou_bias, b_ou_bias, sig_ou_bias, rng, seed = args
+    @unpack train_time, stim_off, learn_every, Ncells, Nsteps, dt, Amp, period, biasType, mu_ou_bias, b_ou_bias, sig_ou_bias, rng, seed = args
 
     num_threads = Threads.nthreads()
     copy_rng = [typeof(rng)() for _=1:num_threads];
     isnothing(seed) || Random.seed!.(copy_rng, seed .+ (1:num_threads))
     save(joinpath(data_dir,"rng-genUTarget.jld2"), "rng", copy_rng)
 
-    sampled_Nsteps = round(Int, (train_time - stim_off) / learn_every)
-    utargSampled = Array{Float64}(undef, sampled_Nsteps, Ncells)
+    T = eltype(Amp)
+
+    Nsteps_learn = round(Int, (train_time - stim_off) / learn_every)
+    utarg = Array{T}(undef, Nsteps_learn, Ncells)
 
     time = collect(1:Nsteps)*dt
-    bias = Array{Float64}(undef, Nsteps)
+    bias = Array{T}(undef, Nsteps)
 
     if biasType == :zero
-        bias .= 0
+        bias .= T(0)
     elseif biasType == :ou
-        bias[1] = 0
+        bias[1] = T(0)
         for i = 1:Nsteps-1
             bias[i+1] = bias[i] +
                         b_ou_bias * (mu_ou_bias - bias[i]) * dt +
@@ -35,9 +37,9 @@ function genUTarget(args, uavg)
         end
     elseif biasType == :ramping
         Nstart = round(Int, stim_off/dt)
-        bias[1:Nstart-1] .= 0
-        bias[Nstart:Nsteps] = 0.25 / (Nsteps-Nstart) * [0:Nsteps-Nstart]
-        bias[Nsteps+1:end] .= 0
+        bias[1:Nstart-1] .= T(0)
+        bias[Nstart:Nsteps] = T(0.25) / (Nsteps-Nstart) * [0:Nsteps-Nstart]
+        bias[Nsteps+1:end] .= T(0)
     else
         error("biasType must be one of :zero, :ou, or :ramping")
     end
@@ -45,12 +47,11 @@ function genUTarget(args, uavg)
     idx = time .>= stim_off + learn_every
     time = time[idx][1:learn_step:end]
     bias = bias[idx][1:learn_step:end]
-    time .*= 2*pi / period
 
     function random_phase_sinusoids(I, tid)
         for i in I
             phase = period * rand(copy_rng[tid])
-            utargSampled[:,i] = A * sin.(time.-phase) .+ uavg[i] .+ bias
+            utarg[:,i] = Amp * sin.((time.-phase)*2pi/period) .+ uavg[i] .+ bias
         end
     end
     tasks = Vector{Task}(undef, num_threads)
@@ -64,5 +65,5 @@ function genUTarget(args, uavg)
         wait(tasks[i])
     end
 
-    return utargSampled 
+    return utarg
 end

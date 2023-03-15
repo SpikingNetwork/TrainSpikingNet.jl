@@ -1,3 +1,5 @@
+init_code = :()  # used to optionally assign physical units to state variables.  see param-units.jl
+
 # --- simulation --- #
 PType=Symmetric  # storage format of the covariance matrix;  use SymmetricPacked for large models
 PPrecision = Float32  # precision of the covariance matrix.  can be Float16 or even <:Integer on GPUs
@@ -39,14 +41,8 @@ u0_skip_time = 1000  # (ms)
 u0_ncells = 1000
 
 
-# --- external stimulus plugin --- #
-genXStim_file = "genXStim-ornstein-uhlenbeck.jl"
-genXStim_args = (; stim_on, stim_off, dt, Ncells, rng, seed,
-                   :mu => 0.0, :b => 1/20, :sig => 0.2)
-
-
 # --- neuron --- #
-refrac = 0.1    # refractory period
+refrac = 0.1    # refractory period (ms)
 vre = 0.0       # reset voltage
 tau_bale = 3    # synaptic time constants (ms) 
 tau_bali = 3
@@ -57,14 +53,14 @@ tau_meme = 10   # (ms)
 tau_memi = 10 
 invtau_mem = Vector{Float64}(undef, Ncells)
 invtau_mem[1:Ne] .= 1 ./ tau_meme
-invtau_mem[(1+Ne):Ncells] .= 1 ./ tau_memi
+invtau_mem[1+Ne:Ncells] .= 1 ./ tau_memi
 
 #spike thresholds
 threshe = 1.0
-threshi = 1.0   
+threshi = 1.0
 thresh = Vector{Float64}(undef, Ncells)
 thresh[1:Ne] .= threshe
-thresh[(1+Ne):Ncells] .= threshi
+thresh[1+Ne:Ncells] .= threshi
 
 cellModel_file = "cellModel-LIF.jl"
 cellModel_args = (; thresh, invtau_mem, vre, dt)
@@ -85,6 +81,12 @@ genStaticWeights_args = (; K, Ncells, Ne, rng, seed,
                            :jee => 0.15je, :jie => je, :jei => -0.75ji, :jii => -ji)
 
 
+# --- external stimulus plugin --- #
+genXStim_file = "genXStim-ornstein-uhlenbeck.jl"
+genXStim_args = (; stim_on, stim_off, dt, Ncells, rng, seed,
+                   :mu => 0.0, :b => 1/20, :sig => 0.2)
+
+
 # --- learning --- #
 penlambda   = 0.8   # 1 / learning rate
 penlamFF    = 1.0
@@ -99,7 +101,7 @@ choose_task_func = :((iloop, ntasks) -> iloop % ntasks + 1)   # or e.g. rand(1:n
 # --- target synaptic current plugin --- #
 genUTarget_file = "genUTarget-sinusoids.jl"
 genUTarget_args = (; train_time, stim_off, learn_every, Ncells, Nsteps, dt, rng, seed,
-                     :A => 0.5, :period => 1000.0, :biasType => :zero,
+                     :Amp => 0.5, :period => 1000.0, :biasType => :zero,
                      :mu_ou_bias => 0.0, :b_ou_bias => 1/400, :sig_ou_bias => 0.02)
 
 # --- learned connections plugin --- #
@@ -132,7 +134,7 @@ X_bali = jx
 
 X_bal = Vector{Float64}(undef, Ncells)
 X_bal[1:Ne] .= X_bale
-X_bal[(Ne+1):Ncells] .= X_bali
+X_bal[Ne+1:Ncells] .= X_bali
 
 
 # --- time-varying noise --- #

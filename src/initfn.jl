@@ -16,7 +16,8 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
         X, nothing, nothing, lastSpike, nothing, nothing, nothing, nothing,
         nothing, nothing, v, p.rng, noise, rndX, sig, nothing, w0Index,
         w0Weights, nothing, nothing, nothing, nothing, nothing, nothing,
-        nothing, nothing, uavg, ustd, rateX, cellModel_args)
+        nothing, nothing, uavg, ustd, rateX, cellModel_args,
+        TCurrent, TCharge, TTime)
 
     wpWeightX, wpWeightIn, wpIndexIn =
         genPlasticWeights(p.genPlasticWeights_args, ns0)
@@ -56,13 +57,13 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
                            p.tau_meme, p.threshe, p.vre,
                            p.K==0 ? p.sig : (ustd0 / sqrt(p.tau_bale * 1.3))) # factor 1.3 was calibrated manually
     else
-        utarg = Array{Float64}(undef, Ntime, p.Ncells, length(itasks))
+        utarg = Array{eltype(p.g)}(undef, Ntime, p.Ncells, length(itasks))
         for itask = 1:length(itasks)
             utarg[:,:,itask] = genUTarget(p.genUTarget_args, uavg0)
         end
     end
     timeSteps = round(Int, (p.stim_off - p.stim_on) / p.dt)
-    X_stim = Array{Float64}(undef, timeSteps, p.Ncells, length(itasks))
+    X_stim = Array{eltype(p.g)}(undef, timeSteps, p.Ncells, length(itasks))
     for itask = 1:length(itasks)
         X_stim[:,:,itask] = genXStim(p.genXStim_args)
     end
@@ -70,11 +71,12 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
     # --- set up correlation matrix --- #
     Pinv_X = Diagonal(repeat([p.penlamFF], p.LX))
     P = Array{p.PType}(undef, p.Ncells)
+    charge0 = TCharge(0)
     Threads.@threads for i = 1:p.Ncells
         ncpIn = length(wpIndexIn[i])
         Pinv_L2 = Diagonal(repeat([p.penlambda], ncpIn));
-        vec10 = wpWeightIn[i] .> 0
-        vec01 = wpWeightIn[i] .< 0
+        vec10 = wpWeightIn[i] .> charge0
+        vec01 = wpWeightIn[i] .< charge0
         Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01')
         Pinv = zeros(p.LX+ncpIn, p.LX+ncpIn)
         Pinv[1:p.LX, 1:p.LX] = Pinv_X

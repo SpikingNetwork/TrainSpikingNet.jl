@@ -29,7 +29,7 @@ function train(; nloops = 1,
         P = load(joinpath(data_dir,"P-ckpt$R.jld2"), "P");
     end;
 
-    wpWeightOut = zeros(maximum([length(x) for x in wpIndexOut])+1, p.Ncells+1);
+    wpWeightOut = zeros(TCharge, maximum([length(x) for x in wpIndexOut])+1, p.Ncells+1);
 
     w0Index = vv2m(w0Index);
     w0Weights = vv2m(w0Weights);
@@ -48,24 +48,25 @@ function train(; nloops = 1,
 
     # --- set up variables --- #
     P = CuArray{p.PPrecision}(P);
-    X_stim = CuArray{p.FloatPrecision}(X_stim);
-    utarg = CuArray{p.FloatPrecision}(utarg);
+    X_stim = CuArray{TCurrent}(X_stim);
+    utarg = CuArray{TCurrent}(utarg);
     w0Index = CuArray{p.IntPrecision}(w0Index);
-    w0Weights = CuArray{p.FloatPrecision}(w0Weights);
+    w0Weights = CuArray{TCharge}(w0Weights);
     wpIndexIn = CuArray{p.IntPrecision}(wpIndexIn);
     wpIndexConvert = CuArray{p.IntPrecision}(wpIndexConvert);
     wpIndexOut = CuArray{p.IntPrecision}(wpIndexOut);
-    wpWeightX = CuArray{p.FloatPrecision}(wpWeightX);
-    wpWeightIn = CuArray{p.FloatPrecision}(wpWeightIn);
-    wpWeightOut = CuArray{p.FloatPrecision}(wpWeightOut);
+    wpWeightIn = CuArray{TCharge}(wpWeightIn);
+    wpWeightOut = CuArray{TCharge}(wpWeightOut);
+    wpWeightX = CuArray{TCharge}(wpWeightX);
     rateX = CuArray{p.FloatPrecision}(rateX);
 
     pLtot = size(wpIndexIn,1) + p.LX
-    raug = CuArray{p.FloatPrecision}(undef, pLtot, p.Ncells)
+    raug = CuArray{TInvTime}(undef, pLtot, p.Ncells)
     k = CuArray{p.FloatPrecision}(undef, pLtot, p.Ncells)
-    den = CuArray{p.FloatPrecision}(undef, p.Ncells)
-    e = CuArray{p.FloatPrecision}(undef, p.Ncells)
-    delta = CuArray{p.FloatPrecision}(undef, pLtot, p.Ncells)
+    vPv = CuArray{TInvTime}(undef, p.Ncells)
+    den = CuArray{TTime}(undef, p.Ncells)
+    e = CuArray{TCurrent}(undef, p.Ncells)
+    delta = CuArray{TCharge}(undef, pLtot, p.Ncells)
 
     # --- monitor resources used --- #
     function monitor_resources(c::Channel)
@@ -121,11 +122,12 @@ function train(; nloops = 1,
                 inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev,
                 spikes, spikesPrev, spikesX, spikesXPrev, u_bale, u_bali,
                 uX_plas, u_bal, u, r, rX, X, nothing, nothing,
-                lastSpike, bnotrefrac, bspike, plusone, minusone, p.PScale, raug,
-                k, den, e, delta, v, rng, noise, rndX, sig, P, w0Index,
+                lastSpike, bnotrefrac, bspike, plusone, p.PScale, raug,
+                k, vPv, den, e, delta, v, rng, noise, rndX, sig, P, w0Index,
                 w0Weights, X_stim, utarg, wpWeightX, wpIndexIn, wpIndexOut,
                 wpIndexConvert, wpWeightIn, wpWeightOut, rateX,
-                cellModel_args)
+                cellModel_args,
+                TCurrent, TCharge, TTime)
         else
             _, _, _, _, utotal, _, _, uplastic, _ = loop_train_test(itask,
                 p.learn_every, p.stim_on, p.stim_off,
@@ -137,10 +139,11 @@ function train(; nloops = 1,
                 spikesPrev, spikesX, spikesXPrev, u_bale, u_bali,
                 uX_plas, u_bal, u, r, rX, X, p.wid,
                 p.example_neurons, lastSpike, bnotrefrac, bspike, plusone,
-                minusone, p.PScale, raug, k, den, e, delta, v, rng, noise, rndX,
+                p.PScale, raug, k, vPv, den, e, delta, v, rng, noise, rndX,
                 sig, P, w0Index, w0Weights, X_stim, utarg, wpWeightX,
                 wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
-                rateX, cellModel_args)
+                rateX, cellModel_args,
+                TCurrent, TCharge, TTime)
 
             if p.correlation_var == :utotal
                 ulearned = utotal
@@ -151,9 +154,15 @@ function train(; nloops = 1,
             end
             pcor = Array{Float64}(undef, p.Ncells)
             for ci in 1:p.Ncells
-                utarg_slice = convert(Array{Float64}, utarg[:,ci, itask])
-                ulearned_slice = Array(ulearned[:,ci])
-                pcor[ci] = cor(utarg_slice, ulearned_slice)
+                utarg_slice = @view utarg[:,ci, itask]
+                ulearned_slice = @view ulearned[:,ci]
+                if TCurrent <: Real
+                    pcor[ci] = cor(convert(Array{Float64}, utarg_slice),
+                                   Array(ulearned_slice))
+                else
+                    pcor[ci] = cor(convert(Array{Float64}, ustrip(utarg_slice)),
+                                   Array(ustrip(ulearned_slice)))
+                end
             end
 
             bnotnan = .!isnan.(pcor)
@@ -191,7 +200,13 @@ function train(; nloops = 1,
 
         elapsed_time = time()-start_time
         println("elapsed time: ", elapsed_time, " sec")
-        println("firing rate: ", mean(ns) / (p.dt/1000*p.Nsteps), " Hz")
+        mean_rate = mean(ns) / (p.dt*p.Nsteps)
+        if TTime <: Real
+            mean_rate_conv = string(1000*mean_rate, " Hz")
+        else
+            mean_rate_conv = uconvert(unit(p.maxrate), mean_rate)
+        end
+        println("firing rate: ", mean_rate_conv)
     end
 
     if !isnothing(monitor_resources_used)

@@ -1,8 +1,9 @@
 function update_inputs(bspike,
                        w0Index, w0Weights, inputsE, inputsI,
-                       wpIndexOut, wpWeightOut, inputsP)
+                       wpIndexOut, wpWeightOut, inputsP,
+                       charge0::T) where T
 
-    function kernel(bspike,
+    function kernel(bspike, charge0,
                     w0Index, w0Weights, inputsE, inputsI,
                     wpIndexOut, wpWeightOut, inputsP)
         i0 = threadIdx().x + (blockIdx().x - 1) * blockDim().x
@@ -15,8 +16,8 @@ function update_inputs(bspike,
                 for j=j0:jstride:max(size(w0Index,1),size(wpIndexOut,1))
                     @static if p.K>0
                         if j<=size(w0Index,1)
-                            CUDA.@atomic inputsE[0x1 + w0Index[j,i]] += max(w0Weights[j,i], 0)
-                            CUDA.@atomic inputsI[0x1 + w0Index[j,i]] += min(w0Weights[j,i], 0)
+                            CUDA.@atomic inputsE[0x1 + w0Index[j,i]] += max(w0Weights[j,i], charge0)
+                            CUDA.@atomic inputsI[0x1 + w0Index[j,i]] += min(w0Weights[j,i], charge0)
                         end
                     end
                     if j<=size(wpIndexOut,1)
@@ -28,9 +29,19 @@ function update_inputs(bspike,
         return nothing
     end
 
-    kernel = @cuda launch=false kernel(bspike,
-                                       w0Index, w0Weights, inputsE, inputsI,
-                                       wpIndexOut, wpWeightOut, inputsP)
+    if T<:Real
+        _inputsE, _inputsI, _inputsP = inputsE, inputsI, inputsP
+        _w0Weights, _wpWeightOut = w0Weights, wpWeightOut
+        _charge0 = charge0
+    else
+        _inputsE, _inputsI, _inputsP = ustrip(inputsE), ustrip(inputsI), ustrip(inputsP)
+        _w0Weights, _wpWeightOut = ustrip(w0Weights), ustrip(wpWeightOut)
+        _charge0 = ustrip(charge0)
+    end
+
+    kernel = @cuda launch=false kernel(bspike, _charge0,
+                                       w0Index, _w0Weights, _inputsE, _inputsI,
+                                       wpIndexOut, _wpWeightOut, _inputsP)
     config = launch_configuration(kernel.fun)
     dims = (length(bspike),
             (@static p.K>0 ? max(size(w0Index,1),size(wpIndexOut,1)) : size(wpIndexOut,1)))
@@ -38,9 +49,9 @@ function update_inputs(bspike,
     ythreads = min(fld(config.threads, xthreads), cld(prod(dims), xthreads))
     xblocks = min(config.blocks, cld(dims[1], xthreads))
     yblocks = min(cld(config.blocks, xblocks), cld(dims[2], ythreads))
-    kernel(bspike,
-           w0Index, w0Weights, inputsE, inputsI,
-           wpIndexOut, wpWeightOut, inputsP;
+    kernel(bspike, _charge0,
+           w0Index, _w0Weights, _inputsE, _inputsI,
+           wpIndexOut, _wpWeightOut, _inputsP;
            threads=(xthreads,ythreads), blocks=(xblocks<<2,yblocks<<2))
 end
 
@@ -51,40 +62,44 @@ end
     inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes, spikesPrev,
     spikesX, spikesXPrev, u_bale, u_bali, uX_plas, u_bal,
     u, r, rX, X, wid, example_neurons, lastSpike, bnotrefrac,
-    bspike, plusone, minusone, PScale, raug, k, den, e, delta, v, rng, noise,
+    bspike, plusone, PScale, raug, k, vPv, den, e, delta, v, rng, noise,
     rndX, sig, P, w0Index, w0Weights, X_stim, utarg, wpWeightX,
     wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, rateX,
-    cellModel_args)
-
-    @static (kind in [:train, :train_test] && p.LX>0) && (rateX /= round(Int, 1000/dt))
+    cellModel_args,
+    ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime}) where {TCurrent, TCharge, TTime}
 
     @static if kind in [:test, :train_test]
         learn_nsteps = round(Int, (train_time - stim_off)/learn_every)
         widInc = round(Int, 2*wid/learn_every - 1)
 
-        u_exccell = CUDA.zeros(eltype(u), Nsteps,example_neurons)
-        u_inhcell = CUDA.zeros(eltype(u), Nsteps,example_neurons)
-        u_bale_exccell = CUDA.zeros(eltype(u), Nsteps,example_neurons)
-        u_bali_exccell = CUDA.zeros(eltype(u), Nsteps,example_neurons)
-        u_bale_inhcell = CUDA.zeros(eltype(u), Nsteps,example_neurons)
-        u_bali_inhcell = CUDA.zeros(eltype(u), Nsteps,example_neurons)
-        u_plas_exccell = CUDA.zeros(eltype(u), Nsteps,example_neurons)
-        u_plas_inhcell = CUDA.zeros(eltype(u), Nsteps,example_neurons)
+        u_exccell = CUDA.zeros(TCurrent, Nsteps,example_neurons)
+        u_inhcell = CUDA.zeros(TCurrent, Nsteps,example_neurons)
+        u_bale_exccell = CUDA.zeros(TCurrent, Nsteps,example_neurons)
+        u_bali_exccell = CUDA.zeros(TCurrent, Nsteps,example_neurons)
+        u_bale_inhcell = CUDA.zeros(TCurrent, Nsteps,example_neurons)
+        u_bali_inhcell = CUDA.zeros(TCurrent, Nsteps,example_neurons)
+        u_plas_exccell = CUDA.zeros(TCurrent, Nsteps,example_neurons)
+        u_plas_inhcell = CUDA.zeros(TCurrent, Nsteps,example_neurons)
 
-        u_rollave = CUDA.zeros(eltype(u), learn_nsteps,Ncells)
-        u_bale_rollave = CUDA.zeros(eltype(u), learn_nsteps,Ncells)
-        u_bali_rollave = CUDA.zeros(eltype(u), learn_nsteps,Ncells)
-        u_plas_rollave = CUDA.zeros(eltype(u), learn_nsteps,Ncells)
+        u_rollave = CUDA.zeros(TCurrent, learn_nsteps,Ncells)
+        u_bale_rollave = CUDA.zeros(TCurrent, learn_nsteps,Ncells)
+        u_bali_rollave = CUDA.zeros(TCurrent, learn_nsteps,Ncells)
+        u_plas_rollave = CUDA.zeros(TCurrent, learn_nsteps,Ncells)
         u_rollave_cnt = CUDA.zeros(Int, learn_nsteps)
     end
 
+    current0 = TCurrent(0)
+    charge0 = TCharge(0)
+    time0 = TTime(0)
+    time1 = TTime(1)
+
     @static if kind in [:train, :train_test]
         learn_seq = 1
-        r .= 0
+        r .= 0/time1
         spikesPrev .= 0
         @static if p.LX>0
             spikesXPrev .= 0
-            rX .= 0
+            rX .= 0/time1
         end
     end
 
@@ -95,14 +110,14 @@ end
 
     ns .= 0
     @static p.LX>0 && (nsX .= 0)
-    lastSpike .= -100.0
+    lastSpike .= TTime(-100.0)
     cellModel_init!(v, rng, cellModel_args)
     @static if p.K>0
-        u_bale .= u_bali .= 0
-        inputsEPrev .= inputsIPrev .= 0.0
+        u_bale .= u_bali .= current0
+        inputsEPrev .= inputsIPrev .= charge0
     end
-    uX_plas .= 0
-    inputsPPrev .= 0.0
+    uX_plas .= current0
+    inputsPPrev .= charge0
 
     stim_on_steps = round(Int,stim_on/dt)
     @static p.LX>0 && (stim_off_steps =  round(Int, stim_off/dt))
@@ -112,23 +127,23 @@ end
         t = dt*ti;
 
         # reset spiking activities from the previous time step
-        @static p.K>0 && (inputsE .= inputsI .= 0.0)
-        inputsP .= 0.0
+        @static p.K>0 && (inputsE .= inputsI .= charge0)
+        inputsP .= charge0
 
         # modify the plastic weights when the stimulus is turned off 
         @static if kind in [:train, :train_test]
             if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
                 wpWeightIn, wpWeightOut = rls(itask,
-                        raug, k, den, e, delta, r, rX,
+                        raug, k, vPv, den, e, delta, r, rX,
                         P, u_bal, utarg, learn_seq, wpIndexIn,
                         wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
-                        plusone, minusone, exactlyzero, PScale)
+                        plusone, exactlyzero, PScale)
                 learn_seq += 1
             end
         end
 
-        @static p.sig>0 && randn!(rng, noise)
-        u_bal .= 0.0
+        @static p.sig>0 && randn!(rng, TTime<:Real ? noise : ustrip(noise))
+        u_bal .= current0
 
         # update network activities
         @static if p.K>0
@@ -159,8 +174,8 @@ end
             u_plas_inhcell[ti,1:example_neurons] .= uX_plas[end-example_neurons+1:end]
 
             # save rolling average for analysis
-            if t > stim_off && t <= train_time && mod(t,1.0) == 0
-                startInd = floor(Int, (t - stim_off - wid)/learn_every + 1)
+            if t > stim_off && t <= train_time && mod(t, time1) == time0
+                startInd = floor(Int, (t - stim_off - wid) / learn_every + 1)
                 endInd = min(startInd + widInc, learn_nsteps)
                 startInd = max(startInd, 1)
                 u_rollave[startInd:endInd,:] .+= transpose(u)
@@ -208,7 +223,8 @@ end
         # accumulate the contribution of spikes to postsynaptic currents
         update_inputs(bspike,
                       w0Index, w0Weights, inputsE, inputsI,
-                      wpIndexOut, wpWeightOut, inputsP)
+                      wpIndexOut, wpWeightOut, inputsP,
+                      charge0)
 
         # external input to trained excitatory neurons
         @static p.LX>0 && if t > stim_off

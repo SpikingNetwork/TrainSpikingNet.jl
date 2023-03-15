@@ -404,7 +404,7 @@ $ julia $TSN_DIR/src/plot.jl --ineurons_to_plot=[1,5,9,13] $PWD/my-data/test.jld
 
 ## Help ##
 
-TrainSpikingNet is documented not just in this README, but also via comments
+TrainSpikingNet.jl is documented not just in this README, but also via comments
 in the code, as well as docstrings that are accessible both in the Julia
 REPL and the OS command line.  Specifically, at the REPL, entering "?train"
 results in:
@@ -461,6 +461,9 @@ optional arguments:
   -g, --gpu             use the GPU
   -h, --help            show this help message and exit
 ```
+
+Docstrings are similarly available for `param`, `config`, `init`, `test`,
+and `plot`.
 
 Don't hesitate to file an issue on Github if you find a bug or have a feature
 request.  The best place for usage help is either a GitHub discussion,
@@ -589,3 +592,16 @@ Or equivalently like this on Linux:
 julia -e 'using Pkg; Pkg.add("MKL")'
 echo "using MKL" >> ~/.julia/config/startup.jl
 ```
+
+
+# Physical Units #
+
+The state variables in the parameters file can have dimensions assigned
+to them using [Unitful.jl](https://github.com/PainterQubits/Unitful.jl).
+For example, `dt`, the simulation time step, could be set to `100μs`
+instead of the default `0.1` with a comment that it is in milliseconds.
+Doing so makes mixing power-of-ten prefixes easy and serves as a guard
+against mixing incompatible units, but incurs a performance cost of about
+10% depending on the model size and whether a GPU is used or not.  If this
+tradeoff is acceptable, use "src/param-units.jl" as a template for your
+parameters file instead of "src/params.jl".

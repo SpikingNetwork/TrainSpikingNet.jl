@@ -33,9 +33,13 @@ cellModel_args = (; thresh, thresh_s, thresh_v, b_s, delta_thresh_s, a_v, b_v, f
 
 =#
 
-function cellModel_init!(v, rng, args)
+function cellModel_init!(v::AbstractVector{<:Real}, rng, args)
     randn!(rng, v)
     @. v = v * (args.thresh - args.E_l) + args.E_l
+end
+function cellModel_init!(v, rng, args)
+    randn!(rng, ustrip(v))
+    @. v = v * ustrip(args.thresh - args.E_l) + args.E_l
 end
 
 function cellModel_timestep!(i::Number, v, X, u, args)

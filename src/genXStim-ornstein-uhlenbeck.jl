@@ -17,9 +17,11 @@ function genXStim(args)
     isnothing(seed) || Random.seed!.(copy_rng, seed .+ (1:num_threads))
     save(joinpath(data_dir,"rng-genUTarget.jld2"), "rng", copy_rng)
 
+    T = eltype(mu)
+
     timeSteps = round(Int, (stim_off - stim_on) / dt)
-    stim = Array{Float64}(undef, timeSteps, Ncells)
-    stim[1,:] .= 0
+    stim = Array{T}(undef, timeSteps, Ncells)
+    stim[1,:] .= T(0)
 
     function random_external_currents(I, tid)
         for ci in I

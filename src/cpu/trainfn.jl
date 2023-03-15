@@ -29,7 +29,7 @@ function train(; nloops = 1,
         P = load(joinpath(data_dir,"P-ckpt$R.jld2"), "P");
     end;
 
-    wpWeightOut = [Vector{Float64}(undef, length(x)) for x in wpIndexOut];
+    wpWeightOut = [Vector{TCharge}(undef, length(x)) for x in wpIndexOut];
     wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn);
 
     rng = eval(p.rng_func.cpu)
@@ -41,22 +41,22 @@ function train(; nloops = 1,
     # --- set up variables --- #
     PType = typeof(p.PType(p.PPrecision.([1. 2; 3 4])));
     P = Vector{PType}(P);
-    X_stim = Array{p.FloatPrecision}(X_stim);
-    utarg = Array{p.FloatPrecision}(utarg);
+    X_stim = Array{TCurrent}(X_stim);
+    utarg = Array{TCurrent}(utarg);
     w0Index = Vector{Vector{p.IntPrecision}}(w0Index);
-    w0Weights = Vector{Vector{p.FloatPrecision}}(w0Weights);
+    w0Weights = Vector{Vector{TCharge}}(w0Weights);
     wpIndexIn = Vector{Vector{p.IntPrecision}}(wpIndexIn);
     wpIndexConvert = Vector{Vector{p.IntPrecision}}(wpIndexConvert);
     wpIndexOut = Vector{Vector{p.IntPrecision}}(wpIndexOut);
-    wpWeightIn = Vector{Vector{p.FloatPrecision}}(wpWeightIn);
-    wpWeightOut = Vector{Vector{p.FloatPrecision}}(wpWeightOut);
-    wpWeightX = Array{p.FloatPrecision}(wpWeightX);
+    wpWeightIn = Vector{Vector{TCharge}}(wpWeightIn);
+    wpWeightOut = Vector{Vector{TCharge}}(wpWeightOut);
+    wpWeightX = Array{TCharge}(wpWeightX);
     rateX = Array{p.FloatPrecision}(rateX);
 
     pLtot = maximum([length(x) for x in wpIndexIn]) + p.LX
-    raug = Matrix{p.FloatPrecision}(undef, pLtot, Threads.nthreads())
+    raug = Matrix{TInvTime}(undef, pLtot, Threads.nthreads())
     k = Matrix{p.FloatPrecision}(undef, pLtot, Threads.nthreads())
-    delta = Matrix{p.FloatPrecision}(undef, pLtot, Threads.nthreads())
+    delta = Matrix{TCharge}(undef, pLtot, Threads.nthreads())
 
     # --- monitor resources used --- #
     function monitor_resources(c::Channel)
@@ -103,7 +103,7 @@ function train(; nloops = 1,
                 rndX, sig, P, w0Index, w0Weights, X_stim, utarg,
                 wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightX, wpWeightIn,
                 wpWeightOut, nothing, nothing, rateX,
-                cellModel_args)
+                cellModel_args, TCurrent, TCharge, TTime)
         else
             _, _, _, _, utotal, _, _, uplastic, _ = loop_train_test(itask,
                 p.learn_every, p.stim_on, p.stim_off,
@@ -118,20 +118,25 @@ function train(; nloops = 1,
                 raug, k, delta, v, rng, noise, rndX, sig, P, w0Index, w0Weights,
                 X_stim, utarg, wpIndexIn, wpIndexOut, wpIndexConvert,
                 wpWeightX, wpWeightIn, wpWeightOut, nothing,
-                nothing, rateX, cellModel_args)
+                nothing, rateX, cellModel_args,
+                TCurrent, TCharge, TTime)
 
             if p.correlation_var == :utotal
                 ulearned = utotal
             elseif p.correlation_var == :uplastic
                 ulearned = uplastic
             else
-                error("invalid value for correlation_var peter")
+                error("invalid value for correlation_var parameter")
             end
             pcor = Array{Float64}(undef, p.Ncells)
             for ci in 1:p.Ncells
                 utarg_slice = @view utarg[:,ci, itask]
                 ulearned_slice = @view ulearned[:,ci]
-                pcor[ci] = cor(utarg_slice, ulearned_slice)
+                if TCurrent <: Real
+                    pcor[ci] = cor(utarg_slice, ulearned_slice)
+                else
+                    pcor[ci] = cor(ustrip(utarg_slice), ustrip(ulearned_slice))
+                end
             end
 
             bnotnan = .!isnan.(pcor)
@@ -168,7 +173,13 @@ function train(; nloops = 1,
 
         elapsed_time = time()-start_time
         println("elapsed time: ", elapsed_time, " sec")
-        println("firing rate: ", mean(ns) / (p.dt/1000*p.Nsteps), " Hz")
+        mean_rate = mean(ns) / (p.dt*p.Nsteps)
+        if TTime <: Real
+            mean_rate_conv = string(1000*mean_rate, " Hz")
+        else
+            mean_rate_conv = uconvert(unit(p.maxrate), mean_rate)
+        end
+        println("firing rate: ", mean_rate_conv)
     end
 
     if !isnothing(monitor_resources_used)

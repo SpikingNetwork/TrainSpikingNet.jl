@@ -1,32 +1,45 @@
 function rls(itask,
-             raug, k, den, e, delta, r, rX, P, u_bal,
+             raug::CuMatrix{T}, k, vPv, den, e, delta, r, rX, P, u_bal,
              utarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightX, wpWeightIn,
-             wpWeightOut, plusone, minusone, exactlyzero, PScale)
+             wpWeightOut, plusone, exactlyzero, PScale) where T
 
     lenrX = length(rX)
     @static p.LX>0 && (raug[1:lenrX,:] .= rX)
     raug[lenrX+1:end,:] = @view r[0x1 .+ wpIndexIn]
+    _raug = T<:Real ? raug : ustrip(raug)
 
     @static if p.PType == Array
-        batched_gemv!('N', plusone/PScale, P, raug, exactlyzero, k)
+        batched_gemv!('N', plusone/PScale, P, _raug, exactlyzero, k)
     elseif p.PType == Symmetric
-        batched_symv!('U', plusone/PScale, P, raug, exactlyzero, k)
+        batched_symv!('U', plusone/PScale, P, _raug, exactlyzero, k)
     elseif p.PType == SymmetricPacked
-        batched_spmv!('U', plusone/PScale, P, raug, exactlyzero, k)
+        batched_spmv!('U', plusone/PScale, P, _raug, exactlyzero, k)
     end
 
-    batched_dot!(den, raug, k)
-    den .= plusone ./ (plusone .+ den)
+    if T<:Real
+        batched_dot!(den, _raug, k)
+        den .= plusone ./ (plusone .+ den)
+        _den = den
+        _e = e
+        _wpWeightIn = wpWeightIn
+    else
+        _vPv = ustrip(vPv)
+        batched_dot!(_vPv, _raug, k)
+        den .= plusone ./ (oneunit.(vPv) .+ vPv)
+        _den = ustrip(den)
+        _e = ustrip(e)
+        _wpWeightIn = ustrip(wpWeightIn)
+    end
 
     @static if p.PType == Array
-        batched_ger!(-den*PScale, k, k, P)
+        batched_ger!(-_den*PScale, k, k, P)
     elseif p.PType == Symmetric
-        batched_syr!('U', -den*PScale, k, P)
+        batched_syr!('U', -_den*PScale, k, P)
     elseif p.PType == SymmetricPacked
-        batched_spr!('U', -den*PScale, k, P)
+        batched_spr!('U', -_den*PScale, k, P)
     end
 
-    batched_dot!(e, wpWeightIn, raug[lenrX+1:end,:])
+    batched_dot!(_e, _wpWeightIn, _raug[lenrX+1:end,:])
     e .+= u_bal .- @view utarg[learn_seq,:,itask]
     @static p.LX>0 && (e .+= wpWeightX * rX)
     delta .= e' .* k .* den'

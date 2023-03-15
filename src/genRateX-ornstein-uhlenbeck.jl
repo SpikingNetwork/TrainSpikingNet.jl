@@ -14,8 +14,9 @@ function genRateX(args)
 
     Nsteps = round(Int, (train_time - stim_off) / dt)
     rateX = Array{Float64}(undef, Nsteps, LX)
-    rateX[1,:] .= mu
+    LX==0 && return rateX
 
+    rateX[1,:] .= mu
     for i = 1:Nsteps-1
         rateX[i+1,:] = rateX[i,:] +
                           bou * (mu .- rateX[i,:]) * dt + 
@@ -23,9 +24,9 @@ function genRateX(args)
     end
 
     rateX = funMovAvg(rateX, wid)
+    rateX *= typeof(dt)<:Real ? dt/1000 : ustrip(upreferred(dt))
     clamp!(rateX, 0, Inf)
 end
-
 
 function funMovAvg(x,wid)
     Nsteps = size(x,1)

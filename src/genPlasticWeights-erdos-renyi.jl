@@ -39,7 +39,7 @@ function genPlasticWeights(args, ns0)
     
     # define weights_plastic
     wpIndexIn = Vector{Vector{Int}}(undef, Ncells)
-    wpWeightIn = Vector{Vector{Float64}}(undef, Ncells)
+    wpWeightIn = Vector{Vector{eltype(wpee)}}(undef, Ncells)
 
     # select random exc and inh presynaptic neurons
     function random_plastic_recurrent(I, tid)
@@ -57,7 +57,7 @@ function genPlasticWeights(args, ns0)
             wpIndexIn[i] = [indE; indI]
 
             # initial exc and inh plastic weights
-            wpWeightIn[i] = Array{Float64}(undef, Lexc+Linh)
+            wpWeightIn[i] = Array{eltype(wpee)}(undef, Lexc+Linh)
             if i <= Ne
                 wpWeightIn[i][1:Lexc] .= wpee
                 wpWeightIn[i][Lexc+1:end] .= wpei

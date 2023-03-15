@@ -10,7 +10,7 @@ module Param
             train_duration, stim_on, stim_off, train_time,
             dt, Nsteps, u0_skip_time, u0_ncells,
             Ncells, Ne, Ni,
-            tau_meme, tau_memi,
+            tau_meme, tau_memi, g,
             K, LX,
             X_bal,
             vre, threshe, threshi, refrac,
@@ -31,17 +31,18 @@ module Param
             cellModel_args,
             choose_task_func,
             )
+    get_init_code() = init_code
 end
 
 function param(data_dir)
     Param.include(joinpath(data_dir, "param.jl"))
     p = Param.get_param()
-    save(joinpath(data_dir, "param.jld2"), "param", p)
+    save(joinpath(data_dir, "param.jld2"), "param", p, "init_code", Param.get_init_code())
 
     if p.Ncells == typemax(p.IntPrecision)
-      @warn "IntPrecision is too small for GPU (but fine for CPU)"
+        @warn "IntPrecision is too small for GPU (but fine for CPU)"
     elseif p.Ncells > typemax(p.IntPrecision)
-      @error "IntPrecision is too small"
+        @error "IntPrecision is too small"
     end
 
     return p
@@ -58,6 +59,8 @@ function config(_data_dir, pu::Symbol=:cpu)
     end
 
     global data_dir = _data_dir
+    global init_code = load(joinpath(_data_dir, "param.jld2"), "init_code")
+    eval(init_code)
     global p = load(joinpath(_data_dir, "param.jld2"), "param")
     global choose_task = eval(p.choose_task_func)
     global kind
