@@ -235,9 +235,9 @@ end
 @testset "learns" begin
     mkdir(joinpath(@__DIR__,  "scratch", "cpu-learns"))
     open(joinpath(@__DIR__,  "scratch", "cpu-learns", "param.jl"), "w") do fileout 
-        for line in readlines(joinpath(@__DIR__, "..", "src", "param.jl"))
-            if startswith(line, "seed=")
-                println(fileout, "seed=1")
+        for line in readlines(joinpath(@__DIR__, "param.jl"))
+            if startswith(line, "Ncells =")
+                println(fileout, "Ncells = 4096")
             else
                 println(fileout, line)
             end

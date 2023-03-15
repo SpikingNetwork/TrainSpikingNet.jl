@@ -86,9 +86,9 @@ genStaticWeights_args = (; K, Ncells, Ne, rng, seed,
 
 
 # --- learning --- #
-penlambda   = 3.0   # 1 / learning rate
+penlambda   = 0.8   # 1 / learning rate
 penlamFF    = 1.0
-penmu       = 8.0   # regularize weights
+penmu       = 0.01  # regularize weights
 learn_every = 10.0  # (ms)
 
 correlation_var = K>0 ? :utotal : :uplastic
@@ -112,7 +112,7 @@ LX = 0
 wpscale = sqrt(L) * 2.0
 
 genPlasticWeights_file = "genPlasticWeights-erdos-renyi.jl"
-genPlasticWeights_args = (; Ncells, Ne, L, Lexc, Linh, LX, rng, seed,
+genPlasticWeights_args = (; Ncells, Ne, Lexc, Linh, LX, rng, seed,
                             :frac => 1.0,
                             :wpee => 2.0 * tau_meme * g / wpscale,
                             :wpie => 2.0 * tau_meme * g / wpscale,
