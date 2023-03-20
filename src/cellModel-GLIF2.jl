@@ -24,6 +24,11 @@ cellModel_args = (; thresh, thresh_s, b_s, delta_thresh_s, f_v, delta_v,
                     invR_mem, invC_mem, E_l, vre, dt)
 =#
 
+function cellModel_init!(v, rng, args)
+    randn!(rng, v)
+    @. v = v * (args.thresh - args.E_l) + args.E_l
+end
+
 function cellModel_timestep!(i::Number, v, X, u, args)
     v[i] += args.dt * args.invC_mem[i] * (X[i] + u[i] - args.invR_mem[i] * (v[i] - args.E_l[i]))
     args.thresh_s[i] -= args.dt * args.b_s * args.thresh_s[i]

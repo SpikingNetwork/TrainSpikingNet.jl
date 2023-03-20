@@ -1,6 +1,10 @@
 # similar to cellModel-GLIF1.jl, but more performant as it uses a single
 # membrane time constant and no resting membrane potential.
 
+function cellModel_init!(v, rng, args)
+    randn!(rng, v)
+end
+
 function cellModel_timestep!(i::Number, v, X, u, args)
     v[i] += args.dt * args.invtau_mem[i] * (X[i] + u[i] - v[i])
 end

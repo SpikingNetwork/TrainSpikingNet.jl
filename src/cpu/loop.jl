@@ -50,7 +50,7 @@
     ns .= 0
     @static p.LX>0 && (nsX .= 0)
     lastSpike .= -100.0
-    randn!(rng, v)
+    cellModel_init!(v, rng, cellModel_args)
     @static if p.K>0
         u_bale .= u_bali .= 0
         inputsEPrev .= inputsIPrev .= 0.0
