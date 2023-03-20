@@ -24,13 +24,12 @@ delta_Ij = ???
 invR_mem = ???
 invC_mem = ???
 E_l = ???
-vre = ???
 dt = ???
 
 cellModel_file = "cellModel-GLIF5.jl"
 cellModel_args = (; thresh, thresh_s, thresh_v, b_s, delta_thresh_s, a_v, b_v, f_v, delta_v,
                     Ij, invtau_Ij, f_j, delta_Ij,
-                    invR_mem, invC_mem, E_l, vre, dt)
+                    invR_mem, invC_mem, E_l, dt)
 
 =#
 
@@ -61,11 +60,11 @@ end
 
 function cellModel_reset!(i::Number, v, args)
     args.Ij[i,:] .= args.f_j * args.Ij[i,:] .+ args.delta_Ij
-    v[i] = args.f_v * v[i] - args.delta_v
+    v[i] = args.E_l[i] + args.f_v * v[i] - args.delta_v
     args.thresh_s[i] += args.delta_thresh_s
 end
 function cellModel_reset!(bspike::AbstractVector, v, args)
     @. args.Ij = ifelse(bspike, args.f_j * args.Ij + args.delta_Ij, args.Ij)
-    @. v = ifelse(bspike, args.f_v * v - args.delta_v, v)
+    @. v = ifelse(bspike, args.E_l + args.f_v * v - args.delta_v, v)
     @. args.thresh_s = ifelse(bspike, args.thresh_s + args.delta_thresh_s, args.thresh_s)
 end
