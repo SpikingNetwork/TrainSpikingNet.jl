@@ -60,6 +60,9 @@
         inputsPPrev .= 0.0
     end
 
+    @static kind in [:train, :test, :train_test] && (stim_on_steps = round(Int,stim_on/dt))
+    @static p.LX>0 && (stim_off_steps =  round(Int, stim_off/dt))
+
     # start the actual training
     for ti=1:Nsteps
         t = dt*ti;
@@ -197,7 +200,7 @@
             #           applied within the time interval [stim_on, stim_off]
             @static if kind in [:train, :test, :train_test]
                 if t > stim_on && t < stim_off
-                    X[ci] = X_bal[ci] + X_stim[ti-round(Int,stim_on/dt),ci,itask]
+                    X[ci] = X_bal[ci] + X_stim[ti-stim_on_steps,ci,itask]
                 else
                     X[ci] = X_bal[ci]
                 end
@@ -273,7 +276,7 @@
                 end
             end
 
-            tidx = ti - round(Int, stim_off/dt)
+            tidx = ti - stim_off_steps
             rand!(rng, rndX)
             for ci = 1:LX
                 # feed-forward neuron spiked

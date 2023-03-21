@@ -104,6 +104,9 @@ end
     uX_plas .= 0
     inputsPPrev .= 0.0
 
+    stim_on_steps = round(Int,stim_on/dt)
+    @static p.LX>0 && (stim_off_steps =  round(Int, stim_off/dt))
+
     # start the actual training
     for ti=1:Nsteps
         t = dt*ti;
@@ -179,7 +182,7 @@ end
 
         # apply external inputs
         if t > stim_on && t < stim_off
-            X .= X_bal .+ X_stim[ti-round(Int,stim_on/dt),:,itask]
+            X .= X_bal .+ X_stim[ti-stim_on_steps,:,itask]
         else
             X .= X_bal
         end
@@ -217,7 +220,7 @@ end
                 end
             end
 
-            tidx = ti - round(Int, stim_off/dt)
+            tidx = ti - stim_off_steps
             rand!(rng, rndX)
             # feed-forward neuron spiked
             bspikeX .= rndX .< @view rateX[tidx,:]
