@@ -223,7 +223,7 @@
                     lastSpike[ci] = t  # record neuron ci's last spike time. Used for checking ci is not in refractory period
                     ns[ci] += 1  # number of spikes neuron ci emitted
                     @static kind in [:test, :train_test] && if ns[ci] <= maxTimes
-                        times[ci, min(maxTimes, ns[ci])] = ti
+                        times[ci, ns[ci]] = ti
                     end
                 end #end if(spike occurred)
             end #end not in refractory period
@@ -284,7 +284,7 @@
                     @static kind in [:train, :train_test] && (spikesX[ci] = 1)
                     nsX[ci] += 1
                     @static kind in [:test, :train_test] && if nsX[ci] <= maxTimes
-                        timesX[ci, min(maxTimes, nsX[ci])] = ti
+                        timesX[ci, nsX[ci]] = ti
                     end
                     @static if kind in [:train, :test, :train_test]
                         inputsP += @view wpWeightX[:,ci]

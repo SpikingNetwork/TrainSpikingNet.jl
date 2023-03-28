@@ -71,7 +71,7 @@ function plot(test_file; ineurons_to_plot = 1:16)
         timess_cat = hcat(timess[:,itask]...)
         ps = Union{Plot,Context}[]
         for ci=1:nneurons
-            psth = fit(Histogram, vec(timess_cat[ci,:]),
+            psth = fit(Histogram, vec(timess_cat[ci,:] * Param.dt),
                        Param.stim_off : Param.learn_every : Param.train_time)
             df = DataFrame(t=Param.learn_every/1000 : Param.learn_every/1000 : Param.train_time/1000-1,
                            model=psth.weights ./ ntrials ./ Param.learn_every * 1000)
