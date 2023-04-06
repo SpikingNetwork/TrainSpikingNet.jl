@@ -94,7 +94,7 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
     save(joinpath(data_dir,"wpIndexConvert.jld2"), "wpIndexConvert", wpIndexConvert)
     save(joinpath(data_dir,"wpWeightX.jld2"), "wpWeightX", wpWeightX)
     save(joinpath(data_dir,"wpWeightIn.jld2"), "wpWeightIn", wpWeightIn)
-    save(joinpath(data_dir,"P.jld2"), "P", P)
+    save(joinpath(data_dir,"P.jld2"), "P", P; compress=true)
     save(joinpath(data_dir,"rateX.jld2"), "rateX", rateX)
 
     return (; w0Index, w0Weights, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightX, wpWeightIn,

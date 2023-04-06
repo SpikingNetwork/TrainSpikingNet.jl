@@ -1,6 +1,6 @@
 module TrainSpikingNet
 
-using LinearAlgebra, LinearAlgebra.BLAS, Random, JLD2, StatsBase, Statistics, SymmetricFormats, UnPack
+using LinearAlgebra, LinearAlgebra.BLAS, Random, JLD2, StatsBase, Statistics, SymmetricFormats, UnPack, CodecZlib
 using CUDA, NNlib, NNlibCUDA, BatchedBLAS
 
 using NLsolve
