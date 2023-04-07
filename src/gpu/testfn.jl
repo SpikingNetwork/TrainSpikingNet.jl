@@ -69,7 +69,7 @@ function test(; ntrials = 1,
         copy_invtau_plas = [(device!(idevice-1); CuArray(tmp)) for idevice=1:ndevices()];
     end
     synchronize()
-    Threads.@threads for itrial=1:ntrials
+    Threads.@threads :static for itrial=1:ntrials
         idevice = Threads.threadid()
         device!(idevice-1)
         for itask = 1:ntasks

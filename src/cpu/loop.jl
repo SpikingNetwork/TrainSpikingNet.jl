@@ -137,7 +137,7 @@
         #   - activity variables used for training
         #       * spikes emitted by each neuron (spikes)
         #       * synapse-filtered spikes emitted by each neuron (r)        
-        @maybethread for ci = 1:Ncells
+        @maybethread :dynamic for ci = 1:Ncells
             @static if p.K>0
                 u_bale[ci] += (-dt*u_bale[ci] + inputsEPrev[ci]) * invtau_bale
                 u_bali[ci] += (-dt*u_bali[ci] + inputsIPrev[ci]) * invtau_bali
@@ -272,7 +272,7 @@
         # (2) training: spikesXPrev computes the filtered feed-forward spikes, rX
         @static p.LX>0 && if t > stim_off
             @static if kind in [:train, :train_test]
-                @maybethread for ci = 1:LX
+                @maybethread :dynamic for ci = 1:LX
                     # if training, filter the spikes
                     @static if typeof(p.tau_plas)<:Number
                         rX[ci] += (-dt*rX[ci] + spikesXPrev[ci])*invtau_plas

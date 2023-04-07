@@ -4,7 +4,7 @@ function rls(itask,
              wpWeightOut, plusone, exactlyzero, PScale) where T
 
     lenrX = length(rX)
-    @maybethread for ci = 1:Ncells
+    @maybethread :static for ci = 1:Ncells
         ncpIn = length(wpIndexIn[ci])
         raug_tid = @view raug[1:lenrX+ncpIn, Threads.threadid()]
         @static p.LX>0 && (raug_tid[1:lenrX] = rX)

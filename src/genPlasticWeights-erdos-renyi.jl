@@ -42,40 +42,28 @@ function genPlasticWeights(args, ns0)
     wpWeightIn = Vector{Vector{eltype(wpee)}}(undef, Ncells)
 
     # select random exc and inh presynaptic neurons
-    function random_plastic_recurrent(I, tid)
-        for i in I
-            # (1) select consecutive neurons from a random starting point
-            # rnd_start = rand(1:length(exc_selected)-Lexc-Linh+1)
-            # indE = sort(exc_selected[rnd_start:rnd_start+Lexc-1])
-            # indI = sort(inh_selected[rnd_start:rnd_start+Linh-1])
+    Threads.@threads :static for i=1:Ncells
+        # (1) select consecutive neurons from a random starting point
+        # rnd_start = rand(1:length(exc_selected)-Lexc-Linh+1)
+        # indE = sort(exc_selected[rnd_start:rnd_start+Lexc-1])
+        # indI = sort(inh_selected[rnd_start:rnd_start+Linh-1])
 
-            # (2) select random neurons
-            indE = sample(copy_rng[tid], exc_selected, Lexc, replace=false)
-            indI = sample(copy_rng[tid], inh_selected, Linh, replace=false)
+        # (2) select random neurons
+        indE = sample(copy_rng[Threads.threadid()], exc_selected, Lexc, replace=false)
+        indI = sample(copy_rng[Threads.threadid()], inh_selected, Linh, replace=false)
 
-            # build wpIndexIn
-            wpIndexIn[i] = [indE; indI]
+        # build wpIndexIn
+        wpIndexIn[i] = [indE; indI]
 
-            # initial exc and inh plastic weights
-            wpWeightIn[i] = Array{eltype(wpee)}(undef, Lexc+Linh)
-            if i <= Ne
-                wpWeightIn[i][1:Lexc] .= wpee
-                wpWeightIn[i][Lexc+1:end] .= wpei
-            else
-                wpWeightIn[i][1:Lexc] .= wpie
-                wpWeightIn[i][Lexc+1:end] .= wpii
-            end
+        # initial exc and inh plastic weights
+        wpWeightIn[i] = Array{eltype(wpee)}(undef, Lexc+Linh)
+        if i <= Ne
+            wpWeightIn[i][1:Lexc] .= wpee
+            wpWeightIn[i][Lexc+1:end] .= wpei
+        else
+            wpWeightIn[i][1:Lexc] .= wpie
+            wpWeightIn[i][Lexc+1:end] .= wpii
         end
-    end
-    tasks = Vector{Task}(undef, num_threads)
-    partitions = [floor.(Int, collect(1:(Ncells/num_threads):Ncells)); Ncells+1]
-    for i=1:num_threads
-        # Threads.@threads does NOT guarantee a particular threadid for each partition
-        # so the RNG seed might be different
-        tasks[i] = Threads.@spawn random_plastic_recurrent(partitions[i]:partitions[i+1]-1, i)
-    end
-    for i = 1:num_threads
-        wait(tasks[i])
     end
 
     # define feedforward weights to all neurons

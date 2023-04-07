@@ -48,21 +48,9 @@ function genUTarget(args, uavg)
     time = time[idx][1:learn_step:end]
     bias = bias[idx][1:learn_step:end]
 
-    function random_phase_sinusoids(I, tid)
-        for i in I
-            phase = period * rand(copy_rng[tid])
-            utarg[:,i] = Amp * sin.((time.-phase)*2pi/period) .+ uavg[i] .+ bias
-        end
-    end
-    tasks = Vector{Task}(undef, num_threads)
-    partitions = [floor.(Int, collect(1:(Ncells/num_threads):Ncells)); Ncells+1]
-    for i=1:num_threads
-        # Threads.@threads does NOT guarantee a particular threadid for each partition
-        # so the RNG seed might be different
-        tasks[i] = Threads.@spawn random_phase_sinusoids(partitions[i]:partitions[i+1]-1, i)
-    end
-    for i = 1:num_threads
-        wait(tasks[i])
+    Threads.@threads :static for i=1:Ncells
+        phase = period * rand(copy_rng[Threads.threadid()])
+        utarg[:,i] = Amp * sin.((time.-phase)*2pi/period) .+ uavg[i] .+ bias
     end
 
     return utarg

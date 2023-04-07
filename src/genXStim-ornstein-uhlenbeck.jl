@@ -23,24 +23,12 @@ function genXStim(args)
     stim = Array{T}(undef, timeSteps, Ncells)
     stim[1,:] .= T(0)
 
-    function random_external_currents(I, tid)
-        for ci in I
-            for i = 1:timeSteps-1
-                stim[i+1,ci] = stim[i,ci] +
-                               b * (mu - stim[i,ci]) * dt +
-                               sig * sqrt(dt) * randn(copy_rng[tid])
-            end
+    Threads.@threads :static for ci=1:Ncells
+        for i = 1:timeSteps-1
+            stim[i+1,ci] = stim[i,ci] +
+                           b * (mu - stim[i,ci]) * dt +
+                           sig * sqrt(dt) * randn(copy_rng[Threads.threadid()])
         end
-    end
-    tasks = Vector{Task}(undef, num_threads)
-    partitions = [floor.(Int, collect(1:(Ncells/num_threads):Ncells)); Ncells+1]
-    for i=1:num_threads
-        # Threads.@threads does NOT guarantee a particular threadid for each partition
-        # so the RNG seed might be different
-        tasks[i] = Threads.@spawn random_external_currents(partitions[i]:partitions[i+1]-1, i)
-    end
-    for i = 1:num_threads
-        wait(tasks[i])
     end
 
     return stim

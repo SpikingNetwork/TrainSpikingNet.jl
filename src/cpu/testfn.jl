@@ -48,7 +48,7 @@ function test(; ntrials = 1,
                 :X, :lastSpike, :v, :noise]
         @eval $(Symbol("copy_",var)) = [deepcopy($var) for _=1:Threads.nthreads()];
     end
-    Threads.@threads for itrial=1:ntrials
+    Threads.@threads :static for itrial=1:ntrials
         for itask = 1:ntasks
             t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop_test(itask,
                   p.learn_every, p.stim_on, p.stim_off,

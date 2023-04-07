@@ -10,9 +10,9 @@ import Cairo, Fontconfig
 
 export param, config, init, train, test, plot
 
-macro maybethread(loop)
+macro maybethread(scheduler, loop)
     if Threads.nthreads()>1 && kind!="test"
-        quote Threads.@threads $(Expr(loop.head,
+        quote Threads.@threads $scheduler $(Expr(loop.head,
                                  Expr(loop.args[1].head, esc.(loop.args[1].args)...),
                                  esc(loop.args[2]))); end
     else
