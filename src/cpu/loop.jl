@@ -1,3 +1,34 @@
+@eval function $(Symbol("update_inputs_", kind))(Ncells, lastSpike, t, charge0,
+                                                 w0Index, w0Weights, inputsE, inputsI,
+                                                 wpIndexOut, wpWeightOut, inputsP)
+    for ci = 1:Ncells
+        if lastSpike[ci] == t
+            # network connectivity is divided into two parts:
+            #   - balanced connections (static)
+            #   - plastic connections
+
+            # (1) balanced connections (static)
+            # loop over neurons (indexed by j) postsynaptic to neuron ci.
+            @static p.K>0 && for j in eachindex(w0Index[ci])
+                post_ci = w0Index[ci][j]         # cell index of j_th postsynaptic neuron
+                wgt = w0Weights[ci][j]           # synaptic weight of the connection, ci -> post_ci
+                if wgt > charge0                 # excitatory synapse
+                    inputsE[post_ci] += wgt      #   - neuron ci spike's excitatory contribution to post_ci's synaptic current
+                elseif wgt < charge0             # inhibitory synapse
+                    inputsI[post_ci] += wgt      #   - neuron ci spike's inhibitory contribution to post_ci's synaptic current
+                end
+            end #end loop over synaptic projections
+
+            # (2) plastic connections
+            # loop over neurons (indexed by j) postsynaptic to neuron ci. 
+            @static kind in [:train, :test, :train_test] && for j in eachindex(wpIndexOut[ci])
+                post_ci = wpIndexOut[ci][j]               # cell index of j_th postsynaptic neuron
+                inputsP[post_ci] += wpWeightOut[ci][j]    # neuron ci spike's contribution to post_ci's synaptic current
+            end
+        end
+    end #end loop over neurons
+end
+
 @eval function $(Symbol("loop_", kind))(itask,
     learn_every, stim_on, stim_off, train_time, dt, Nsteps, u0_skip_steps, u0_ncells,
     Ncells, Ne, LX, refrac, learn_step, invtau_bale, invtau_bali, invtau_plas, X_bal,
@@ -236,32 +267,9 @@
         end #end loop over neurons
 
         # accumulate the contribution of spikes to postsynaptic currents
-        for ci = 1:Ncells
-            if lastSpike[ci] == t
-                # network connectivity is divided into two parts:
-                #   - balanced connections (static)
-                #   - plastic connections
-
-                # (1) balanced connections (static)
-                # loop over neurons (indexed by j) postsynaptic to neuron ci.
-                @static p.K>0 && for j in eachindex(w0Index[ci])
-                    post_ci = w0Index[ci][j]         # cell index of j_th postsynaptic neuron
-                    wgt = w0Weights[ci][j]           # synaptic weight of the connection, ci -> post_ci
-                    if wgt > charge0                 # excitatory synapse
-                        inputsE[post_ci] += wgt      #   - neuron ci spike's excitatory contribution to post_ci's synaptic current
-                    elseif wgt < charge0             # inhibitory synapse
-                        inputsI[post_ci] += wgt      #   - neuron ci spike's inhibitory contribution to post_ci's synaptic current
-                    end
-                end #end loop over synaptic projections
-
-                # (2) plastic connections
-                # loop over neurons (indexed by j) postsynaptic to neuron ci. 
-                @static kind in [:train, :test, :train_test] && for j in eachindex(wpIndexOut[ci])
-                    post_ci = wpIndexOut[ci][j]               # cell index of j_th postsynaptic neuron
-                    inputsP[post_ci] += wpWeightOut[ci][j]    # neuron ci spike's contribution to post_ci's synaptic current
-                end
-            end
-        end #end loop over neurons
+        $(Symbol("update_inputs_", kind))(Ncells, lastSpike, t, charge0,
+                                          w0Index, w0Weights, inputsE, inputsI,
+                                          wpIndexOut, wpWeightOut, inputsP)
 
         # external input to trained excitatory neurons
         #   - rX : filtered spike trains of feed-forward spikes
