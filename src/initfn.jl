@@ -8,16 +8,12 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
     itask = 1
     uavg0, ns0, ustd0 = loop_init(itask,
         nothing, nothing, p.stim_off, p.train_time, p.dt, p.Nsteps,
-        u0_skip_steps, p.u0_ncells, p.Ncells, p.Ne, p.LX, p.refrac,
-        learn_step, invtau_bale, invtau_bali, nothing, X_bal, nothing,
-        nothing, ns, nothing, nsX, inputsE, inputsI, nothing,
-        inputsEPrev, inputsIPrev, nothing, nothing, nothing, nothing, nothing,
-        u_bale, u_bali, nothing, u_bal, u, nothing, nothing,
-        X, nothing, nothing, lastSpike, nothing, nothing, nothing, nothing,
-        nothing, nothing, v, p.rng, noise, rndX, sig, nothing, w0Index,
-        w0Weights, nothing, nothing, nothing, nothing, nothing, nothing,
-        nothing, nothing, uavg, ustd, rateX, cellModel_args,
-        TCurrent, TCharge, TTime)
+        u0_skip_steps, p.u0_ncells, p.Ncells, p.Ne, p.LX, p.refrac, learn_step,
+        invtau_bale, invtau_bali, nothing, X_bal, nothing, sig, nothing,
+        nothing, nothing, nothing, nothing, cellModel_args, uavg, ustd, scratch,
+        nothing, nothing, nothing, p.rng, nothing, nothing, nothing, rateX,
+        w0Index, w0Weights, nothing, nothing, nothing, nothing, nothing,
+        nothing, TCurrent, TCharge, TTime)
 
     wpWeightX, wpWeightIn, wpIndexIn =
         genPlasticWeights(p.genPlasticWeights_args, ns0)

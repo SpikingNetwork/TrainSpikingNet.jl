@@ -30,17 +30,15 @@
 end
 
 @eval function $(Symbol("loop_", kind))(itask,
-    learn_every, stim_on, stim_off, train_time, dt, Nsteps, u0_skip_steps, u0_ncells,
-    Ncells, Ne, LX, refrac, learn_step, invtau_bale, invtau_bali, invtau_plas, X_bal,
-    maxTimes, times, ns, timesX, nsX, inputsE,
-    inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes,
-    spikesPrev, spikesX, spikesXPrev, u_bale, u_bali, uX_plas,
-    u_bal, u, r, rX, X, wid, example_neurons, lastSpike,
-    plusone, exactlyzero, PScale, raug, k, delta, v, rng, noise, rndX, sig,
-    P, w0Index, w0Weights, X_stim, utarg, wpIndexIn, wpIndexOut,
-    wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
-    uavg, ustd, rateX, cellModel_args,
+    learn_every, stim_on, stim_off, train_time, dt, Nsteps, u0_skip_steps,
+    u0_ncells, Ncells, Ne, LX, refrac, learn_step, invtau_bale, invtau_bali,
+    invtau_plas, X_bal, maxTimes, sig, wid, example_neurons, plusone,
+    exactlyzero, PScale, cellModel_args, uavg, ustd, scratch, raug, k,
+    delta, rng, P, X_stim, utarg, rateX, w0Index, w0Weights, wpIndexIn,
+    wpIndexOut, wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
     ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime}) where {TCurrent, TCharge, TTime}
+
+    @unpack times, ns, timesX, nsX, inputsE, inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes, spikesPrev, spikesX, spikesXPrev, u_bale, u_bali, uX_plas, u_bal, u, r, rX, X, lastSpike, v, noise, rndX = scratch
 
     @static if kind in [:test, :train_test]
         learn_nsteps = round(Int, (train_time - stim_off)/learn_every)

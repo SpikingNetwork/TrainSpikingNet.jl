@@ -65,6 +65,8 @@ function config(_data_dir, pu::Symbol=:cpu)
     global choose_task = eval(p.choose_task_func)
     global kind
 
+    global extra = pu==:cpu ? 0 : 1
+
     # --- load code --- #
     kind = :init
     include(p.genStaticWeights_file)
@@ -73,6 +75,7 @@ function config(_data_dir, pu::Symbol=:cpu)
     include(p.genUTarget_file)
     include(p.genXStim_file)
     include(p.cellModel_file)
+    include(joinpath(@__DIR__, "scratch.jl"))
     include(joinpath(@__DIR__, pu_str, "variables.jl"))
     include(joinpath(@__DIR__, pu_str, "loop.jl"))
     include(joinpath(@__DIR__, "rate2utarg.jl"))

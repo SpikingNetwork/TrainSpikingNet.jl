@@ -50,6 +50,7 @@ function train(; nloops = 1,
     P = CuArray{p.PPrecision}(P);
     X_stim = CuArray{TCurrent}(X_stim);
     utarg = CuArray{TCurrent}(utarg);
+    rateX = CuArray{p.FloatPrecision}(rateX);
     w0Index = CuArray{p.IntPrecision}(w0Index);
     w0Weights = CuArray{TCharge}(w0Weights);
     wpIndexIn = CuArray{p.IntPrecision}(wpIndexIn);
@@ -58,7 +59,6 @@ function train(; nloops = 1,
     wpWeightIn = CuArray{TCharge}(wpWeightIn);
     wpWeightOut = CuArray{TCharge}(wpWeightOut);
     wpWeightX = CuArray{TCharge}(wpWeightX);
-    rateX = CuArray{p.FloatPrecision}(rateX);
 
     pLtot = size(wpIndexIn,1) + p.LX
     raug = CuArray{TInvTime}(undef, pLtot, p.Ncells)
@@ -114,36 +114,24 @@ function train(; nloops = 1,
         if mod(iloop, correlation_interval) != 0
 
             loop_train(itask,
-                p.learn_every, p.stim_on, p.stim_off,
-                p.train_time, p.dt, p.Nsteps, p.Ncells,
-                nothing, p.LX, p.refrac,
-                learn_step, invtau_bale, invtau_bali, invtau_plas, X_bal,
-                nothing, nothing, ns, nothing, nsX, inputsE,
-                inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev,
-                spikes, spikesPrev, spikesX, spikesXPrev, u_bale, u_bali,
-                uX_plas, u_bal, u, r, rX, X, nothing, nothing,
-                lastSpike, bnotrefrac, bspike, plusone, p.PScale, raug,
-                k, vPv, den, e, delta, v, rng, noise, rndX, sig, P, w0Index,
-                w0Weights, X_stim, utarg, wpWeightX, wpIndexIn, wpIndexOut,
-                wpIndexConvert, wpWeightIn, wpWeightOut, rateX,
-                cellModel_args,
-                TCurrent, TCharge, TTime)
+                p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
+                p.Nsteps, p.Ncells, nothing, p.LX, p.refrac, learn_step,
+                invtau_bale, invtau_bali, invtau_plas, X_bal, nothing,
+                sig, nothing, nothing, plusone, p.PScale, cellModel_args,
+                bnotrefrac, bspike, bspikeX, scratch, raug, k, vPv, den,
+                e, delta, rng, P, X_stim, utarg, rateX, w0Index, w0Weights,
+                wpWeightX, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn,
+                wpWeightOut, TCurrent, TCharge, TTime)
         else
             _, _, _, _, utotal, _, _, uplastic, _ = loop_train_test(itask,
-                p.learn_every, p.stim_on, p.stim_off,
-                p.train_time, p.dt, p.Nsteps, p.Ncells,
-                nothing, p.LX, p.refrac,
-                learn_step, invtau_bale, invtau_bali, invtau_plas, X_bal,
-                maxTimes, times, ns, timesX, nsX, inputsE, inputsI,
-                inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes,
-                spikesPrev, spikesX, spikesXPrev, u_bale, u_bali,
-                uX_plas, u_bal, u, r, rX, X, p.wid,
-                p.example_neurons, lastSpike, bnotrefrac, bspike, plusone,
-                p.PScale, raug, k, vPv, den, e, delta, v, rng, noise, rndX,
-                sig, P, w0Index, w0Weights, X_stim, utarg, wpWeightX,
-                wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
-                rateX, cellModel_args,
-                TCurrent, TCharge, TTime)
+                p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
+                p.Nsteps, p.Ncells, nothing, p.LX, p.refrac, learn_step,
+                invtau_bale, invtau_bali, invtau_plas, X_bal, maxTimes, sig,
+                p.wid, p.example_neurons, plusone, p.PScale, cellModel_args,
+                bnotrefrac, bspike, bspikeX, scratch, raug, k, vPv, den,
+                e, delta, rng, P, X_stim, utarg, rateX, w0Index, w0Weights,
+                wpWeightX, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn,
+                wpWeightOut, TCurrent, TCharge, TTime)
 
             if p.correlation_var == :utotal
                 ulearned = utotal
@@ -200,7 +188,7 @@ function train(; nloops = 1,
 
         elapsed_time = time()-start_time
         println("elapsed time: ", elapsed_time, " sec")
-        mean_rate = mean(ns) / (p.dt*p.Nsteps)
+        mean_rate = mean(scratch.ns) / (p.dt*p.Nsteps)
         if TTime <: Real
             mean_rate_conv = string(1000*mean_rate, " Hz")
         else

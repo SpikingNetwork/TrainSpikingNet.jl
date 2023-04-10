@@ -56,14 +56,12 @@ function test(; ntrials = 1,
     copy_rng = [typeof(rng)() for _=1:ndevices()];
     isnothing(p.seed) || Random.seed!.(copy_rng, p.seed .+ (1:Threads.nthreads()))
     save(joinpath(data_dir,"rng-test.jld2"), "rng", copy_rng)
-    for var in [:times, :ns, :timesX, :nsX, :X_stim,
-                :w0Index, :w0Weights, :wpWeightX, :wpIndexOut, :wpWeightOut, :X_bal,
-                :inputsE, :inputsI, :inputsP, :inputsEPrev, :inputsIPrev, :inputsPPrev,
-                :u_bale, :u_bali, :uX_plas, :u_bal, :u,
-                :X, :lastSpike, :bnotrefrac, :bspike, :v, :noise, :sig]
-      @eval (device!(0); tmp = Array($var))
-      @eval $(Symbol("copy_",var)) = [(device!(idevice-1); CuArray(tmp)) for idevice=1:ndevices()];
+    for var in [:X_bal, :sig, :X_stim, :bnotrefrac, :bspike, :bspikeX,
+                :w0Index, :w0Weights, :wpWeightX, :wpIndexOut, :wpWeightOut]
+        @eval (device!(0); tmp = Array($var))
+        @eval $(Symbol("copy_",var)) = [(device!(idevice-1); CuArray(tmp)) for idevice=1:ndevices()];
     end
+    copy_scratch = [(device!(idevice-1); typeof(scratch)()) for idevice=1:ndevices()];
     if typeof(p.tau_plas)<:AbstractArray
         device!(0); tmp = Array(invtau_plas)
         copy_invtau_plas = [(device!(idevice-1); CuArray(tmp)) for idevice=1:ndevices()];
@@ -81,47 +79,28 @@ function test(; ntrials = 1,
                   typeof(p.tau_plas)<:Number ? invtau_plas : copy_invtau_plas[idevice],
                   copy_X_bal[idevice],
                   maxTimes,
-                  copy_times[idevice],
-                  copy_ns[idevice],
-                  copy_timesX[idevice],
-                  copy_nsX[idevice],
-                  copy_inputsE[idevice],
-                  copy_inputsI[idevice],
-                  copy_inputsP[idevice],
-                  copy_inputsEPrev[idevice],
-                  copy_inputsIPrev[idevice],
-                  copy_inputsPPrev[idevice],
-                  nothing, nothing, nothing, nothing,
-                  copy_u_bale[idevice],
-                  copy_u_bali[idevice],
-                  copy_uX_plas[idevice],
-                  copy_u_bal[idevice],
-                  copy_u[idevice],
-                  nothing, nothing,
-                  copy_X[idevice],
+                  copy_sig[idevice],
                   p.wid, p.example_neurons,
-                  copy_lastSpike[idevice],
+                  plusone,
+                  nothing,
+                  cellModel_args,
                   copy_bnotrefrac[idevice],
                   copy_bspike[idevice],
-                  plusone,
-                  nothing, nothing, nothing, nothing, nothing, nothing, nothing,
-                  copy_v[idevice],
+                  copy_bspikeX[idevice],
+                  copy_scratch[idevice],
+                  nothing, nothing, nothing, nothing, nothing, nothing,
                   copy_rng[idevice],
-                  copy_noise[idevice],
                   nothing,
-                  copy_sig[idevice],
-                  nothing,
+                  copy_X_stim[idevice],
+                  nothing, nothing,
                   copy_w0Index[idevice],
                   copy_w0Weights[idevice],
-                  copy_X_stim[idevice],
-                  nothing,
                   copy_wpWeightX[idevice],
                   nothing,
                   copy_wpIndexOut[idevice],
-                  nothing, nothing,
-                  copy_wpWeightOut[idevice],
                   nothing,
-                  cellModel_args,
+                  nothing,
+                  copy_wpWeightOut[idevice],
                   TCurrent, TCharge, TTime);
             nss[itrial, itask] = Array(thisns[ineurons_to_test])
             timess[itrial, itask] = Array(thistimes[ineurons_to_test,:])

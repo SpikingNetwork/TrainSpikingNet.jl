@@ -58,15 +58,13 @@ end
 @eval function $(Symbol("loop_",kind))(itask,
     learn_every, stim_on, stim_off, train_time, dt, Nsteps, Ncells, Ne,
     LX, refrac, learn_step, invtau_bale, invtau_bali, invtau_plas, X_bal,
-    maxTimes, times, ns, timesX, nsX, inputsE, inputsI,
-    inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes, spikesPrev,
-    spikesX, spikesXPrev, u_bale, u_bali, uX_plas, u_bal,
-    u, r, rX, X, wid, example_neurons, lastSpike, bnotrefrac,
-    bspike, plusone, PScale, raug, k, vPv, den, e, delta, v, rng, noise,
-    rndX, sig, P, w0Index, w0Weights, X_stim, utarg, wpWeightX,
-    wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut, rateX,
-    cellModel_args,
+    maxTimes, sig, wid, example_neurons, plusone, PScale, cellModel_args,
+    bnotrefrac, bspike, bspikeX, scratch, raug, k, vPv, den, e, delta,
+    rng, P, X_stim, utarg, rateX, w0Index, w0Weights, wpWeightX, wpIndexIn,
+    wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
     ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime}) where {TCurrent, TCharge, TTime}
+
+    @unpack times, ns, timesX, nsX, inputsE, inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes, spikesPrev, spikesX, spikesXPrev, u_bale, u_bali, uX_plas, u_bal, u, r, rX, X, lastSpike, v, noise, rndX = scratch
 
     @static if kind in [:test, :train_test]
         learn_nsteps = round(Int, (train_time - stim_off)/learn_every)

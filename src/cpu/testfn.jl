@@ -42,47 +42,20 @@ function test(; ntrials = 1,
     copy_rng = [typeof(rng)() for _=1:Threads.nthreads()];
     isnothing(p.seed) || Random.seed!.(copy_rng, p.seed .+ (1:Threads.nthreads()))
     save(joinpath(data_dir,"rng-test.jld2"), "rng", copy_rng)
-    for var in [:times, :ns, :timesX, :nsX,
-                :inputsE, :inputsI, :inputsP, :inputsEPrev, :inputsIPrev, :inputsPPrev,
-                :u_bale, :u_bali, :uX_plas, :u_bal, :u,
-                :X, :lastSpike, :v, :noise]
-        @eval $(Symbol("copy_",var)) = [deepcopy($var) for _=1:Threads.nthreads()];
-    end
+    copy_scratch = [typeof(scratch)() for _=1:Threads.nthreads()];
     Threads.@threads :static for itrial=1:ntrials
         for itask = 1:ntasks
-            t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop_test(itask,
-                  p.learn_every, p.stim_on, p.stim_off,
-                  p.train_time, p.dt, p.Nsteps, nothing, nothing, p.Ncells,
-                  nothing, p.LX, p.refrac, learn_step,
-                  invtau_bale, invtau_bali, invtau_plas, X_bal, maxTimes,
-                  copy_times[Threads.threadid()],
-                  copy_ns[Threads.threadid()],
-                  copy_timesX[Threads.threadid()],
-                  copy_nsX[Threads.threadid()],
-                  copy_inputsE[Threads.threadid()],
-                  copy_inputsI[Threads.threadid()],
-                  copy_inputsP[Threads.threadid()],
-                  copy_inputsEPrev[Threads.threadid()],
-                  copy_inputsIPrev[Threads.threadid()],
-                  copy_inputsPPrev[Threads.threadid()],
-                  nothing, nothing, nothing, nothing,
-                  copy_u_bale[Threads.threadid()],
-                  copy_u_bali[Threads.threadid()],
-                  copy_uX_plas[Threads.threadid()],
-                  copy_u_bal[Threads.threadid()],
-                  copy_u[Threads.threadid()],
-                  nothing, nothing,
-                  copy_X[Threads.threadid()],
-                  p.wid, p.example_neurons,
-                  copy_lastSpike[Threads.threadid()],
-                  nothing, nothing, nothing, nothing, nothing, nothing,
-                  copy_v[Threads.threadid()],
-                  copy_rng[Threads.threadid()],
-                  copy_noise[Threads.threadid()],
-                  nothing, sig, nothing, w0Index, w0Weights, X_stim, nothing,
-                  nothing, wpIndexOut, nothing, wpWeightX, nothing, wpWeightOut,
-                  nothing, nothing, nothing, cellModel_args,
-                  TCurrent, TCharge, TTime)
+            t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop(itask,
+                  p.learn_every, p.stim_on, p.stim_off, p.train_time,
+                  p.dt, p.Nsteps, nothing, nothing, p.Ncells, nothing,
+                  p.LX, p.refrac, learn_step, invtau_bale, invtau_bali,
+                  invtau_plas, X_bal, maxTimes, sig, p.wid, p.example_neurons,
+                  nothing, nothing, nothing, cellModel_args, nothing, nothing,
+                  copy_scratch[Threads.threadid()], nothing, nothing, nothing,
+                  copy_rng[Threads.threadid()], nothing, X_stim, nothing,
+                  nothing, w0Index, w0Weights, nothing, wpIndexOut, nothing,
+                  wpWeightX, nothing, wpWeightOut, TCurrent, TCharge, TTime)
+
             nss[itrial, itask] = thisns[ineurons_to_test]
             timess[itrial, itask] = thistimes[ineurons_to_test,:]
             utotals[itrial, itask] = thisutotal[:,ineurons_to_test]
