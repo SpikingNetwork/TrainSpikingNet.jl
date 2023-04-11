@@ -11,10 +11,16 @@ import Cairo, Fontconfig
 export param, config, init, train, test, plot
 
 macro maybethread(scheduler, loop)
-    if Threads.nthreads()>1 && kind!="test"
-        quote Threads.@threads $scheduler $(Expr(loop.head,
-                                 Expr(loop.args[1].head, esc.(loop.args[1].args)...),
-                                 esc(loop.args[2]))); end
+    if Threads.nthreads()>1
+        quote
+            if esc(:Kind)==:test
+                $(esc(loop))
+            else
+                Threads.@threads $scheduler $(Expr(loop.head,
+                                     Expr(loop.args[1].head, esc.(loop.args[1].args)...),
+                                     esc(loop.args[2])))
+            end
+        end
     else
         quote $(esc(loop)); end 
     end
@@ -45,6 +51,7 @@ end
 
 include("paramfn.jl")
 include("initfn.jl")
+include("rate2utarg.jl")
 include("plotfn.jl")
 
 using .Param

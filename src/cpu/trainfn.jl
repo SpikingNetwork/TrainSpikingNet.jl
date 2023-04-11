@@ -90,26 +90,26 @@ function train(; nloops = 1,
 
         if mod(iloop, correlation_interval) != 0
 
-            loop_train(itask,
-                p.learn_every, p.stim_on, p.stim_off, p.train_time, p.dt,
-                p.Nsteps, nothing, nothing, p.Ncells, nothing, p.LX, p.refrac,
-                learn_step, invtau_bale, invtau_bali, invtau_plas, X_bal,
-                nothing, sig, nothing, nothing, plusone, exactlyzero,
+            loop(Val(:train), TCurrent, TCharge, TTime, itask, p.learn_every,
+                 p.stim_on, p.stim_off, p.train_time, p.dt, p.Nsteps,
+                 nothing, nothing, p.Ncells, nothing, p.LX, p.refrac,
+                 learn_step, invtau_bale, invtau_bali, invtau_plas, X_bal,
+                 nothing, sig, nothing, nothing, plusone, exactlyzero,
+                 p.PScale, cellModel_args, uavg, ustd, scratch, raug, k,
+                 delta, rng, P, X_stim, utarg, rateX, w0Index, w0Weights,
+                 wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightX, wpWeightIn,
+                 wpWeightOut)
+        else
+            _, _, _, _, utotal, _, _, uplastic, _ = loop(Val(:train_test),
+                TCurrent, TCharge, TTime, itask, p.learn_every, p.stim_on,
+                p.stim_off, p.train_time, p.dt, p.Nsteps, nothing,
+                nothing, p.Ncells, nothing, p.LX, p.refrac, learn_step,
+                invtau_bale, invtau_bali, invtau_plas, X_bal, maxTimes,
+                sig, p.wid, p.example_neurons, plusone, exactlyzero,
                 p.PScale, cellModel_args, uavg, ustd, scratch, raug, k,
                 delta, rng, P, X_stim, utarg, rateX, w0Index, w0Weights,
                 wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightX, wpWeightIn,
-                wpWeightOut, TCurrent, TCharge, TTime)
-        else
-            _, _, _, _, utotal, _, _, uplastic, _ = loop_train_test(itask,
-                p.learn_every, p.stim_on, p.stim_off, p.train_time,
-                p.dt, p.Nsteps, nothing, nothing, p.Ncells, nothing, p.LX,
-                p.refrac, learn_step, invtau_bale, invtau_bali, invtau_plas,
-                X_bal, maxTimes, sig, p.wid, p.example_neurons, plusone,
-                exactlyzero, p.PScale, cellModel_args, uavg, ustd, scratch,
-                raug, k, delta, rng, P, X_stim, utarg, rateX, w0Index,
-                w0Weights, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightX,
-                wpWeightIn, wpWeightOut, TCurrent, TCharge, TTime)
-
+                wpWeightOut)
 
             if p.correlation_var == :utotal
                 ulearned = utotal

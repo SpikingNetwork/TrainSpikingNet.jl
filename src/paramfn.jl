@@ -63,12 +63,10 @@ function config(_data_dir, pu::Symbol=:cpu)
     eval(init_code)
     global p = load(joinpath(_data_dir, "param.jld2"), "param")
     global choose_task = eval(p.choose_task_func)
-    global kind
 
     global extra = pu==:cpu ? 0 : 1
 
     # --- load code --- #
-    kind = :init
     include(p.genStaticWeights_file)
     include(p.genPlasticWeights_file)
     include(p.genRateX_file)
@@ -78,19 +76,7 @@ function config(_data_dir, pu::Symbol=:cpu)
     include(joinpath(@__DIR__, "scratch.jl"))
     include(joinpath(@__DIR__, pu_str, "variables.jl"))
     include(joinpath(@__DIR__, pu_str, "loop.jl"))
-    include(joinpath(@__DIR__, "rate2utarg.jl"))
-
-    kind = :train
-    include(joinpath(@__DIR__, pu_str, "loop.jl"))
     include(joinpath(@__DIR__, pu_str, "rls.jl"))
-
-    kind = :train_test
-    include(joinpath(@__DIR__, pu_str, "loop.jl"))
-
-    kind = :test
-    include(joinpath(@__DIR__, pu_str, "loop.jl"))
-    include(joinpath(@__DIR__, pu_str, "rls.jl"))
-
     include(joinpath(@__DIR__, pu_str, "wpWeightIn2Out.jl"))
     include(joinpath(@__DIR__, pu_str, "trainfn.jl"))
     include(joinpath(@__DIR__, pu_str, "testfn.jl"))

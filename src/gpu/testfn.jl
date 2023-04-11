@@ -71,7 +71,9 @@ function test(; ntrials = 1,
         idevice = Threads.threadid()
         device!(idevice-1)
         for itask = 1:ntasks
-            t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop_test(itask,
+            t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop(Val(:test),
+                  TCurrent, TCharge, TTime,
+                  itask,
                   p.learn_every, p.stim_on, p.stim_off,
                   p.train_time, p.dt, p.Nsteps, p.Ncells,
                   nothing, p.LX, p.refrac, learn_step, invtau_bale,
@@ -100,8 +102,7 @@ function test(; ntrials = 1,
                   copy_wpIndexOut[idevice],
                   nothing,
                   nothing,
-                  copy_wpWeightOut[idevice],
-                  TCurrent, TCharge, TTime);
+                  copy_wpWeightOut[idevice]);
             nss[itrial, itask] = Array(thisns[ineurons_to_test])
             timess[itrial, itask] = Array(thistimes[ineurons_to_test,:])
             utotals[itrial, itask] = Array(thisutotal[:,ineurons_to_test])

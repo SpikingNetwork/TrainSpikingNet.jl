@@ -45,16 +45,16 @@ function test(; ntrials = 1,
     copy_scratch = [typeof(scratch)() for _=1:Threads.nthreads()];
     Threads.@threads :static for itrial=1:ntrials
         for itask = 1:ntasks
-            t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop(itask,
-                  p.learn_every, p.stim_on, p.stim_off, p.train_time,
-                  p.dt, p.Nsteps, nothing, nothing, p.Ncells, nothing,
-                  p.LX, p.refrac, learn_step, invtau_bale, invtau_bali,
-                  invtau_plas, X_bal, maxTimes, sig, p.wid, p.example_neurons,
-                  nothing, nothing, nothing, cellModel_args, nothing, nothing,
-                  copy_scratch[Threads.threadid()], nothing, nothing, nothing,
-                  copy_rng[Threads.threadid()], nothing, X_stim, nothing,
-                  nothing, w0Index, w0Weights, nothing, wpIndexOut, nothing,
-                  wpWeightX, nothing, wpWeightOut, TCurrent, TCharge, TTime)
+            t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop(Val(:test),
+                  TCurrent, TCharge, TTime, itask, p.learn_every, p.stim_on,
+                  p.stim_off, p.train_time, p.dt, p.Nsteps, nothing, nothing,
+                  p.Ncells, nothing, p.LX, p.refrac, learn_step, invtau_bale,
+                  invtau_bali, invtau_plas, X_bal, maxTimes, sig, p.wid,
+                  p.example_neurons, nothing, nothing, nothing, cellModel_args,
+                  nothing, nothing, copy_scratch[Threads.threadid()], nothing,
+                  nothing, nothing, copy_rng[Threads.threadid()], nothing,
+                  X_stim, nothing, nothing, w0Index, w0Weights, nothing,
+                  wpIndexOut, nothing, wpWeightX, nothing, wpWeightOut)
 
             nss[itrial, itask] = thisns[ineurons_to_test]
             timess[itrial, itask] = thistimes[ineurons_to_test,:]

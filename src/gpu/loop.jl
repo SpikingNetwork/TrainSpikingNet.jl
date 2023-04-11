@@ -55,18 +55,19 @@ function update_inputs(bspike,
            threads=(xthreads,ythreads), blocks=(xblocks<<2,yblocks<<2))
 end
 
-@eval function $(Symbol("loop_",kind))(itask,
-    learn_every, stim_on, stim_off, train_time, dt, Nsteps, Ncells, Ne,
-    LX, refrac, learn_step, invtau_bale, invtau_bali, invtau_plas, X_bal,
-    maxTimes, sig, wid, example_neurons, plusone, PScale, cellModel_args,
-    bnotrefrac, bspike, bspikeX, scratch, raug, k, vPv, den, e, delta,
-    rng, P, X_stim, utarg, rateX, w0Index, w0Weights, wpWeightX, wpIndexIn,
-    wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut,
-    ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime}) where {TCurrent, TCharge, TTime}
+function loop(::Val{Kind}, ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime},
+              itask, learn_every, stim_on, stim_off, train_time, dt, Nsteps,
+              Ncells, Ne, LX, refrac, learn_step, invtau_bale, invtau_bali,
+              invtau_plas, X_bal, maxTimes, sig, wid, example_neurons,
+              plusone, PScale, cellModel_args, bnotrefrac, bspike, bspikeX,
+              scratch, raug, k, vPv, den, e, delta, rng, P, X_stim, utarg,
+              rateX, w0Index, w0Weights, wpWeightX, wpIndexIn, wpIndexOut,
+              wpIndexConvert, wpWeightIn, wpWeightOut) where {Kind, TCurrent,
+              TCharge, TTime}
 
     @unpack times, ns, timesX, nsX, inputsE, inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes, spikesPrev, spikesX, spikesXPrev, u_bale, u_bali, uX_plas, u_bal, u, r, rX, X, lastSpike, v, noise, rndX = scratch
 
-    @static if kind in [:test, :train_test]
+    if Kind in (:test, :train_test)
         learn_nsteps = round(Int, (train_time - stim_off)/learn_every)
         widInc = round(Int, 2*wid/learn_every - 1)
 
@@ -91,7 +92,7 @@ end
     time0 = TTime(0)
     time1 = TTime(1)
 
-    @static if kind in [:train, :train_test]
+    if Kind in (:train, :train_test)
         learn_seq = 1
         r .= 0/time1
         spikesPrev .= 0
@@ -101,7 +102,7 @@ end
         end
     end
 
-    @static if kind in [:test, :train_test]
+    if Kind in (:test, :train_test)
         times .= 0
         @static p.LX>0 && (timesX .= 0)
     end
@@ -129,7 +130,7 @@ end
         inputsP .= charge0
 
         # modify the plastic weights when the stimulus is turned off 
-        @static if kind in [:train, :train_test]
+        if Kind in (:train, :train_test)
             if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
                 wpWeightIn, wpWeightOut = rls(itask,
                         raug, k, vPv, den, e, delta, r, rX,
@@ -160,7 +161,7 @@ end
         end
         u .= u_bal .+ uX_plas
 
-        @static if kind in [:test, :train_test]
+        if Kind in (:test, :train_test)
             # saved for visualization
             u_exccell[ti,1:example_neurons] .= u[1:example_neurons]
             u_bale_exccell[ti,1:example_neurons] .= u_bale[1:example_neurons]
@@ -185,7 +186,7 @@ end
         end
 
         # compute synapse-filtered spike trains
-        @static if kind in [:train, :train_test]
+        if Kind in (:train, :train_test)
             @static if typeof(p.tau_plas)<:Number
                 axpby!(invtau_plas, spikesPrev, plusone-dt*invtau_plas, r)
             else
@@ -210,11 +211,11 @@ end
 
         # spike occurred
         @inline cellModel_spiked!(bspike, bnotrefrac, v, cellModel_args)
-        @static kind in [:train, :train_test] && (spikes[2:end] .= bspike)
+        Kind in (:train, :train_test) && (spikes[2:end] .= bspike)
         ns .+= bspike
         @inline cellModel_reset!(bspike, v, cellModel_args)
         lastSpike .= ifelse.(bspike, t, lastSpike)
-        @static if kind in [:test, :train_test]
+        if Kind in (:test, :train_test)
             times[ CartesianIndex.(1:Ncells, min.(maxTimes, bspike.*ns) .+ 1) ] .= ti
         end
 
@@ -226,7 +227,7 @@ end
 
         # external input to trained excitatory neurons
         @static p.LX>0 && if t > stim_off
-            @static if kind in [:train, :train_test]
+            if Kind in (:train, :train_test)
                 @static if typeof(p.tau_plas)<:Number
                     axpby!(invtau_plas, spikesXPrev, plusone-dt*invtau_plas, rX)
                 else
@@ -238,9 +239,9 @@ end
             rand!(rng, rndX)
             # feed-forward neuron spiked
             bspikeX .= rndX .< @view rateX[tidx,:]
-            @static kind in [:train, :train_test] && (spikesX .= bspikeX)
+            Kind in (:train, :train_test) && (spikesX .= bspikeX)
             nsX .+= bspikeX
-            @static if kind in [:test, :train_test]
+            if Kind in (:test, :train_test)
                 timesX[ CartesianIndex.(1:LX, min.(maxTimes, bspikeX.*nsX) .+ 1) ] .= ti
             end
             inputsP[2:end] .+= dropdims(sum(view(wpWeightX,:,bspikeX), dims=2), dims=2)
@@ -252,13 +253,13 @@ end
             inputsIPrev .= inputsI
         end
         inputsPPrev .= inputsP
-        @static if kind in [:train, :train_test]
+        if Kind in (:train, :train_test)
             spikesPrev .= spikes
             @static p.LX>0 && (spikesXPrev .= spikesX)
         end
     end
 
-    @static if kind in [:test, :train_test]
+    if Kind in (:test, :train_test)
         u_rollave ./= u_rollave_cnt
         u_bale_rollave ./= u_rollave_cnt
         u_bali_rollave ./= u_rollave_cnt
