@@ -1,6 +1,7 @@
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 SymmetricFormats = "a91e544d-b3d6-4431-ae28-0549b1291c16"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
