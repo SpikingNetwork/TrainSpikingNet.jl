@@ -1,6 +1,6 @@
 using Pkg;  Pkg.activate(dirname(@__DIR__), io=devnull)
 
-using TrainSpikingNet, ArgParse
+using TrainSpikingNet, ArgParse, JLD2
 
 # --- define command line arguments --- #
 function ArgParse.parse_item(::Type{Vector{Int}}, x::AbstractString)
@@ -22,6 +22,8 @@ end
 
 parsed_args = parse_args(aps)
 
+init_code = load(parsed_args["test_file"], "init_code")
+TrainSpikingNet.eval(init_code)
+
 plot(parsed_args["test_file"],
-     ineurons_to_plot = parsed_args["ineurons_to_plot"],
-     load_init_code=true)
+     ineurons_to_plot = parsed_args["ineurons_to_plot"])

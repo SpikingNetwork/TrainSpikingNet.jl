@@ -1,8 +1,6 @@
-function plot(test_file; ineurons_to_plot = 1:16, load_init_code=false)
+function plot(test_file; ineurons_to_plot = 1:16)
 
     d = load(test_file)
-
-    load_init_code && eval(d["init_code"])
 
     ineurons_to_test = d["ineurons_to_test"]
     ineurons_to_plot = something(ineurons_to_plot, ineurons_to_test)
@@ -49,13 +47,13 @@ function plot(test_file; ineurons_to_plot = 1:16, load_init_code=false)
         _stim_off =  Param.stim_off/1000
         _train_time =  Param.train_time/1000
         _unit = "s"
-        _dt = Param.dt
+        _dt = Param.dt/1000
     else
-        _learn_every = ustrip(Param.learn_every)
-        _stim_off = ustrip(Param.stim_off)
-        _train_time = ustrip(Param.train_time)
-        _unit = string(unit(Param.learn_every))
-        _dt = ustrip(Param.dt)
+        _learn_every = ustrip(upreferred(Param.learn_every))
+        _stim_off = ustrip(upreferred(Param.stim_off))
+        _train_time = ustrip(upreferred(Param.train_time))
+        _unit = string(unit(upreferred(Param.learn_every)))
+        _dt = ustrip(upreferred(Param.dt))
     end
 
     for itask = 1:ntasks
