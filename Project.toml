@@ -27,5 +27,6 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
 CUDA = "3.4, 4"
+JLD2 = "0.4"
 NNlib = "0.7.28, 0.8"
 julia = "1.7"
