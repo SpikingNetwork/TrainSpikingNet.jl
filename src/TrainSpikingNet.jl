@@ -125,11 +125,13 @@ train
            restore_from_checkpoint = nothing,
            no_plot = false) -> (; nss, timess, utotals)
 
-Keeping the weights frozen, evaluate the model `ntrials` times and
-save the spike times and presynaptic currents of the neurons indexed as
-`ineurons_to_test` to "test.jld2" in the `data_dir` input to the last call
-to `config`.  These data are also returned as a NamedTuple for convenience.
-`plot` is immediately called on the results unless `no_plot` is `true`.
+Keeping the weights frozen, evaluate the model `ntrials` times and save the
+spike times and presynaptic currents of the neurons indexed as
+`ineurons_to_test` to "test.jld2" in the `data_dir` input to the last call to
+`config`.  These data are also returned as a NamedTuple for convenience.  `plot`
+is immediately called on the results unless `no_plot` is `true`.  By default the
+checkpoint with the highest number is used.  Use `restore_from_checkpoint` to
+specify a different one.
 """
 test
 

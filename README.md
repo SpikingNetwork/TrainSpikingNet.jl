@@ -21,9 +21,10 @@ Each are described in the next two sections.
 
 # Installation #
 
-Install Julia with [juliaup](https://github.com/JuliaLang/juliaup)
-or by manually downloading the latest version from
-[julialang.org](https://julialang.org/).
+Install Julia with [juliaup](https://github.com/JuliaLang/juliaup).
+
+Or, manually download Julia from [julialang.org](https://julialang.org/).  See
+the [platform specific instructions](https://julialang.org/downloads/platform).
 
 ## Julia REPL ##
 
@@ -34,18 +35,14 @@ julia> ] add https://github.com/SpikingNetwork/TrainSpikingNet.jl
 julia> ] test TrainSpikingNet
 ```
 
+The tests, which are optional, take about an hour, so be patient or just
+skip this step.
+
 (Get out of Pkg mode by pressing the Delete key.)
 
 That's it!
 
 ## Linux / PowerShell command line ##
-
-If downloaded manually, modify the PATH environment variable to include
-the path to the Julia executable.  Like this on Linux:
-
-```
-$ echo "export PATH=$PWD/julia-1.8.3/bin:$PATH" >> ~/.bashrc
-```
 
 Download the TrainSpikingNet.jl repository with either the [ZIP
 link](https://github.com/SpikingNetwork/TrainSpikingNet.jl/archive/refs/heads/master.zip)
