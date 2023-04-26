@@ -26,6 +26,7 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
+BatchedBLAS = "0.2"
 CUDA = "3.4, 4"
 NNlib = "0.7.28, 0.8"
 julia = "1.7"
