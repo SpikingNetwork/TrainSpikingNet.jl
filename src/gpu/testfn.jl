@@ -4,10 +4,6 @@ function test(; ntrials = 1,
                 no_plot = false)
 
     Threads.nthreads() < ndevices() && @warn "performance is best if no. threads is set to no. GPUs"
-    if Threads.nthreads() > ndevices()
-        @error "no. threads cannot exceed no. GPUs"
-        exit()
-    end
 
     # --- load initialization --- #
     X_stim = load(joinpath(data_dir,"X_stim.jld2"), "X_stim")
@@ -53,60 +49,72 @@ function test(; ntrials = 1,
     nss = Array{Any}(undef, ntrials, ntasks);
     timess = Array{Any}(undef, ntrials, ntasks);
     utotals = Array{Any}(undef, ntrials, ntasks);
-    copy_rng = [typeof(rng)() for _=1:ndevices()];
-    isnothing(p.seed) || Random.seed!.(copy_rng, p.seed .+ (1:Threads.nthreads()))
-    save(joinpath(data_dir,"rng-test.jld2"), "rng", copy_rng)
-    for var in [:X_bal, :sig, :X_stim, :bnotrefrac, :bspike, :bspikeX,
-                :w0Index, :w0Weights, :wpWeightX, :wpIndexOut, :wpWeightOut]
-        @eval (device!(0); tmp = Array($var))
-        @eval $(Symbol("copy_",var)) = [(device!(idevice-1); CuArray(tmp)) for idevice=1:ndevices()];
-    end
-    copy_scratch = [(device!(idevice-1); typeof(scratch)()) for idevice=1:ndevices()];
-    if typeof(p.tau_plas)<:AbstractArray
-        device!(0); tmp = Array(invtau_plas)
-        copy_invtau_plas = [(device!(idevice-1); CuArray(tmp)) for idevice=1:ndevices()];
-    end
-    synchronize()
-    Threads.@threads :static for itrial=1:ntrials
-        idevice = Threads.threadid()
-        device!(idevice-1)
-        for itask = 1:ntasks
-            t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop(Val(:test),
-                  TCurrent, TCharge, TTime,
-                  itask,
-                  p.learn_every, p.stim_on, p.stim_off,
-                  p.train_time, p.dt, p.Nsteps, p.Ncells,
-                  nothing, p.LX, p.refrac, learn_step, invtau_bale,
-                  invtau_bali,
-                  typeof(p.tau_plas)<:Number ? invtau_plas : copy_invtau_plas[idevice],
-                  copy_X_bal[idevice],
-                  maxTimes,
-                  copy_sig[idevice],
-                  p.wid, p.example_neurons,
-                  plusone,
-                  nothing,
-                  cellModel_args,
-                  copy_bnotrefrac[idevice],
-                  copy_bspike[idevice],
-                  copy_bspikeX[idevice],
-                  copy_scratch[idevice],
-                  nothing, nothing, nothing, nothing, nothing, nothing,
-                  copy_rng[idevice],
-                  nothing,
-                  copy_X_stim[idevice],
-                  nothing, nothing,
-                  copy_w0Index[idevice],
-                  copy_w0Weights[idevice],
-                  copy_wpWeightX[idevice],
-                  nothing,
-                  copy_wpIndexOut[idevice],
-                  nothing,
-                  nothing,
-                  copy_wpWeightOut[idevice]);
-            nss[itrial, itask] = Array(thisns[ineurons_to_test])
-            timess[itrial, itask] = Array(thistimes[ineurons_to_test,:])
-            utotals[itrial, itask] = Array(thisutotal[:,ineurons_to_test])
-            println("trial #", itrial, ", task #", itask, ": ",round(t, sigdigits=3), " sec")
+
+    itrial0 = Threads.Atomic{Int}(1)
+    @sync for idevice = 1:ndevices()
+        Threads.@spawn begin
+            device!(idevice-1)
+
+            copy_rng = typeof(rng)()
+            isnothing(p.seed) || Random.seed!.(copy_rng, p.seed + idevice)
+            save(joinpath(data_dir,"rng-test-device$idevice.jld2"), "rng", copy_rng)
+            copy_X_bal = copy(X_bal)
+            copy_sig = copy(sig)
+            copy_X_stim = copy(X_stim)
+            copy_bnotrefrac = copy(bnotrefrac)
+            copy_bspike = copy(bspike)
+            copy_bspikeX = copy(bspikeX)
+            copy_w0Index = copy(w0Index)
+            copy_w0Weights = copy(w0Weights)
+            copy_wpWeightX = copy(wpWeightX)
+            copy_wpIndexOut = copy(wpIndexOut)
+            copy_wpWeightOut = copy(wpWeightOut)
+            copy_scratch = typeof(scratch)()
+            typeof(p.tau_plas)<:AbstractArray && (copy_invtau_plas = copy(invtau_plas))
+            copy_cellModel_args = deepcopy(cellModel_args)
+
+            while true
+                itrial = Threads.atomic_add!(itrial0, 1)
+                itrial > ntrials && break
+                for itask = 1:ntasks
+                    t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop(Val(:test),
+                          TCurrent, TCharge, TTime,
+                          itask,
+                          p.learn_every, p.stim_on, p.stim_off,
+                          p.train_time, p.dt, p.Nsteps, p.Ncells,
+                          nothing, p.LX, p.refrac, learn_step, invtau_bale,
+                          invtau_bali,
+                          typeof(p.tau_plas)<:Number ? invtau_plas : copy_invtau_plas,
+                          copy_X_bal,
+                          maxTimes,
+                          copy_sig,
+                          p.wid, p.example_neurons,
+                          plusone,
+                          nothing,
+                          copy_cellModel_args,
+                          copy_bnotrefrac,
+                          copy_bspike,
+                          copy_bspikeX,
+                          copy_scratch,
+                          nothing, nothing, nothing, nothing, nothing, nothing,
+                          copy_rng,
+                          nothing,
+                          copy_X_stim,
+                          nothing, nothing,
+                          copy_w0Index,
+                          copy_w0Weights,
+                          copy_wpWeightX,
+                          nothing,
+                          copy_wpIndexOut,
+                          nothing,
+                          nothing,
+                          copy_wpWeightOut);
+                    nss[itrial, itask] = Array(thisns[ineurons_to_test])
+                    timess[itrial, itask] = Array(thistimes[ineurons_to_test,:])
+                    utotals[itrial, itask] = Array(thisutotal[:,ineurons_to_test])
+                    println("trial #", itrial, ", task #", itask, ": ",round(t, sigdigits=3), " sec")
+                end
+            end
         end
     end
 

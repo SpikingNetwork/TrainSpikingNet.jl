@@ -173,7 +173,7 @@ function train(; nloops = 1,
                         rm(joinpath(data_dir, oldckptfile))
                     end
                 end
-                global maxcor = max(maxcor, thiscor)
+                maxcor = max(maxcor, thiscor)
             end
         end
 
