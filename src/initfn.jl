@@ -8,7 +8,7 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
     itask = 1
     uavg0, ns0, ustd0 = loop(Val(:init), TCurrent, TCharge, TTime, itask,
         nothing, nothing, p.stim_off, p.train_time, p.dt, p.Nsteps,
-        u0_skip_steps, p.u0_ncells, p.Ncells, p.Ne, p.LX, p.refrac, learn_step,
+        u0_skip_steps, p.u0_ncells, p.Ncells, p.Ne, p.LX, p.refrac, learn_step, nothing,
         invtau_bale, invtau_bali, nothing, X_bal, nothing, sig, nothing,
         nothing, nothing, nothing, nothing, cellModel_args, uavg, ustd, scratch,
         nothing, nothing, nothing, p.rng, nothing, nothing, nothing, rateX,

@@ -1,4 +1,4 @@
-Base.@kwdef struct Scratch{MatrixTimeInt, VectorInt, VectorCharge, VectorFloat, VectorCurrent, VectorInvTime, VectorFloat64dt, VectorVoltage, VectorNoise}
+Base.@kwdef struct Scratch{MatrixTimeInt, VectorInt, VectorCharge, VectorFloat, VectorCurrent, MatrixCurrent, VectorInvTime, VectorFloat64dt, VectorVoltage, VectorNoise}
 
     times::MatrixTimeInt = Matrix(undef, p.Ncells, maxTimes+extra)  # times of recurrent spikes throughout trial
     ns::VectorInt = Vector(undef, p.Ncells)         # number of recurrent spikes in trial
@@ -34,5 +34,20 @@ Base.@kwdef struct Scratch{MatrixTimeInt, VectorInt, VectorCharge, VectorFloat, 
     noise::VectorNoise = Vector(undef, p.Ncells)  # actual noise added at each time step
 
     rndX::VectorFloat = Vector(undef, p.LX)  # uniform noise to generate Poisson feed-forward spikes
+
+    u_exccell::MatrixCurrent = Matrix(undef, p.Nsteps, p.example_neurons)
+    u_inhcell::MatrixCurrent = Matrix(undef, p.Nsteps, p.example_neurons)
+    u_bale_exccell::MatrixCurrent = Matrix(undef, p.Nsteps, p.example_neurons)
+    u_bali_exccell::MatrixCurrent = Matrix(undef, p.Nsteps, p.example_neurons)
+    u_bale_inhcell::MatrixCurrent = Matrix(undef, p.Nsteps, p.example_neurons)
+    u_bali_inhcell::MatrixCurrent = Matrix(undef, p.Nsteps, p.example_neurons)
+    u_plas_exccell::MatrixCurrent = Matrix(undef, p.Nsteps, p.example_neurons)
+    u_plas_inhcell::MatrixCurrent = Matrix(undef, p.Nsteps, p.example_neurons)
+
+    u_rollave::MatrixCurrent = Matrix(undef, learn_nsteps, p.Ncells)
+    u_bale_rollave::MatrixCurrent = Matrix(undef, learn_nsteps, p.Ncells)
+    u_bali_rollave::MatrixCurrent = Matrix(undef, learn_nsteps, p.Ncells)
+    u_plas_rollave::MatrixCurrent = Matrix(undef, learn_nsteps, p.Ncells)
+    u_rollave_cnt::VectorInt = Vector(undef, learn_nsteps)
 
 end

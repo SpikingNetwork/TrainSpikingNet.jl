@@ -48,6 +48,7 @@ exactlyzero = p.FloatPrecision(0.0)
 vre = p.FloatPrecision(p.vre)  # reset voltage
 
 learn_step = round(Int, p.learn_every/p.dt)
+learn_nsteps = round(Int, (p.train_time - p.stim_off)/p.learn_every)
 
 _maxTimes = p.maxrate * p.train_time
 typeof(p.train_time)<:Real && (_maxTimes /= 1000)
@@ -67,6 +68,7 @@ scratch = Scratch{CuMatrix{_TTimeInt, CUDA.Mem.DeviceBuffer},
                   CuVector{TCharge, CUDA.Mem.DeviceBuffer},
                   CuVector{p.FloatPrecision, CUDA.Mem.DeviceBuffer},
                   CuVector{TCurrent, CUDA.Mem.DeviceBuffer},
+                  CuMatrix{TCurrent, CUDA.Mem.DeviceBuffer},
                   CuVector{TInvTime, CUDA.Mem.DeviceBuffer},
                   CuVector{eltype(Float64(p.dt)), CUDA.Mem.DeviceBuffer},
                   CuVector{TVoltage, CUDA.Mem.DeviceBuffer},

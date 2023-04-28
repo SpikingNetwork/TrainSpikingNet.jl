@@ -33,7 +33,7 @@ end
 
 function loop(::Val{Kind}, ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime},
               itask, learn_every, stim_on, stim_off, train_time, dt, Nsteps,
-              u0_skip_steps, u0_ncells, Ncells, Ne, LX, refrac, learn_step,
+              u0_skip_steps, u0_ncells, Ncells, Ne, LX, refrac, learn_step, learn_nsteps,
               invtau_bale, invtau_bali, invtau_plas, X_bal, maxTimes,
               sig, wid, example_neurons, plusone, exactlyzero, PScale,
               cellModel_args, uavg, ustd, scratch, raug, k, delta, rng, P,
@@ -41,32 +41,24 @@ function loop(::Val{Kind}, ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime},
               wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut) where
               {Kind, TCurrent, TCharge, TTime}
 
-    @unpack times, ns, timesX, nsX, inputsE, inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes, spikesPrev, spikesX, spikesXPrev, u_bale, u_bali, uX_plas, u_bal, u, r, rX, X, lastSpike, v, noise, rndX = scratch
-
-    if Kind in (:test, :train_test)
-        learn_nsteps = round(Int, (train_time - stim_off)/learn_every)
-        widInc = round(Int, 2*wid/learn_every - 1)
-                
-        u_exccell = zeros(TCurrent, Nsteps,example_neurons)
-        u_inhcell = zeros(TCurrent, Nsteps,example_neurons)
-        u_bale_exccell = zeros(TCurrent, Nsteps,example_neurons)
-        u_bali_exccell = zeros(TCurrent, Nsteps,example_neurons)
-        u_bale_inhcell = zeros(TCurrent, Nsteps,example_neurons)
-        u_bali_inhcell = zeros(TCurrent, Nsteps,example_neurons)
-        u_plas_exccell = zeros(TCurrent, Nsteps,example_neurons)
-        u_plas_inhcell = zeros(TCurrent, Nsteps,example_neurons)
-
-        u_rollave = zeros(TCurrent, learn_nsteps,Ncells)
-        u_bale_rollave = zeros(TCurrent, learn_nsteps,Ncells)
-        u_bali_rollave = zeros(TCurrent, learn_nsteps,Ncells)
-        u_plas_rollave = zeros(TCurrent, learn_nsteps,Ncells)
-        u_rollave_cnt = zeros(Int, learn_nsteps)
-    end
+    @unpack times, ns, timesX, nsX, inputsE, inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes, spikesPrev, spikesX, spikesXPrev, u_bale, u_bali, uX_plas, u_bal, u, r, rX, X, lastSpike, v, noise, rndX, u_exccell, u_inhcell, u_bale_exccell, u_bali_exccell, u_bale_inhcell, u_bali_inhcell, u_plas_exccell, u_plas_inhcell, u_rollave, u_bale_rollave, u_bali_rollave, u_plas_rollave, u_rollave_cnt = scratch
 
     current0 = TCurrent(0)
     charge0 = TCharge(0)
     time0 = TTime(0)
     time1 = TTime(1)
+
+    if Kind in (:test, :train_test)
+        widInc = round(Int, 2*wid/learn_every - 1)
+                
+        u_exccell .= u_inhcell .= current0
+        u_bale_exccell .= u_bali_exccell .= current0
+        u_bale_inhcell .= u_bali_inhcell .= current0
+        u_plas_exccell .= u_plas_inhcell .= current0
+
+        u_rollave .= u_bale_rollave .= u_bali_rollave .= u_plas_rollave .= current0
+        u_rollave_cnt .= 0
+    end
 
     if Kind in (:train, :train_test)
         learn_seq = 1

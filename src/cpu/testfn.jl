@@ -48,7 +48,7 @@ function test(; ntrials = 1,
             t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop(Val(:test),
                   TCurrent, TCharge, TTime, itask, p.learn_every, p.stim_on,
                   p.stim_off, p.train_time, p.dt, p.Nsteps, nothing, nothing,
-                  p.Ncells, nothing, p.LX, p.refrac, learn_step, invtau_bale,
+                  p.Ncells, nothing, p.LX, p.refrac, learn_step, learn_nsteps, invtau_bale,
                   invtau_bali, invtau_plas, X_bal, maxTimes, sig, p.wid,
                   p.example_neurons, nothing, nothing, nothing, cellModel_args,
                   nothing, nothing, copy_scratch[Threads.threadid()], nothing,
@@ -56,9 +56,9 @@ function test(; ntrials = 1,
                   X_stim, nothing, nothing, w0Index, w0Weights, nothing,
                   wpIndexOut, nothing, wpWeightX, nothing, wpWeightOut)
 
-            nss[itrial, itask] = thisns[ineurons_to_test]
-            timess[itrial, itask] = thistimes[ineurons_to_test,:]
-            utotals[itrial, itask] = thisutotal[:,ineurons_to_test]
+            nss[itrial, itask] = copy(thisns[ineurons_to_test])
+            timess[itrial, itask] = copy(thistimes[ineurons_to_test,:])
+            utotals[itrial, itask] = copy(thisutotal[:,ineurons_to_test])
             println("trial #", itrial, ", task #", itask, ": ",round(t, sigdigits=3), " sec")
         end
     end

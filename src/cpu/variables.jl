@@ -48,6 +48,7 @@ exactlyzero = p.FloatPrecision(0.0)
 vre = p.FloatPrecision(p.vre)  # reset voltage
 
 learn_step = round(Int, p.learn_every/p.dt)
+learn_nsteps = round(Int, (p.train_time - p.stim_off)/p.learn_every)
 
 u0_skip_steps = round(Int, p.u0_skip_time/p.dt)
 
@@ -68,6 +69,7 @@ scratch = Scratch{Matrix{_TTimeInt},
                   Vector{TCharge},
                   Vector{p.FloatPrecision},
                   Vector{TCurrent},
+                  Matrix{TCurrent},
                   Vector{TInvTime},
                   Vector{eltype(Float64(p.dt))},
                   Vector{TVoltage},
