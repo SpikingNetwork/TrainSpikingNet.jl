@@ -49,6 +49,13 @@ function test(; ntrials = 1,
     nss = Array{Any}(undef, ntrials, ntasks);
     timess = Array{Any}(undef, ntrials, ntasks);
     utotals = Array{Any}(undef, ntrials, ntasks);
+    for itrial=1:ntrials, itask=1:ntasks
+        nss[itrial,itask] = Mem.pin(Array{eltype(scratch.ns)}(undef, length(ineurons_to_test)))
+        timess[itrial,itask] = Mem.pin(Array{eltype(scratch.times)}(undef,
+                length(ineurons_to_test), size(scratch.times,2)-1))
+        utotals[itrial,itask] = Mem.pin(Array{eltype(scratch.u_rollave)}(undef,
+                size(scratch.u_rollave,1), length(ineurons_to_test)))
+    end
 
     itrial0 = Threads.Atomic{Int}(1)
     @sync for idevice = 1:ndevices()
@@ -109,10 +116,10 @@ function test(; ntrials = 1,
                           nothing,
                           nothing,
                           copy_wpWeightOut);
-                    nss[itrial, itask] = Array(thisns[ineurons_to_test])
-                    timess[itrial, itask] = Array(thistimes[ineurons_to_test,:])
-                    utotals[itrial, itask] = Array(thisutotal[:,ineurons_to_test])
-                    println("trial #", itrial, ", task #", itask, ": ",round(t, sigdigits=3), " sec")
+                    copyto!(nss[itrial, itask], thisns[ineurons_to_test])
+                    copyto!(timess[itrial, itask], thistimes[ineurons_to_test,:])
+                    copyto!(utotals[itrial, itask], thisutotal[:,ineurons_to_test])
+                    println("trial #", itrial, ", task #", itask, ": ", round(t, sigdigits=3), " sec")
                 end
             end
         end
