@@ -8,11 +8,9 @@ sets their weights to predefined values.
 #=
 returned are two vectors of vectors specifying the static connectivity.
 
-the first returned vector (called w0Index in the source code) is of length Ncells
-and contains the
-index of the postsynaptic neurons and the second (w0Weights) contains the
-synaptic weights.
-
+the first returned vector (called w0Index in the source code) is of length
+Ncells and contains a vector for each neuron of the indices of its postsynaptic
+neurons, and the second (w0Weights) contains the corresponding synaptic weights.
 =#
 
 skip_autapse(a, i) = i<a ? i : i+1
