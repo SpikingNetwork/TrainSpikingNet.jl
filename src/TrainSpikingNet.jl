@@ -88,9 +88,20 @@ config
 
 Generate the adjacency matrices and populate the weights according to the
 plugins provided in "param.jl" for the model specified in the last call to
-`config`.  The data are saved to JLD2 files in the `data_dir` input to the
-last call to `config`, and are read by `train`.  They are also returned as
-a NamedTuple for easier manual inspection.
+`config`.  The data are saved to JLD2 files in the `data_dir` input to `config`,
+and are read by `train`.  They are also returned as a NamedTuple for easier
+manual inspection.
+
+By default, sinusoidal synaptic current targets with random phases are
+generated.  If `utarg_file` is the full path to a JLD2 file containing an Nsteps
+x Ncells x Ntasks array, then those are taken to be the target synaptic currents
+instead.  If rather `spikerate_file` is a path (this keyword argument is
+mutually exclusive with `utarg_file`), then the 3-D array therein is taken to be
+peri-stimulus time histograms (PSTHs), and the Ricciardi method is used to
+convert them to target synaptic currents.  In all cases, the synaptic currents
+actually used are saved to `utarg.jld2` in `data_dir`.  As converting PSTHs to
+currents is computationally expensive, subsequent calls to `init` should specify
+this saved `utarg.jld2` file directly.
 
 `param` and `config` must be called before `init`, the former in any
 julia session and the latter in the current session.  `init` only needs
