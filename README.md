@@ -31,7 +31,7 @@ the [platform specific instructions](https://julialang.org/downloads/platform).
 Add TrainSpikingNet to your environment and test that everything works:
 
 ```
-julia> ] add https://github.com/SpikingNetwork/TrainSpikingNet.jl
+julia> ] add TrainSpikingNet
 julia> ] test TrainSpikingNet
 ```
 
