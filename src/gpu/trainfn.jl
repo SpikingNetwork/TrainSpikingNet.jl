@@ -17,7 +17,7 @@ function train(; nloops = 1,
     if isnothing(restore_from_checkpoint)
         R=0
         wpWeightX = load(joinpath(data_dir,"wpWeightX.jld2"), "wpWeightX");
-        wpWeightIn = load(joinpath(data_dir,"wpWeightIn.jld2"), "wpWeightIn");
+        wpWeightIn = vv2m(load(joinpath(data_dir,"wpWeightIn.jld2"), "wpWeightIn"));
         P = vm2a(load(joinpath(data_dir,"P.jld2"), "P"));
         if p.PPrecision<:Integer
             P .= round.(P .* p.PScale)
@@ -36,7 +36,6 @@ function train(; nloops = 1,
     wpIndexIn = vv2m(wpIndexIn);
     wpIndexOut = vv2m(wpIndexOut);
     wpIndexConvert = vv2m(wpIndexConvert);
-    wpWeightIn = vv2m(wpWeightIn);
 
     wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn);
 
