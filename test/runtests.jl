@@ -113,8 +113,8 @@ end
     mkdir(joinpath(@__DIR__, "scratch", "cpu-$kind"))
     open(joinpath(@__DIR__, "scratch", "cpu-$kind", "param.jl"), "w") do fileout 
         for line in readlines(joinpath(@__DIR__, "param.jl"))
-            if contains(line, ":pree => 0.1")
-                println(fileout, replace(line, ":pree => 0.1" => ":pree => $pree"))
+            if startswith(line, "pree =")
+                println(fileout, replace(line, "0.1" => string(pree)))
             elseif startswith(line, "sig =")
                 println(fileout, "sig = $sig")
             elseif startswith(line, "L = ") && pree==0.0

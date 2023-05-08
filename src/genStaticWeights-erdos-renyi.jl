@@ -28,8 +28,6 @@ function genStaticWeights(args)
     w0Weights = Vector{Vector{eltype(jee)}}(undef, Ncells)
     postcells = 1:Ncells-1
 
-    nc0Max == 0 && return w0Index, w0Weights
-
     Threads.@threads :static for i=1:Ncells
         w0Index[i] = skip_autapse.(i, sample(copy_rng[Threads.threadid()], postcells, nc0Max, replace=false)) # fixed outdegree nc0Max
         w0Weights[i] = Array{eltype(jee)}(undef, nc0Max)
