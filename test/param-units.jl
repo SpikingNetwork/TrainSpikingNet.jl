@@ -123,6 +123,7 @@ learn_every = 10.0ms
 
 correlation_var = K>0 ? :utotal : :uplastic
 
+# a function called at each iteration to query which task to use while training
 choose_task_func = :((iloop, ntasks) -> iloop % ntasks + 1)   # or e.g. rand(1:ntasks)
 
 

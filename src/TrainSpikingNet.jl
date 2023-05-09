@@ -121,14 +121,17 @@ init
             monitor_resources_used = nothing,
             return_P = false) -> (; weights, P)
 
-Update the weights using the recursive least squares algorithm `nloops`
-times, measuring the similarity between the actual and target synaptic
-currents every `correlation_interval` iterations.  To continue training
-a previous model, specify which of the saved weights to start from with
-`restore_from_checkpoint`.  The learned plastic weights and updated covariance
-matrix are saved as JLD2 files in the `data_dir` input to the last call to
-`config` with the checkpoint added as a suffix.  The weights and optionally
-the covariance are also returned as a NamedTuple for convenience.
+Update the weights using the recursive least squares algorithm `nloops` times,
+measuring the similarity between the actual and target synaptic currents every
+`correlation_interval` iterations.  The learned plastic weights and updated
+covariance matrix are saved as JLD2 files in the `data_dir` input to the last
+call to `config` with the iteration number added as a checkpoint suffix.  By
+default these state variables are only saved after the last iteration.  To save
+them from the iteration with the highest correlation as well, set
+`save_best_checkpoint` to `true`.  To continue training a previous model,
+specify which of the saved weights and covariance matrices to start from with
+`restore_from_checkpoint`.  The weights and optionally the covariance are also
+returned as a NamedTuple for convenience.
 """
 train
 

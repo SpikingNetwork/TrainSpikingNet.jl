@@ -3,7 +3,7 @@ function test(; ntrials = 1,
                 restore_from_checkpoint = nothing,
                 no_plot = false)
 
-    Threads.nthreads() < ndevices() && @warn "performance is best if no. threads is set to no. GPUs"
+    Threads.nthreads() < ndevices() && @warn "performance is best if no. threads is at least no. GPUs"
 
     # --- load initialization --- #
     X_stim = load(joinpath(data_dir,"X_stim.jld2"), "X_stim")
