@@ -62,7 +62,7 @@ function plot(test_file; ineurons_to_plot = 1:16)
             df = DataFrame((t = (1:size(utarg,1)) .* _learn_every,
                             utarg = utarg[:,ineurons_to_plot[ci],itask],
                             utotal1 = utotals[1,itask][:,ci]))
-            utotal_ci = hcat((x[:,ci] for x in utotals[:,itask])...)
+            utotal_ci = hcat((x[:,ci] for x in utotals[:,itask] if !ismissing(x))...)
             df[!,:utotal_ave] = dropdims(median(utotal_ci, dims=2), dims=2)
             df[!,:utotal_disp] = dropdims(mapslices(mad, utotal_ci, dims=2), dims=2)
             transform!(df, [:utotal_ave, :utotal_disp] => ByRow((mu,sigma)->mu+sigma) => :utotal_upper)
@@ -81,7 +81,7 @@ function plot(test_file; ineurons_to_plot = 1:16)
         gridstack(permutedims(reshape(ps, ncols, nrows), (2,1))) |>
                 PDF(string(output_prefix, "-syninput-task$itask.pdf"), 8cm*ncols, 6.5cm*nrows)
 
-        timess_cat = hcat(timess[:,itask]...)
+        timess_cat = hcat((x for x in timess[:,itask] if !ismissing(x))...)
         ps = Union{Plot,Context}[]
         for ci=1:nneurons
             psth = fit(Histogram, vec(timess_cat[ci,:]) * _dt,

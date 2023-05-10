@@ -2,6 +2,8 @@ using Pkg;  Pkg.activate(dirname(@__DIR__), io=devnull)
 
 using TrainSpikingNet, ArgParse
 
+Base.exit_on_sigint(false)
+
 function ArgParse.parse_item(::Type{Vector{Int}}, x::AbstractString)
     return eval(Meta.parse(x))
 end

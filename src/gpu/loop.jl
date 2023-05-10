@@ -124,11 +124,13 @@ function loop(::Val{Kind}, ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime},
         # modify the plastic weights when the stimulus is turned off 
         if Kind in (:train, :train_test)
             if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
-                wpWeightIn, wpWeightOut = rls(itask,
+                disable_sigint() do
+                    rls(itask,
                         raug, k, vPv, den, e, delta, r, rX,
                         P, u_bal, utarg, learn_seq, wpIndexIn,
                         wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
                         plusone, exactlyzero, PScale)
+                end
                 learn_seq += 1
             end
         end

@@ -2,6 +2,8 @@ using Pkg;  Pkg.activate(dirname(@__DIR__), io=devnull)
 
 using TrainSpikingNet, ArgParse
 
+Base.exit_on_sigint(false)
+
 aps = ArgParseSettings()
 
 @add_arg_table! aps begin

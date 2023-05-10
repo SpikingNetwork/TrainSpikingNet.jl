@@ -13,10 +13,12 @@ function test(; ntrials = 1,
     wpIndexOut = load(joinpath(data_dir,"wpIndexOut.jld2"), "wpIndexOut")
     wpIndexConvert = load(joinpath(data_dir,"wpIndexConvert.jld2"), "wpIndexConvert")
     if isnothing(restore_from_checkpoint)
-        R = maximum([parse(Int, m.captures[1])
-                     for m in match.(r"ckpt([0-9]+)\.jld2",
-                                     filter(startswith("wpWeightIn-ckpt"),
-                                            readdir(data_dir)))])
+        ckpts = [(parse(Int, m.captures[1]), m.captures[2])
+                 for m in match.(r"ckpt([0-9]+)(i?)\.jld2",
+                                 filter(startswith("wpWeightIn-ckpt"),
+                                        readdir(data_dir)))]
+        R = join(argmax(first, ckpts))
+        println("using checkpoint ", R)
     else
         R = restore_from_checkpoint
     end
@@ -50,7 +52,6 @@ function test(; ntrials = 1,
     timess = Array{Any}(undef, ntrials, ntasks);
     utotals = Array{Any}(undef, ntrials, ntasks);
     for itrial=1:ntrials, itask=1:ntasks
-        nss[itrial,itask] = Mem.pin(Array{eltype(scratch.ns)}(undef, length(ineurons_to_test)))
         timess[itrial,itask] = Mem.pin(Array{eltype(scratch.times)}(undef,
                 length(ineurons_to_test), size(scratch.times,2)-1))
         utotals[itrial,itask] = Mem.pin(Array{eltype(scratch.u_rollave)}(undef,
@@ -58,77 +59,87 @@ function test(; ntrials = 1,
     end
 
     itrial0 = Threads.Atomic{Int}(1)
-    @sync for idevice = 1:ndevices()
-        Threads.@spawn begin
-            device!(idevice-1)
+    try
+        @sync for idevice = 1:ndevices()
+            Threads.@spawn begin
+                device!(idevice-1)
 
-            copy_rng = typeof(rng)()
-            isnothing(p.seed) || Random.seed!.(copy_rng, p.seed + idevice)
-            save(joinpath(data_dir,"rng-test-device$idevice.jld2"), "rng", copy_rng)
-            copy_X_bal = copy(X_bal)
-            copy_sig = copy(sig)
-            copy_X_stim = copy(X_stim)
-            copy_bnotrefrac = copy(bnotrefrac)
-            copy_bspike = copy(bspike)
-            copy_bspikeX = copy(bspikeX)
-            copy_w0Index = copy(w0Index)
-            copy_w0Weights = copy(w0Weights)
-            copy_wpWeightX = copy(wpWeightX)
-            copy_wpIndexOut = copy(wpIndexOut)
-            copy_wpWeightOut = copy(wpWeightOut)
-            copy_scratch = typeof(scratch)()
-            typeof(p.tau_plas)<:AbstractArray && (copy_invtau_plas = copy(invtau_plas))
-            copy_cellModel_args = deepcopy(cellModel_args)
+                copy_rng = typeof(rng)()
+                isnothing(p.seed) || Random.seed!.(copy_rng, p.seed + idevice)
+                save(joinpath(data_dir,"rng-test-device$idevice.jld2"), "rng", copy_rng)
+                copy_X_bal = copy(X_bal)
+                copy_sig = copy(sig)
+                copy_X_stim = copy(X_stim)
+                copy_bnotrefrac = copy(bnotrefrac)
+                copy_bspike = copy(bspike)
+                copy_bspikeX = copy(bspikeX)
+                copy_w0Index = copy(w0Index)
+                copy_w0Weights = copy(w0Weights)
+                copy_wpWeightX = copy(wpWeightX)
+                copy_wpIndexOut = copy(wpIndexOut)
+                copy_wpWeightOut = copy(wpWeightOut)
+                copy_scratch = typeof(scratch)()
+                typeof(p.tau_plas)<:AbstractArray && (copy_invtau_plas = copy(invtau_plas))
+                copy_cellModel_args = deepcopy(cellModel_args)
 
-            while true
-                itrial = Threads.atomic_add!(itrial0, 1)
-                itrial > ntrials && break
-                for itask = 1:ntasks
-                    t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop(Val(:test),
-                          TCurrent, TCharge, TTime,
-                          itask,
-                          p.learn_every, p.stim_on, p.stim_off,
-                          p.train_time, p.dt, p.Nsteps, p.Ncells,
-                          nothing, p.LX, p.refrac, learn_step, learn_nsteps, invtau_bale,
-                          invtau_bali,
-                          typeof(p.tau_plas)<:Number ? invtau_plas : copy_invtau_plas,
-                          copy_X_bal,
-                          maxTimes,
-                          copy_sig,
-                          p.wid, p.example_neurons,
-                          plusone,
-                          nothing,
-                          copy_cellModel_args,
-                          copy_bnotrefrac,
-                          copy_bspike,
-                          copy_bspikeX,
-                          copy_scratch,
-                          nothing, nothing, nothing, nothing, nothing, nothing,
-                          copy_rng,
-                          nothing,
-                          copy_X_stim,
-                          nothing, nothing,
-                          copy_w0Index,
-                          copy_w0Weights,
-                          copy_wpWeightX,
-                          nothing,
-                          copy_wpIndexOut,
-                          nothing,
-                          nothing,
-                          copy_wpWeightOut);
-                    copyto!(nss[itrial, itask], thisns[ineurons_to_test])
-                    copyto!(timess[itrial, itask], thistimes[ineurons_to_test,:])
-                    copyto!(utotals[itrial, itask], thisutotal[:,ineurons_to_test])
-                    println("trial #", itrial, ", task #", itask, ": ", round(t, sigdigits=3), " sec")
+                while true
+                    itrial = Threads.atomic_add!(itrial0, 1)
+                    itrial > ntrials && break
+                    for itask = 1:ntasks
+                        t = @elapsed thisns, thistimes, _, _, thisutotal, _ = loop(Val(:test),
+                              TCurrent, TCharge, TTime,
+                              itask,
+                              p.learn_every, p.stim_on, p.stim_off,
+                              p.train_time, p.dt, p.Nsteps, p.Ncells,
+                              nothing, p.LX, p.refrac, learn_step, learn_nsteps, invtau_bale,
+                              invtau_bali,
+                              typeof(p.tau_plas)<:Number ? invtau_plas : copy_invtau_plas,
+                              copy_X_bal,
+                              maxTimes,
+                              copy_sig,
+                              p.wid, p.example_neurons,
+                              plusone,
+                              nothing,
+                              copy_cellModel_args,
+                              copy_bnotrefrac,
+                              copy_bspike,
+                              copy_bspikeX,
+                              copy_scratch,
+                              nothing, nothing, nothing, nothing, nothing, nothing,
+                              copy_rng,
+                              nothing,
+                              copy_X_stim,
+                              nothing, nothing,
+                              copy_w0Index,
+                              copy_w0Weights,
+                              copy_wpWeightX,
+                              nothing,
+                              copy_wpIndexOut,
+                              nothing,
+                              nothing,
+                              copy_wpWeightOut);
+                        nss[itrial, itask] = Array(thisns[ineurons_to_test])
+                        copyto!(timess[itrial, itask], thistimes[ineurons_to_test,:])
+                        copyto!(utotals[itrial, itask], thisutotal[:,ineurons_to_test])
+                        println("trial #", itrial, ", task #", itask, ": ", round(t, sigdigits=3), " sec")
+                    end
                 end
             end
         end
+    catch e
+        println("stopping early: ", e)
+    finally
+        inotassigned = [!isassigned(nss, i) for i in eachindex(nss)]
+        nss[inotassigned] = timess[inotassigned] = utotals[inotassigned] .= missing
+        ikeep_row = .![all(ismissing.(x)) for x in eachrow(nss)]
+        save(joinpath(data_dir, "test.jld2"),
+             "ineurons_to_test", ineurons_to_test,
+             "nss", nss[ikeep_row,:],
+             "timess", timess[ikeep_row,:],
+             "utotals", utotals[ikeep_row,:],
+             "init_code", init_code)
+        Threads.atomic_add!(itrial0, ntrials+1)
     end
-
-    save(joinpath(data_dir, "test.jld2"),
-         "ineurons_to_test", ineurons_to_test,
-         "nss", nss, "timess", timess, "utotals", utotals,
-         "init_code", init_code)
 
     no_plot || plot(joinpath(data_dir, "test.jld2"), ineurons_to_plot = ineurons_to_test)
 

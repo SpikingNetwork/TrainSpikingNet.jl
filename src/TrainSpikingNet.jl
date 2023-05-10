@@ -128,10 +128,12 @@ covariance matrix are saved as JLD2 files in the `data_dir` input to the last
 call to `config` with the iteration number added as a checkpoint suffix.  By
 default these state variables are only saved after the last iteration.  To save
 them from the iteration with the highest correlation as well, set
-`save_best_checkpoint` to `true`.  To continue training a previous model,
-specify which of the saved weights and covariance matrices to start from with
-`restore_from_checkpoint`.  The weights and optionally the covariance are also
-returned as a NamedTuple for convenience.
+`save_best_checkpoint` to `true`.  Training can be stopped early with control-C,
+in which case the current state of the weights and covariance matrix are saved
+with a checkpoint ending in the last loop number completed plus the letter "i".
+To continue training a previous model, specify which of the saved weights and
+covariance matrices to start from with `restore_from_checkpoint`.  The weights
+and optionally the covariance are also returned as a NamedTuple for convenience.
 """
 train
 
@@ -144,10 +146,11 @@ train
 Keeping the weights frozen, evaluate the model `ntrials` times and save the
 spike times and presynaptic currents of the neurons indexed as
 `ineurons_to_test` to "test.jld2" in the `data_dir` input to the last call to
-`config`.  These data are also returned as a NamedTuple for convenience.  `plot`
-is immediately called on the results unless `no_plot` is `true`.  By default the
-checkpoint with the highest number is used.  Use `restore_from_checkpoint` to
-specify a different one.
+`config`.  These data are also returned as a NamedTuple for convenience.
+Testing can be stopped early with control-C, in which case just those trials
+already completed are saved.  `plot` is immediately called on the results
+unless `no_plot` is `true`.  By default the checkpoint with the highest number
+is used.  Use `restore_from_checkpoint` to specify a different one.
 """
 test
 

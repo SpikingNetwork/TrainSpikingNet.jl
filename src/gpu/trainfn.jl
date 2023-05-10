@@ -23,10 +23,13 @@ function train(; nloops = 1,
             P .= round.(P .* p.PScale)
         end
     else
-        R = restore_from_checkpoint
-        wpWeightX = load(joinpath(data_dir,"wpWeightX-ckpt$R.jld2"), "wpWeightX");
-        wpWeightIn = load(joinpath(data_dir,"wpWeightIn-ckpt$R.jld2"), "wpWeightIn");
-        P = load(joinpath(data_dir,"P-ckpt$R.jld2"), "P");
+        R = typeof(restore_from_checkpoint)<:AbstractString ?
+            parse(Int, restore_from_checkpoint[1:end-1]) : restore_from_checkpoint
+        wpWeightX = load(joinpath(data_dir,"wpWeightX-ckpt$restore_from_checkpoint.jld2"),
+                         "wpWeightX");
+        wpWeightIn = load(joinpath(data_dir,"wpWeightIn-ckpt$restore_from_checkpoint.jld2"),
+                          "wpWeightIn");
+        P = load(joinpath(data_dir,"P-ckpt$restore_from_checkpoint.jld2"), "P");
     end;
 
     wpWeightOut = zeros(TCharge, maximum([length(x) for x in wpIndexOut])+1, p.Ncells+1);
@@ -103,97 +106,100 @@ function train(; nloops = 1,
         return A
     end
 
-    maxcor = -Inf
-    for iloop = R.+(1:nloops)
-        itask = choose_task(iloop, ntasks)
-        println("Loop no. ", iloop, ", task no. ", itask) 
+    function save_weights_P(ckpt)
+        save(joinpath(data_dir,"wpWeightX-ckpt$ckpt.jld2"),
+             "wpWeightX", Array(wpWeightX))
+        save(joinpath(data_dir,"wpWeightIn-ckpt$ckpt.jld2"),
+             "wpWeightIn", Array(wpWeightIn))
+        save(joinpath(data_dir,"P-ckpt$ckpt.jld2"),
+             "P", p.PType==Symmetric ? make_symmetric(Array(P)) : Array(P))
+    end
 
-        start_time = time()
+    iloop = 0
+    try
+        maxcor = -Inf
+        for outer iloop = R.+(1:nloops)
+            itask = choose_task(iloop, ntasks)
+            println("Loop no. ", iloop, ", task no. ", itask) 
 
-        if mod(iloop, correlation_interval) != 0
+            start_time = time()
 
-            loop(Val(:train), TCurrent, TCharge, TTime, itask, p.learn_every,
-                 p.stim_on, p.stim_off, p.train_time, p.dt, p.Nsteps,
-                 p.Ncells, nothing, p.LX, p.refrac, learn_step, learn_nsteps, invtau_bale,
-                 invtau_bali, invtau_plas, X_bal, nothing, sig, nothing,
-                 nothing, plusone, p.PScale, cellModel_args, bnotrefrac,
-                 bspike, bspikeX, scratch, raug, k, vPv, den, e, delta, rng,
-                 P, X_stim, utarg, rateX, w0Index, w0Weights, wpWeightX,
-                 wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn,
-                 wpWeightOut)
-        else
-            _, _, _, _, utotal, _, _, uplastic, _ = loop(Val(:train_test),
-                TCurrent, TCharge, TTime, itask, p.learn_every, p.stim_on,
-                p.stim_off, p.train_time, p.dt, p.Nsteps, p.Ncells, nothing,
-                p.LX, p.refrac, learn_step, learn_nsteps, invtau_bale, invtau_bali,
-                invtau_plas, X_bal, maxTimes, sig, p.wid, p.example_neurons,
-                plusone, p.PScale, cellModel_args, bnotrefrac, bspike,
-                bspikeX, scratch, raug, k, vPv, den, e, delta, rng, P, X_stim,
-                utarg, rateX, w0Index, w0Weights, wpWeightX, wpIndexIn,
-                wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut)
+            if mod(iloop, correlation_interval) != 0
 
-            if p.correlation_var == :utotal
-                ulearned = utotal
-            elseif p.correlation_var == :uplastic
-                ulearned = uplastic
+                loop(Val(:train), TCurrent, TCharge, TTime, itask, p.learn_every,
+                     p.stim_on, p.stim_off, p.train_time, p.dt, p.Nsteps,
+                     p.Ncells, nothing, p.LX, p.refrac, learn_step, learn_nsteps, invtau_bale,
+                     invtau_bali, invtau_plas, X_bal, nothing, sig, nothing,
+                     nothing, plusone, p.PScale, cellModel_args, bnotrefrac,
+                     bspike, bspikeX, scratch, raug, k, vPv, den, e, delta, rng,
+                     P, X_stim, utarg, rateX, w0Index, w0Weights, wpWeightX,
+                     wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn,
+                     wpWeightOut)
             else
-                error("invalid value for correlation_var parameter")
-            end
-            pcor = Array{Float64}(undef, p.Ncells)
-            for ci in 1:p.Ncells
-                utarg_slice = @view utarg[:,ci, itask]
-                ulearned_slice = @view ulearned[:,ci]
-                if TCurrent <: Real
-                    pcor[ci] = cor(convert(Array{Float64}, utarg_slice),
-                                   Array(ulearned_slice))
+                _, _, _, _, utotal, _, _, uplastic, _ = loop(Val(:train_test),
+                    TCurrent, TCharge, TTime, itask, p.learn_every, p.stim_on,
+                    p.stim_off, p.train_time, p.dt, p.Nsteps, p.Ncells, nothing,
+                    p.LX, p.refrac, learn_step, learn_nsteps, invtau_bale, invtau_bali,
+                    invtau_plas, X_bal, maxTimes, sig, p.wid, p.example_neurons,
+                    plusone, p.PScale, cellModel_args, bnotrefrac, bspike,
+                    bspikeX, scratch, raug, k, vPv, den, e, delta, rng, P, X_stim,
+                    utarg, rateX, w0Index, w0Weights, wpWeightX, wpIndexIn,
+                    wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut)
+
+                if p.correlation_var == :utotal
+                    ulearned = utotal
+                elseif p.correlation_var == :uplastic
+                    ulearned = uplastic
                 else
-                    pcor[ci] = cor(convert(Array{Float64}, ustrip(utarg_slice)),
-                                   Array(ustrip(ulearned_slice)))
+                    error("invalid value for correlation_var parameter")
                 end
-            end
-
-            bnotnan = .!isnan.(pcor)
-            thiscor = mean(pcor[bnotnan])
-            println("correlation: ", thiscor,
-                    all(bnotnan) ? "" : string(" (", length(pcor)-count(bnotnan)," are NaN)"))
-
-            if save_best_checkpoint && thiscor>maxcor && all(bnotnan)
-                suffix = string("ckpt", iloop, "-cor", round(thiscor, digits=3))
-                save(joinpath(data_dir, "wpWeightX-$suffix.jld2"),
-                     "wpWeightX", Array(wpWeightX))
-                save(joinpath(data_dir, "wpWeightIn-$suffix.jld2"),
-                     "wpWeightIn", Array(wpWeightIn))
-                save(joinpath(data_dir, "P-$suffix.jld2"),
-                     "P", p.PType==Symmetric ? make_symmetric(Array(P)) : Array(P))
-                if maxcor != -Inf
-                    for oldckptfile in filter(x -> !contains(x, string("ckpt", iloop)) &&
-                                              contains(x, string("-cor", round(maxcor, digits=3))),
-                                              readdir(data_dir))
-                        rm(joinpath(data_dir, oldckptfile))
+                pcor = Array{Float64}(undef, p.Ncells)
+                for ci in 1:p.Ncells
+                    utarg_slice = @view utarg[:,ci, itask]
+                    ulearned_slice = @view ulearned[:,ci]
+                    if TCurrent <: Real
+                        pcor[ci] = cor(convert(Array{Float64}, utarg_slice),
+                                       Array(ulearned_slice))
+                    else
+                        pcor[ci] = cor(convert(Array{Float64}, ustrip(utarg_slice)),
+                                       Array(ustrip(ulearned_slice)))
                     end
                 end
-                maxcor = max(maxcor, thiscor)
+
+                bnotnan = .!isnan.(pcor)
+                thiscor = mean(pcor[bnotnan])
+                println("correlation: ", thiscor,
+                        all(bnotnan) ? "" : string(" (", length(pcor)-count(bnotnan)," are NaN)"))
+
+                if save_best_checkpoint && thiscor>maxcor && all(bnotnan)
+                    suffix = string("ckpt", iloop, "-cor", round(thiscor, digits=3))
+                    save_weights_P(suffix)
+                    if maxcor != -Inf
+                        for oldckptfile in filter(x -> !contains(x, string("ckpt", iloop)) &&
+                                                  contains(x, string("-cor", round(maxcor, digits=3))),
+                                                  readdir(data_dir))
+                            rm(joinpath(data_dir, oldckptfile))
+                        end
+                    end
+                    maxcor = max(maxcor, thiscor)
+                end
             end
-        end
 
-        if iloop == R+nloops
-            save(joinpath(data_dir,"wpWeightX-ckpt$iloop.jld2"),
-                 "wpWeightX", Array(wpWeightX))
-            save(joinpath(data_dir,"wpWeightIn-ckpt$iloop.jld2"),
-                 "wpWeightIn", Array(wpWeightIn))
-            save(joinpath(data_dir,"P-ckpt$iloop.jld2"),
-                 "P", p.PType==Symmetric ? make_symmetric(Array(P)) : Array(P))
-        end
+            iloop == R+nloops && save_weights_P(iloop)
 
-        elapsed_time = time()-start_time
-        println("elapsed time: ", elapsed_time, " sec")
-        mean_rate = mean(scratch.ns) / (p.dt*p.Nsteps)
-        if TTime <: Real
-            mean_rate_conv = string(1000*mean_rate, " Hz")
-        else
-            mean_rate_conv = uconvert(unit(p.maxrate), mean_rate)
+            elapsed_time = time()-start_time
+            println("elapsed time: ", elapsed_time, " sec")
+            mean_rate = mean(scratch.ns) / (p.dt*p.Nsteps)
+            if TTime <: Real
+                mean_rate_conv = string(1000*mean_rate, " Hz")
+            else
+                mean_rate_conv = uconvert(unit(p.maxrate), mean_rate)
+            end
+            println("firing rate: ", mean_rate_conv)
         end
-        println("firing rate: ", mean_rate_conv)
+    catch e
+        println("stopping early: ", e)
+        save_weights_P(string(iloop,'i'))
     end
 
     if !isnothing(monitor_resources_used)
