@@ -116,6 +116,9 @@ function train(; nloops = 1,
     end
 
     iloop = 0
+    correlation = Union{Missing,Float64}[]
+    elapsed_time = Float64[]
+    firing_rate = TTime <: Real ? Float64[] : Vector{eltype(unit(p.maxrate)*1.0)}(undef, 0)
     try
         maxcor = -Inf
         for outer iloop = R.+(1:nloops)
@@ -135,6 +138,8 @@ function train(; nloops = 1,
                      P, X_stim, utarg, rateX, w0Index, w0Weights, wpWeightX,
                      wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn,
                      wpWeightOut)
+
+                push!(correlation, missing)
             else
                 _, _, _, _, utotal, _, _, uplastic, _ = loop(Val(:train_test),
                     TCurrent, TCharge, TTime, itask, p.learn_every, p.stim_on,
@@ -170,6 +175,7 @@ function train(; nloops = 1,
                 thiscor = mean(pcor[bnotnan])
                 println("correlation: ", thiscor,
                         all(bnotnan) ? "" : string(" (", length(pcor)-count(bnotnan)," are NaN)"))
+                push!(correlation, thiscor)
 
                 if save_best_checkpoint && thiscor>maxcor && all(bnotnan)
                     suffix = string("ckpt", iloop, "-cor", round(thiscor, digits=3))
@@ -187,8 +193,10 @@ function train(; nloops = 1,
 
             iloop == R+nloops && save_weights_P(iloop)
 
-            elapsed_time = time()-start_time
-            println("elapsed time: ", elapsed_time, " sec")
+            this_elapsed_time = time()-start_time
+            println("elapsed time: ", this_elapsed_time, " sec")
+            push!(elapsed_time, this_elapsed_time)
+
             mean_rate = mean(scratch.ns) / (p.dt*p.Nsteps)
             if TTime <: Real
                 mean_rate_conv = string(1000*mean_rate, " Hz")
@@ -196,10 +204,17 @@ function train(; nloops = 1,
                 mean_rate_conv = uconvert(unit(p.maxrate), mean_rate)
             end
             println("firing rate: ", mean_rate_conv)
+            push!(firing_rate, TTime <: Real ? 1000*mean_rate
+                                             : uconvert(unit(p.maxrate), mean_rate))
         end
     catch e
         println("stopping early: ", e)
         save_weights_P(string(iloop,'i'))
+    finally
+        save(joinpath(data_dir,"learning-curve.jld2"),
+             "correlation", correlation,
+             "elapsed_time", elapsed_time,
+             "firing_rate", firing_rate)
     end
 
     if !isnothing(monitor_resources_used)
