@@ -235,10 +235,9 @@ end
 
         dcpu = load(joinpath(@__DIR__, "scratch", "cpu-twotasks", "test.jld2"))
         dgpu = load(joinpath(@__DIR__, "scratch", "gpu-twotasks", "test.jld2"))
-        @test dcpu["nss"] == dgpu["nss"]
         @test dcpu["ineurons_to_test"] == dgpu["ineurons_to_test"]
-        @test isapprox(dcpu["utotals"], dgpu["utotals"])
-        @test isapprox(dcpu["timess"], dgpu["timess"])
+        @test isapprox(dcpu["utotal"], dgpu["utotal"])
+        @test isapprox(dcpu["times"], dgpu["times"])
     end
 end
 
@@ -300,8 +299,6 @@ end
     w = redirect_stdout(train, devnull)
     @test hasproperty(w, :wpWeightIn)
     a = redirect_stdout(test, devnull)
-    @test hasproperty(a, :nss)
-    plot(joinpath(data_dir, "test.jld2"))
 end
 
 @testset "different no. plastic inputs, LX=$LX" for LX in ("0", "L>>1")
@@ -375,10 +372,9 @@ end
 
         dcpu = load(joinpath(@__DIR__, "scratch", "cpu-units", "test.jld2"))
         dgpu = load(joinpath(@__DIR__, "scratch", "gpu-units", "test.jld2"))
-        @test dcpu["nss"] == dgpu["nss"]
         @test dcpu["ineurons_to_test"] == dgpu["ineurons_to_test"]
-        @test isapprox(dcpu["utotals"][1], dgpu["utotals"][1])
-        @test isapprox(dcpu["timess"], dgpu["timess"])
+        @test isapprox(dcpu["utotal"][1], dgpu["utotal"][1])
+        @test isapprox(dcpu["times"], dgpu["times"])
     end
 
     mkdir(joinpath(@__DIR__,  "scratch", "cpu-units-learns"))

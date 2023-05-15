@@ -85,19 +85,35 @@ function test(; ntrials = 1,
     catch e
         println("stopping early: ", e)
     finally
+        # discard unfinished trials
         inotassigned = [!isassigned(nss, i) for i in eachindex(nss)]
         nss[inotassigned] = timess[inotassigned] = utotals[inotassigned] .= missing
-        ikeep_row = .![all(ismissing.(x)) for x in eachrow(nss)]
+        itrial_keep = .![all(ismissing.(x)) for x in eachrow(nss)]
+        nss = nss[itrial_keep,:]
+        timess = timess[itrial_keep,:]
+        utotals = utotals[itrial_keep,:]
+
+        # convert ragged spike times matrix to vector of vectors
+        global timess_vec = similar(timess)
+        _eltype = eltype(timess[1])
+        nneurons = length(nss[1])
+        for itrialtask in eachindex(nss)
+            timess_vec[itrialtask] = Vector{Vector{_eltype}}(undef, nneurons)
+            for ineuron = eachindex(nss[itrialtask])
+                nspikes = nss[itrialtask][ineuron]
+                timess_vec[itrialtask][ineuron] = timess[itrialtask][ineuron, 1:nspikes]
+            end
+        end
+
         save(joinpath(data_dir,"test.jld2"),
              "ineurons_to_test", ineurons_to_test,
-             "nss", nss[ikeep_row,:],
-             "timess", timess[ikeep_row,:],
-             "utotals", utotals[ikeep_row,:],
+             "times", timess_vec, "utotal", utotals,
              "init_code", init_code)
+
         Threads.atomic_add!(itrial0, ntrials+1)
     end
 
     no_plot || plot(joinpath(data_dir, "test.jld2"), ineurons_to_plot = ineurons_to_test)
 
-    return (; nss, timess, utotals)
+    return (; times=timess_vec, utotal=utotals)
 end
