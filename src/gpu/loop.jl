@@ -157,14 +157,14 @@ function loop(::Val{Kind}, ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime},
 
         if Kind in (:test, :train_test)
             # saved for visualization
-            u_exccell[ti,1:example_neurons] .= u[1:example_neurons]
-            u_bale_exccell[ti,1:example_neurons] .= u_bale[1:example_neurons]
-            u_bali_exccell[ti,1:example_neurons] .= u_bali[1:example_neurons]
-            u_plas_exccell[ti,1:example_neurons] .= uX_plas[1:example_neurons]
-            u_inhcell[ti,1:example_neurons] .= u[1:example_neurons]
-            u_bale_inhcell[ti,1:example_neurons] .= u_bale[end-example_neurons+1:end]
-            u_bali_inhcell[ti,1:example_neurons] .= u_bali[end-example_neurons+1:end]
-            u_plas_inhcell[ti,1:example_neurons] .= uX_plas[end-example_neurons+1:end]
+            u_exccell[ti,:] .= u[1:example_neurons]
+            u_bale_exccell[ti,:] .= u_bale[1:example_neurons]
+            u_bali_exccell[ti,:] .= u_bali[1:example_neurons]
+            u_plas_exccell[ti,:] .= uX_plas[1:example_neurons]
+            u_inhcell[ti,:] .= u[1:example_neurons]
+            u_bale_inhcell[ti,:] .= u_bale[end-example_neurons+1:end]
+            u_bali_inhcell[ti,:] .= u_bali[end-example_neurons+1:end]
+            u_plas_inhcell[ti,:] .= uX_plas[end-example_neurons+1:end]
 
             # save rolling average for analysis
             if t > stim_off && t <= train_time && mod(t, time1) == time0
