@@ -203,31 +203,21 @@ presentations of the stimulus:
 
 ```
 julia> weights = train(nloops=100);
-Loop no. 1, task no. 1
-correlation: -0.03810218983457164
-elapsed time: 64.27813005447388 sec
-firing rate: 4.238525390625 Hz
-Loop no. 2, task no. 1
-correlation: -0.009730533926830837
-elapsed time: 11.158457040786743 sec
-firing rate: 3.5748291015625 Hz
-Loop no. 3, task no. 1
-correlation: 0.019285263967765184
-elapsed time: 10.458786010742188 sec
-firing rate: 3.177490234375 Hz
-Loop no. 4, task no. 1
-correlation: 0.04037737332828045
-elapsed time: 10.786484003067017 sec
-firing rate: 2.952392578125 Hz
-Loop no. 5, task no. 1
-correlation: 0.06431122625571872
-elapsed time: 10.612313032150269 sec
-firing rate: 2.79833984375 Hz
+loop #  task #  elapsed time (s)  firing rate (Hz)  correlation
+     1       1           9.94775           4.60229   -0.0317705
+     2       1           7.30732           4.60620   -0.0289302
+     3       1           7.19637           4.61389  -0.00390199
+     4       1           7.17242           4.62964   0.00310603
+     5       1           7.12784           4.63171    0.0127754
+     6       1           7.18992           4.63525    0.0234085
+     7       1           7.10075           4.64185    0.0309006
+     8       1           7.14763           4.63428    0.0424313
+     9       1           7.21539           4.64844    0.0573519
+    10       1           7.08120           4.64685    0.0692450
 <SNIP>
-Loop no. 100, task no. 1
-correlation: 0.7138109340783079
-elapsed time: 14.510313034057617 sec
-firing rate: 2.1953125 Hz
+    98       1           7.06703           5.88428     0.769383
+    99       1           7.18761           5.87146     0.660614
+   100       1           9.60830           5.90820     0.728394
 
 julia> size(weights.wpWeightIn)
 (4096,)

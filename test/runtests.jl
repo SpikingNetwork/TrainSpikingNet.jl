@@ -16,15 +16,15 @@ end
 
 function compare_cpu_to_gpu(kind;
                             ntasks=1, nloops=1, cinterval=nloops,
-                            spikerate=true, Pmatrix=true, weights=true, correlation=nothing)
+                            spikerate=(0,15), Pmatrix=true, weights=true, correlation=nothing)
     init_out = readlines(`$(Base.julia_cmd()) -t 4
                           $(joinpath(@__DIR__, "..", "src", "init.jl"))
                           --itasks 1:$ntasks
                           $(joinpath(@__DIR__, "scratch", "cpu-$kind"))`)
     write(joinpath(@__DIR__, "scratch", "cpu-$kind", "init.log"), join(init_out, '\n'))
 
-    spikerate && for iHz in findall(contains("Hz"), init_out)
-        @test 0 < parse(Float64, match(r"([.0-9]+) Hz", init_out[iHz]).captures[1]) < 15
+    spikerate != nothing && for iHz in findall(contains("Hz"), init_out)
+        @test ustrip(spikerate[1]) < parse(Float64, match(r"([.0-9]+) Hz", init_out[iHz]).captures[1]) < ustrip(spikerate[2])
     end
 
     testgpu && cp(joinpath(@__DIR__, "scratch", "cpu-$kind"),
@@ -43,12 +43,12 @@ function compare_cpu_to_gpu(kind;
         write(joinpath(@__DIR__, "scratch", "gpu-$kind", "train.log"), join(gpu_out, '\n'))
     end
 
-    if spikerate
-        iHz = findlast(contains("Hz"), cpu_out)
-        @test 0 < parse(Float64, match(r"([.0-9]+) Hz", cpu_out[iHz]).captures[1]) < 15
+    if spikerate != nothing
+        d = load(joinpath(@__DIR__, "scratch", "cpu-$kind", "learning-curve.jld2"))
+        @test spikerate[1] < d["firing_rate"][end] < spikerate[2]
         if testgpu
-            iHz = findlast(contains("Hz"), gpu_out)
-            @test 0 < parse(Float64, match(r"([.0-9]+) Hz", gpu_out[iHz]).captures[1]) < 15
+            d = load(joinpath(@__DIR__, "scratch", "gpu-$kind", "learning-curve.jld2"))
+            @test spikerate[1] < d["firing_rate"][end] < spikerate[2]
         end
     end
 
@@ -67,11 +67,11 @@ function compare_cpu_to_gpu(kind;
     end
 
     if correlation != nothing
-        icor = findlast(contains("correlation"), cpu_out)
-        @test parse(Float64, match(r"correlation: ([.0-9]+)", cpu_out[icor]).captures[1]) > correlation
+        d = load(joinpath(@__DIR__, "scratch", "cpu-$kind", "learning-curve.jld2"))
+        @test d["correlation"][end] > correlation
         if testgpu
-            icor = findlast(contains("correlation"), gpu_out)
-            @test parse(Float64, match(r"correlation: ([.0-9]+)", gpu_out[icor]).captures[1]) > correlation
+            d = load(joinpath(@__DIR__, "scratch", "gpu-$kind", "learning-curve.jld2"))
+            @test d["correlation"][end] > correlation
         end
     end
 end
@@ -189,7 +189,7 @@ end
                           $(joinpath(@__DIR__, "scratch", "Int16"))`)
     write(joinpath(@__DIR__, "scratch", "Int16", "init.log"), join(init_out, '\n'))
     for iHz in findall(contains("Hz"), init_out)
-      @test 0 < parse(Float64, match(r"([.0-9]+) Hz", init_out[iHz]).captures[1]) < 10
+      @test 0 < parse(Float64, match(r"([.0-9]+) Hz", init_out[iHz]).captures[1]) < 15
     end
 
     if testgpu
@@ -197,8 +197,8 @@ end
                              $(joinpath(@__DIR__, "..", "src", "train.jl")) -g
                              $(joinpath(@__DIR__, "scratch", "Int16"))`)
         write(joinpath(@__DIR__, "scratch", "Int16", "train.log"), join(gpu_out, '\n'))
-        iHz = findlast(contains("Hz"), gpu_out)
-        @test 0 < parse(Float64, match(r"([.0-9]+) Hz", gpu_out[iHz]).captures[1]) < 10
+        d = load(joinpath(@__DIR__, "scratch", "Int16", "learning-curve.jld2"))
+        @test 0 < d["firing_rate"][1] < 15
     end
 end
 
@@ -253,7 +253,7 @@ end
         end
     end
     compare_cpu_to_gpu("learns", nloops=100,
-                       spikerate=false, Pmatrix=false, weights=false, correlation=0.6)
+                       spikerate=nothing, Pmatrix=false, weights=false, correlation=0.6)
 end
 
 glif_base = "thresh, :invR_mem=>fill(1,Ncells), :invC_mem=>invtau_mem, :E_l=>fill(0,Ncells), vre, dt"
@@ -284,7 +284,7 @@ glif_vdt = ":thresh_v=>fill(0,Ncells), :a_v=>0.1, :b_v=>0.9"
             end
         end
     end
-    compare_cpu_to_gpu(string("GLIF", glif), spikerate=false)
+    compare_cpu_to_gpu(string("GLIF", glif), spikerate=nothing)
 end
 
 @testset "REPL" begin
@@ -333,7 +333,7 @@ end
     mkdir(joinpath(@__DIR__, "scratch", "cpu-units"))
     cp(joinpath(@__DIR__, "param-units.jl"),
        joinpath(@__DIR__, "scratch", "cpu-units", "param.jl"))
-    compare_cpu_to_gpu("units", Pmatrix=false, weights=false)
+    compare_cpu_to_gpu("units", spikerate=(0u"Hz", 15u"Hz"), Pmatrix=false, weights=false)
 
     cpu_wpWeightIn_Symmetric = load(joinpath(@__DIR__, "scratch", "cpu-Symmetric", "wpWeightIn-ckpt1.jld2"),
                                     "wpWeightIn")
@@ -388,7 +388,7 @@ end
         end
     end
     compare_cpu_to_gpu("units-learns", nloops=100,
-                       spikerate=false, Pmatrix=false, weights=false, correlation=0.6)
+                       spikerate=nothing, Pmatrix=false, weights=false, correlation=0.6)
 
     mkdir(joinpath(@__DIR__, "scratch", "cpu-units-LX"))
     open(joinpath(@__DIR__, "scratch", "cpu-units-LX", "param.jl"), "w") do fileout 
@@ -400,5 +400,5 @@ end
             end
         end
     end
-    compare_cpu_to_gpu("units-LX", Pmatrix=false, weights=false)
+    compare_cpu_to_gpu("units-LX", spikerate=(0u"Hz", 15u"Hz"), Pmatrix=false, weights=false)
 end

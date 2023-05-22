@@ -98,9 +98,16 @@ function train(; nloops = 1,
     firing_rate = TTime <: Real ? Float64[] : Vector{eltype(unit(p.maxrate)*1.0)}(undef, 0)
     try
         maxcor = -Inf
+        if TTime <: Real
+            rate_unit = "Hz"
+        else
+            rate_unit = string(unit(p.maxrate))
+            fmt = Printf.Format(string("%#", 14+length(rate_unit), "g  "))
+        end
+        println("loop #  task #  elapsed time (s)  firing rate ($rate_unit)  correlation")
         for outer iloop = R.+(1:nloops)
             itask = choose_task(iloop, ntasks)
-            println("Loop no. ", iloop, ", task no. ", itask) 
+            @printf "%6i  %6i  " iloop itask
 
             start_time = time()
 
@@ -149,8 +156,7 @@ function train(; nloops = 1,
 
                 bnotnan = .!isnan.(pcor)
                 thiscor = mean(pcor[bnotnan])
-                println("correlation: ", thiscor,
-                        all(bnotnan) ? "" : string(" (", length(pcor)-count(bnotnan)," are NaN)"))
+                num_nan = length(pcor) - count(bnotnan)
                 push!(correlation, thiscor)
 
                 if save_best_checkpoint && thiscor>maxcor && all(bnotnan)
@@ -170,18 +176,23 @@ function train(; nloops = 1,
             iloop == R+nloops && save_weights_P(iloop)
 
             this_elapsed_time = time()-start_time
-            println("elapsed time: ", this_elapsed_time, " sec")
+            @printf "%#16g  " this_elapsed_time
             push!(elapsed_time, this_elapsed_time)
 
             mean_rate = mean(scratch.ns) / (p.dt*p.Nsteps)
             if TTime <: Real
-                mean_rate_conv = string(1000*mean_rate, " Hz")
+                @printf "%#16g  " 1000*mean_rate
             else
-                mean_rate_conv = uconvert(unit(p.maxrate), mean_rate)
+                Printf.format(stdout, fmt, ustrip(uconvert(unit(p.maxrate), mean_rate)))
             end
-            println("firing rate: ", mean_rate_conv)
             push!(firing_rate, TTime <: Real ? 1000*mean_rate
                                              : uconvert(unit(p.maxrate), mean_rate))
+
+            if mod(iloop, correlation_interval) == 0
+                @printf "%#11g" thiscor
+                num_nan>0 && @printf "%s" string(" (", num_nan, " are NaN)")
+            end
+            println()
         end
     catch e
         println("stopping early: ", e)
