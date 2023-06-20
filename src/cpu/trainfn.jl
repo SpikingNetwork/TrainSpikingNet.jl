@@ -160,7 +160,7 @@ function train(; nloops = 1,
                 push!(correlation, thiscor)
 
                 if save_best_checkpoint && thiscor>maxcor && all(bnotnan)
-                    suffix = string("ckpt", iloop, "-cor", round(thiscor, digits=3))
+                    suffix = string(iloop, "-cor", round(thiscor, digits=3))
                     save_weights_P(suffix)
                     if maxcor != -Inf
                         for oldckptfile in filter(x -> !contains(x, string("ckpt", iloop)) &&
