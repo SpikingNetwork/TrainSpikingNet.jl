@@ -12,7 +12,7 @@ function test(; ntrials = 1,
     wpIndexConvert = load(joinpath(data_dir,"wpIndexConvert.jld2"), "wpIndexConvert")
     if isnothing(restore_from_checkpoint)
         ckpts = [(parse(Int, m.captures[1]), m.captures[2])
-                 for m in match.(r"ckpt([0-9]+)(i?)\.jld2",
+                 for m in match.(r"ckpt([0-9]+)(.*?)\.jld2",
                                  filter(startswith("wpWeightIn-ckpt"),
                                         readdir(data_dir)))]
         R = join(argmax(first, ckpts))
