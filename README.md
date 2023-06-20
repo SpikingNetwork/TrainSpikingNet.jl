@@ -28,15 +28,14 @@ the [platform specific instructions](https://julialang.org/downloads/platform).
 
 ## Julia REPL ##
 
-Add TrainSpikingNet to your environment and test that everything works:
+Add TrainSpikingNet to your environment and, optionally, test that everything works:
 
 ```
 julia> ] add TrainSpikingNet
 julia> ] test TrainSpikingNet
 ```
 
-The tests, which are optional, take about an hour, so be patient or just
-skip this step.
+The tests take about an hour, so be patient or just skip this step.
 
 (Get out of Pkg mode by pressing the Delete key.)
 
@@ -44,41 +43,21 @@ That's it!
 
 ## Linux / PowerShell command line ##
 
-Download the TrainSpikingNet.jl repository with either the [ZIP
-link](https://github.com/SpikingNetwork/TrainSpikingNet.jl/archive/refs/heads/master.zip)
-on github.com or by using git-clone:
+First, follow the above installation instructions for the [Julia
+REPL](#julia-repl).
+
+Then, set an environment variable to the path to the TrainSpikingNet.jl
+repository:
 
 ```
-$ git clone --depth 1 https://github.com/SpikingNetwork/TrainSpikingNet.jl.git
+$ echo "export TSN_DIR=`julia -e 'using TrainSpikingNet; println(pathof(TrainSpikingNet))'`" >> ~/.bashrc
 ```
 
-For convenience, add a new environment variable which contains the full
-path to the just downloaded TrainSpikingNet directory.  Like this on Linux:
+You'll need to either restart the terminal session for this change to take
+effect, or source your rc file:
 
 ```
-$ echo "export TSN_DIR=$PWD/TrainSpikingNet.jl" >> ~/.bashrc
-```
-
-Install all of the required packages:
-
-```
-$ cd $TSN_DIR
-$ julia --project=@.
-        -e 'using Pkg;
-            Pkg.activate(".");
-            Pkg.instantiate();
-            Pkg.activate("test");
-            Pkg.instantiate()'
-```
-
-[Note that on Windows the double-quotes above need to be escaped by preceeding
-them with a backslash.]
-
-Finally, (and optionally) test that everything works:
-
-```
-cd $TSN_DIR/test
-julia --project=@. runtests.jl
+source ~/.bashrc
 ```
 
 # Tutorial #
