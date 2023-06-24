@@ -36,25 +36,19 @@ train_time     = stim_off + train_duration
 Nsteps = round(Int, train_time/dt)
 
 scale =1.0/30.0
+pot_conn,cell_index_to_layer = potjans_layer(scale)
 
-function get_Ncell(scale=1.0::Float64)
-	ccu = Dict{String, Int32}("23E"=>20683,
-		    "4E"=>21915, 
-		    "5E"=>4850, 
-		    "6E"=>14395, 
-		    "6I"=>2948, 
-		    "23I"=>5834,
-		    "5I"=>1065,
-		    "4I"=>5479)
-	ccu = Dict{String, Int32}((k,ceil(Int64,v*scale)) for (k,v) in pairs(ccu))
-	Ncells = Int32(sum([i for i in values(ccu)])+1)
-	Ne = Int32(sum([ccu["23E"],ccu["4E"],ccu["5E"],ccu["6E"]]))
-    Ni = Int32(Ncells - Ne)
-    Ncells, Ne, Ni, ccu
-
+ragged_array_weights = []
+for (x,row) in enumerate(eachrow(pot_conn))
+    push!(ragged_array_weights,[])
 end
-Ncells,Ne,Ni, ccu = get_Ncell(scale)    
-
+for (x,row) in enumerate(eachrow(pot_conn))
+    for (y,i) in enumerate(row)
+        if i!=0
+	    push!(ragged_array_weights[x],i)
+        end 
+    end
+end
 # --- external stimulus plugin --- #
 genXStim_file = "genXStim-ornstein-uhlenbeck.jl"
 genXStim_args = (; stim_on, stim_off, dt, Ncells, rng,
