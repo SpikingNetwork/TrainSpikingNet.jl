@@ -61,7 +61,9 @@ function plot(test_file; ineurons_to_plot = 1:16)
                             utotal1 = utotal[1,itask][:,ci]))
             utotal_ci = hcat((x[:,ci] for x in utotal[:,itask] if !ismissing(x))...)
             df[!,:utotal_ave] = dropdims(median(utotal_ci, dims=2), dims=2)
-            df[!,:utotal_disp] = dropdims(mapslices(mad, utotal_ci, dims=2), dims=2)
+            df[!,:utotal_disp] = dropdims(mapslices(x->mad(x, normalize=true),
+                                                    utotal_ci, dims=2),
+                                          dims=2)
             transform!(df, [:utotal_ave, :utotal_disp] => ByRow((mu,sigma)->mu+sigma) => :utotal_upper)
             transform!(df, [:utotal_ave, :utotal_disp] => ByRow((mu,sigma)->mu-sigma) => :utotal_lower)
             push!(ps, Gadfly.plot(df, x=:t, y=Col.value(:utarg, :utotal_ave, :utotal1),
