@@ -1,7 +1,7 @@
 name = "TrainSpikingNet"
 uuid = "834bac62-a31c-4194-8633-73b1b5df927e"
 authors = ["Ben Arthur <arthurb@hhmi.org>"]
-version = "0.2.0"
+version = "0.2.1"
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
