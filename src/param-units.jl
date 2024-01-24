@@ -62,14 +62,14 @@ tau_meme = 10ms
 tau_memi = 10ms
 invtau_mem = Vector{eltype(1/tau_meme)}(undef, Ncells)
 invtau_mem[1:Ne] .= 1 ./ tau_meme
-invtau_mem[1+Ne:Ncells] .= 1 ./ tau_memi
+invtau_mem[(1+Ne):Ncells] .= 1 ./ tau_memi
 
 #spike thresholds
 threshe = 1.0V
 threshi = 1.0V
 thresh = Vector{eltype(vre)}(undef, Ncells)
 thresh[1:Ne] .= threshe
-thresh[1+Ne:Ncells] .= threshi
+thresh[(1+Ne):Ncells] .= threshi
 
 cellModel_file = "cellModel-LIF-units.jl"
 cellModel_args = (; thresh, invtau_mem, vre, dt)
