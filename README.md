@@ -67,6 +67,8 @@ learn dummy sinusoidal activity patterns with identical frequencies but
 different phases.  As this network is small, and not everyone has a GPU,
 we'll just be using the CPU code here.
 
+[Jupyter notebooks](https://github.com/SpikingNetwork/ArthurKimChenPreibischDarshan2023) are also available.
+
 ## Julia REPL ##
 
 First, start Julia with the default number of threads.  You'll need to
