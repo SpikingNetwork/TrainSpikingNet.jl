@@ -398,7 +398,7 @@ search: train TrainSpikingNet trailing_ones trailing_zeros AbstractString Abstra
           save_best_checkpoint = false,
           restore_from_checkpoint = nothing,
           monitor_resources_used = nothing,
-          return_P = false) -> (; weights, P)
+          return_P_rrXhistory = false) -> (; weights, P || rrXhistory)
 
   Update the weights using the recursive least squares algorithm nloops times, measuring the
   similarity between the actual and target synaptic currents every correlation_interval

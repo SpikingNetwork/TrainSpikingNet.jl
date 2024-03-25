@@ -36,12 +36,12 @@ function loop(::Val{Kind}, ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime},
               u0_skip_steps, u0_ncells, Ncells, Ne, LX, refrac, learn_step, learn_nsteps,
               invtau_bale, invtau_bali, invtau_plas, X_bal, maxTimes,
               sig, wid, example_neurons, plusone, exactlyzero, PScale,
-              cellModel_args, uavg, ustd, scratch, raug, k, delta, rng, P,
+              cellModel_args, uavg, ustd, scratch, raug, k, rrXg, delta, rng, P, Pinv, PType,
               X_stim, utarg, rateX, w0Index, w0Weights, wpIndexIn, wpIndexOut,
               wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut) where
               {Kind, TCurrent, TCharge, TTime}
 
-    @unpack times, ns, timesX, nsX, inputsE, inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes, spikesPrev, spikesX, spikesXPrev, u_bale, u_bali, uX_plas, u_bal, u, r, rX, X, lastSpike, v, noise, rndX, u_exccell, u_inhcell, u_bale_exccell, u_bali_exccell, u_bale_inhcell, u_bali_inhcell, u_plas_exccell, u_plas_inhcell, u_rollave, u_bale_rollave, u_bali_rollave, u_plas_rollave, u_rollave_cnt = scratch
+    @unpack times, ns, timesX, nsX, inputsE, inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes, spikesPrev, spikesX, spikesXPrev, u_bale, u_bali, uX_plas, u_bal, u, r, rX, rrXhistory, X, lastSpike, v, noise, rndX, u_exccell, u_inhcell, u_bale_exccell, u_bali_exccell, u_bale_inhcell, u_bali_inhcell, u_plas_exccell, u_plas_inhcell, u_rollave, u_bale_rollave, u_bali_rollave, u_plas_rollave, u_rollave_cnt = scratch
 
     current0 = TCurrent(0)
     charge0 = TCharge(0)
@@ -138,11 +138,20 @@ function loop(::Val{Kind}, ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime},
         if Kind in (:train, :train_test)
             if t > stim_off && t <= train_time && mod(ti, learn_step) == 0
                 disable_sigint() do
-                    rls(itask,
-                        raug, k, delta, Ncells, r, rX, P,
-                        u_bal, utarg, learn_seq, wpIndexIn,
-                        wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
-                        plusone, exactlyzero, PScale)
+                    @static if p.PCompute == :fast
+                        rls(itask,
+                            raug, k, delta, Ncells, r, rX, P,
+                            u_bal, utarg, learn_seq, wpIndexIn,
+                            wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
+                            plusone, exactlyzero, PScale)
+                    else
+                        rls(itask,
+                            raug, k, rrXg, delta, Ncells, r, rX, Pinv, u_bal, utarg,
+                            rrXhistory, charge0, LX, p.penmu, p.penlamFF, p.penlambda, PType,
+                            learn_seq, wpIndexIn,
+                            wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
+                            plusone, exactlyzero, PScale)
+                    end
                 end
                 learn_seq += 1
             end
