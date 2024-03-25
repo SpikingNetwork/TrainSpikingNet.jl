@@ -207,13 +207,14 @@ julia> size(weights.wpWeightIn[1])
 (58,)
 ```
 
-The correlations to the targets are printed to the terminal, and the trained
-weights and updated covariance matrix are stored in additional JLD2 files
-suffixed with "-ckpt" for "checkpoint":
+The correlations to the targets are printed to the terminal as well as saved to
+"learning-curve.jld2", and the trained weights and updated covariance matrix are
+stored in additional JLD2 files suffixed with "-ckpt" for "checkpoint":
 
 ```
 julia> readdir("my-data")
 21-element Vector{String}:
+ "learning-curve.jld2"        # <--
  "P-ckpt100.jld2"             # <--
  "P.jld2"
  "X_stim.jld2"

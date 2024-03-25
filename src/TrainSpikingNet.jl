@@ -133,7 +133,9 @@ in which case the current state of the weights and covariance matrix are saved
 with a checkpoint ending in the last loop number completed plus the letter "i".
 To continue training a previous model, specify which of the saved weights and
 covariance matrices to start from with `restore_from_checkpoint`.  The weights
-and optionally the covariance are also returned as a NamedTuple for convenience.
+and optionally the covariance are also returned as a NamedTuple for convenience,
+and the firing rate and correlation over time are both printed to stdout and
+saved to "learnind-curve.jld2".
 """
 train
 
