@@ -13,6 +13,7 @@ eval(init_code)
 PType=Symmetric  # storage format of the covariance matrix;  use SymmetricPacked for large models
 PPrecision = Float32  # precision of the covariance matrix.  can be Float16 or even <:Integer on GPUs
 PScale = 1  # if PPrecision<:Integer then PScale should be e.g. 2^(nbits-2)
+PCompute = :fast  # or :small
 FloatPrecision = Float32  # precision of all other floating point variables, except time
 IntPrecision = UInt32  # precision of all integer variables.  should be > Ncells
 
@@ -105,6 +106,7 @@ penlambda   = 0.8   # 1 / learning rate
 penlamFF    = 1.0
 penmu       = 0.01   # regularize weights
 learn_every = 10.0ms
+PHistory    = 100.0ms  # only relevant if PCompute == :small
 
 correlation_var = K>0 ? :utotal : :uplastic
 

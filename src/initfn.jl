@@ -11,15 +11,14 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
         u0_skip_steps, p.u0_ncells, p.Ncells, p.Ne, p.LX, p.refrac, learn_step, nothing,
         invtau_bale, invtau_bali, nothing, X_bal, nothing, sig, nothing,
         nothing, nothing, nothing, nothing, cellModel_args, uavg, ustd, scratch,
-        nothing, nothing, nothing, p.rng, nothing, nothing, nothing, rateX,
-        w0Index, w0Weights, nothing, nothing, nothing, nothing, nothing,
+        nothing, nothing, nothing, nothing, p.rng, nothing, nothing, nothing, nothing,
+        nothing, rateX, w0Index, w0Weights, nothing, nothing, nothing, nothing, nothing,
         nothing)
 
     wpWeightX, wpWeightIn, wpIndexIn =
         genPlasticWeights(p.genPlasticWeights_args, ns0)
 
     # get indices of postsynaptic cells for each presynaptic cell
-    ncpInMax = maximum([length(x) for x in wpIndexIn])
     wpIndexOut = Vector{Int}[Int[] for _ in 1:p.Ncells]
     wpIndexConvert = Vector{Vector{Int}}(undef, p.Ncells)
     for postCell = 1:p.Ncells
@@ -65,19 +64,16 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
     end
 
     # --- set up correlation matrix --- #
-    Pinv_X = Diagonal(repeat([p.penlamFF], p.LX))
-    P = Array{p.PType}(undef, p.Ncells)
-    charge0 = TCharge(0)
-    Threads.@threads for i = 1:p.Ncells
-        ncpIn = length(wpIndexIn[i])
-        Pinv_L2 = Diagonal(repeat([p.penlambda], ncpIn));
-        vec10 = wpWeightIn[i] .> charge0
-        vec01 = wpWeightIn[i] .< charge0
-        Pinv_rowsum = p.penmu*(vec10*vec10' + vec01*vec01')
-        Pinv = zeros(p.LX+ncpIn, p.LX+ncpIn)
-        Pinv[1:p.LX, 1:p.LX] = Pinv_X
-        Pinv[p.LX+1:end, p.LX+1:end] = Pinv_L2 + Pinv_rowsum
-        P[i] = p.PType(Symmetric(UpperTriangular(Pinv) \ I))
+    if p.PCompute == :fast
+        charge0 = TCharge(0)
+        P = Array{p.PType}(undef, p.Ncells)
+        Threads.@threads for ci = 1:p.Ncells
+            Pinv = generate_Pinv(ci, wpWeightIn, charge0,
+                                 p.LX, p.penmu, p.penlamFF, p.penlambda, p.PPrecision)
+            P[ci] = p.PType(Symmetric(inv(Pinv)))
+        end
+    else
+        P = nothing
     end
 
     #----------- save initialization --------------#
@@ -90,7 +86,7 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
     save(joinpath(data_dir,"wpIndexConvert.jld2"), "wpIndexConvert", wpIndexConvert)
     save(joinpath(data_dir,"wpWeightX.jld2"), "wpWeightX", wpWeightX)
     save(joinpath(data_dir,"wpWeightIn.jld2"), "wpWeightIn", wpWeightIn)
-    save(joinpath(data_dir,"P.jld2"), "P", P; compress=true)
+    p.PCompute == :fast && save(joinpath(data_dir,"P.jld2"), "P", P; compress=true)
     save(joinpath(data_dir,"rateX.jld2"), "rateX", rateX)
 
     return (; w0Index, w0Weights, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightX, wpWeightIn,

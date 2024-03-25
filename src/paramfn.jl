@@ -2,11 +2,11 @@ module Param
     using LinearAlgebra, SymmetricFormats, Random, JLD2, UnPack
 
     get_param() = (;
-            PPrecision, PScale, FloatPrecision, IntPrecision, PType,
+            PPrecision, PScale, FloatPrecision, IntPrecision, PType, PCompute,
             seed, rng_func, rng,
             example_neurons, wid, maxrate,
             penlambda, penlamFF, penmu,
-            learn_every,
+            learn_every, PHistory,
             train_duration, stim_on, stim_off, train_time,
             dt, Nsteps, u0_skip_time, u0_ncells,
             Ncells, Ne, Ni,
@@ -45,6 +45,10 @@ function param(data_dir)
         @error "IntPrecision is too small"
     end
 
+    if p.PCompute == :small && p.PType == SymmetricPacked
+       @error "PType must be Array or Symmetric if PCompute is :small"
+    end
+
     return p
 end
 
@@ -76,7 +80,7 @@ function config(_data_dir, pu::Symbol=:cpu)
     include(joinpath(@__DIR__, "scratch.jl"))
     include(joinpath(@__DIR__, pu_str, "variables.jl"))
     include(joinpath(@__DIR__, pu_str, "loop.jl"))
-    include(joinpath(@__DIR__, pu_str, "rls.jl"))
+    include(joinpath(@__DIR__, pu_str, "rls-$(p.PCompute).jl"))
     include(joinpath(@__DIR__, pu_str, "wpWeightIn2Out.jl"))
     include(joinpath(@__DIR__, pu_str, "trainfn.jl"))
     include(joinpath(@__DIR__, pu_str, "testfn.jl"))

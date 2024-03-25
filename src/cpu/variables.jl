@@ -71,6 +71,37 @@ scratch = Scratch{Matrix{_TTimeInt},
                   Vector{TCurrent},
                   Matrix{TCurrent},
                   Vector{TInvTime},
+                  TInvTime,
                   Vector{eltype(Float64(p.dt))},
                   Vector{TVoltage},
                   Vector{_TNoise}}()
+
+function generate_Pinv(ci, wpWeightIn, charge0, LX, penmu, penlamFF, penlambda, PPrecision)
+    ncpIn = length(wpWeightIn[ci])
+    Pinv = Matrix{PPrecision}(undef, LX+ncpIn, LX+ncpIn)
+    generate_Pinv!(Pinv, ci, wpWeightIn, charge0, LX, penmu, penlamFF, penlambda)
+end
+
+function generate_Pinv!(Pinv, ci, wpWeightIn, charge0, LX, penmu, penlamFF, penlambda)
+    Pinv .= 0
+    for i in 1:LX
+        Pinv[i, i] = penlamFF
+    end
+    for i in 1:length(wpWeightIn[ci])
+        Pinv[LX+i, LX+i] = penlambda
+    end
+    
+    for i in 1:length(wpWeightIn[ci])
+        @static if p.PType == Array
+            j0 = 1
+        elseif p.PType == Symmetric
+            j0 = i
+        end
+        for j in j0:length(wpWeightIn[ci])
+            Pinv[LX+i, LX+j] += penmu * (
+                    (wpWeightIn[ci][i] > charge0 && wpWeightIn[ci][j] > charge0) ||
+                    (wpWeightIn[ci][i] < charge0 && wpWeightIn[ci][j] < charge0) )
+        end
+    end
+    return Pinv
+end

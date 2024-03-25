@@ -13,7 +13,7 @@ function rls(itask,
         k_tid = @view k[1:lenrX+ncpIn, Threads.threadid()]
 
         @static if p.PType == Array
-            # k_tid .= P[ci] * _raug_tid/ PScale
+            # k_tid .= P[ci] * _raug_tid / PScale
             # mul!(k_tid, P[ci], _raug_tid, 1.0/PScale, exactlyzero)
             gemv!('N', plusone/PScale, P[ci], _raug_tid, exactlyzero, k_tid)
         elseif p.PType == Symmetric
