@@ -218,6 +218,7 @@ function train(; nloops = 1,
                 num_nan>0 && @printf "%s" string(" (", num_nan, " are NaN)")
             end
             println()
+            flush(stdout);  flush(stderr)
         end
     catch e
         println("stopping early: ", e)
