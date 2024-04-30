@@ -30,6 +30,7 @@ module Param
             :cellModel_file => abspath(@__DIR__, cellModel_file),
             cellModel_args,
             choose_task_func,
+            benchmark,
             )
     get_init_code() = init_code
 end
