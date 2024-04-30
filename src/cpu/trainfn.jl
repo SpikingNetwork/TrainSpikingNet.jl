@@ -227,7 +227,8 @@ function train(; nloops = 1,
         save(joinpath(data_dir,"learning-curve.jld2"),
              "correlation", correlation,
              "elapsed_time", elapsed_time,
-             "firing_rate", firing_rate)
+             "firing_rate", firing_rate,
+             "max_memory", Sys.maxrss())
     end
 
     if !isnothing(monitor_resources_used)

@@ -62,6 +62,7 @@ function train(; nloops = 1,
     wpWeightOut = CuArray{TCharge}(wpWeightOut);
     wpWeightX = CuArray{TCharge}(wpWeightX);
 
+    # --- dynamically sized scratch space --- #
     pLtot = size(wpIndexIn,1) + p.LX
     raug = CuArray{TInvTime}(undef, pLtot, p.Ncells)
     k = CuArray{p.FloatPrecision}(undef, pLtot, p.Ncells)
@@ -225,7 +226,8 @@ function train(; nloops = 1,
         save(joinpath(data_dir,"learning-curve.jld2"),
              "correlation", correlation,
              "elapsed_time", elapsed_time,
-             "firing_rate", firing_rate)
+             "firing_rate", firing_rate,
+             "max_memory", Sys.maxrss())
     end
 
     if !isnothing(monitor_resources_used)
