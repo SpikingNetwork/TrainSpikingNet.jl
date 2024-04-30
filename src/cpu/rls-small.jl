@@ -39,8 +39,10 @@ function rls(itask,
         e = wpWeightIn[ci]' * (@view raug_tid[lenrX+1:end]) + u_bal[ci] - utarg[learn_seq,ci,itask]
         @static p.LX>0 && (e += view(wpWeightX,ci,:)' * rX)
         delta_tid .= e .* k_tid
-        wpWeightIn[ci] .-= @view delta_tid[lenrX+1:end]
-        @static p.LX>0 && (wpWeightX[ci,:] .-= @view delta_tid[1:lenrX])
+        @static if !p.benchmark
+            wpWeightIn[ci] .-= @view delta_tid[lenrX+1:end]
+            @static p.LX>0 && (wpWeightX[ci,:] .-= @view delta_tid[1:lenrX])
+        end
     end
     wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn)
 

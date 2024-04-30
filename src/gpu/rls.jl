@@ -43,8 +43,10 @@ function rls(itask,
     e .+= u_bal .- @view utarg[learn_seq,:,itask]
     @static p.LX>0 && (e .+= wpWeightX * rX)
     delta .= e' .* k
-    wpWeightIn .-= @view delta[lenrX+1:end,:]
-    @static p.LX>0 && (wpWeightX .-= (@view delta[1:lenrX,:])')
+    @static if !p.benchmark
+        wpWeightIn .-= @view delta[lenrX+1:end,:]
+        @static p.LX>0 && (wpWeightX .-= (@view delta[1:lenrX,:])')
+    end
     wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn)
 
     return wpWeightIn, wpWeightOut
