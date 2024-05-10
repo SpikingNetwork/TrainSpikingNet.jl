@@ -221,7 +221,8 @@ function train(; nloops = 1,
             flush(stdout);  flush(stderr)
         end
     catch e
-        println("stopping early: ", e)
+        println("stopping early")
+        showerror(stdout, e, stacktrace(catch_backtrace()))
         save_weights_P(string(iloop,'i'))
     finally
         save(joinpath(data_dir,"learning-curve.jld2"),

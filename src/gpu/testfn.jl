@@ -127,7 +127,8 @@ function test(; ntrials = 1,
             end
         end
     catch e
-        println("stopping early: ", e)
+        println("stopping early")
+        showerror(stdout, e, stacktrace(catch_backtrace()))
     finally
         # discard unfinished trials
         inotassigned = [!isassigned(nss, i) for i in eachindex(nss)]
