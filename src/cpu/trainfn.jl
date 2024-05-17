@@ -146,7 +146,7 @@ function train(; nloops = 1,
                      learn_step, learn_nsteps, invtau_bale, invtau_bali, invtau_plas, X_bal,
                      nothing, sig, nothing, nothing, plusone, exactlyzero,
                      p.PScale, cellModel_args, uavg, ustd, scratch, raug, k, rrXg,
-                     delta, rng, P, Pinv, p.PType, X_stim, utarg, rateX, w0Index, w0Weights,
+                     delta, rng, P, Pinv, X_stim, utarg, rateX, w0Index, w0Weights,
                      wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightX, wpWeightIn,
                      wpWeightOut)
 
@@ -159,7 +159,7 @@ function train(; nloops = 1,
                     invtau_bale, invtau_bali, invtau_plas, X_bal, maxTimes,
                     sig, p.wid, p.example_neurons, plusone, exactlyzero,
                     p.PScale, cellModel_args, uavg, ustd, scratch, raug, k, rrXg,
-                    delta, rng, P, Pinv, p.PType, X_stim, utarg, rateX, w0Index, w0Weights,
+                    delta, rng, P, Pinv, X_stim, utarg, rateX, w0Index, w0Weights,
                     wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightX, wpWeightIn,
                     wpWeightOut)
 
@@ -240,5 +240,6 @@ function train(; nloops = 1,
     end
 
     return (; wpWeightIn, wpWeightX,
-              :P => return_P_rrXhistory ? (p.PCompute == :fast ? P : scratch.rrXhistory) : nothing)
+              :P => return_P_rrXhistory && p.PCompute == :fast ? P : nothing,
+              :rrXhistory => return_P_rrXhistory && p.PCompute == :small ? scratch.rrXhistory : nothing)
 end

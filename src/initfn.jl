@@ -11,7 +11,7 @@ function init(; itasks=[1], utarg_file=nothing, spikerate_file=nothing)
         u0_skip_steps, p.u0_ncells, p.Ncells, p.Ne, p.LX, p.refrac, learn_step, nothing,
         invtau_bale, invtau_bali, nothing, X_bal, nothing, sig, nothing,
         nothing, nothing, nothing, nothing, cellModel_args, uavg, ustd, scratch,
-        nothing, nothing, nothing, nothing, p.rng, nothing, nothing, nothing, nothing,
+        nothing, nothing, nothing, nothing, p.rng, nothing, nothing, nothing,
         nothing, rateX, w0Index, w0Weights, nothing, nothing, nothing, nothing, nothing,
         nothing)
 

@@ -5,6 +5,7 @@ PType=Symmetric  # storage format of the covariance matrix;  use SymmetricPacked
 PPrecision = Float32  # precision of the covariance matrix.  can be Float16 or even <:Integer on GPUs
 PScale = 1  # if PPrecision<:Integer then PScale should be e.g. 2^(nbits-2)
 PCompute = :fast  # or :small
+PComputeN = 32  # only relevant if PCompute == :small and using a GPU
 FloatPrecision = Float32  # precision of all other floating point variables, except time
 IntPrecision = UInt32  # precision of all integer variables.  should be > Ncells
 

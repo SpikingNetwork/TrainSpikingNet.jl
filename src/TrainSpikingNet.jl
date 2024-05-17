@@ -26,6 +26,7 @@ macro maybethread(scheduler, loop)
     end
 end
 
+# vector of vectors to matrix
 function vv2m(vv)
     m = zeros(eltype(eltype(vv)), maximum(length(x) for x in vv), length(vv))
     for i in eachindex(vv)
@@ -34,6 +35,7 @@ function vv2m(vv)
     return m
 end
 
+# vector of matrices to array
 function vm2a(_P)
     if typeof(_P[1])<:SymmetricPacked
         P = zeros(eltype(_P[1]), maximum(length(x.tri) for x in _P), length(_P))
