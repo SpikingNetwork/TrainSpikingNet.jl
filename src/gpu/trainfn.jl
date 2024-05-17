@@ -3,7 +3,7 @@ function train(; nloops = 1,
                  save_best_checkpoint = false,
                  restore_from_checkpoint = nothing,
                  monitor_resources_used = nothing,
-                 return_P = false)
+                 return_P_rrXhistory  = false)
 
     # --- load initialization --- #
     X_stim = load(joinpath(data_dir,"X_stim.jld2"), "X_stim");
@@ -18,9 +18,14 @@ function train(; nloops = 1,
         R=0
         wpWeightX = load(joinpath(data_dir,"wpWeightX.jld2"), "wpWeightX");
         wpWeightIn = vv2m(load(joinpath(data_dir,"wpWeightIn.jld2"), "wpWeightIn"));
-        P = vm2a(load(joinpath(data_dir,"P.jld2"), "P"));
-        if p.PPrecision<:Integer
-            P .= round.(P .* p.PScale)
+        if p.PCompute == :fast
+            P = vm2a(load(joinpath(data_dir,"P.jld2"), "P"));
+            if p.PPrecision<:Integer
+                P .= round.(P .* p.PScale)
+            end
+        else
+            P = nothing
+            empty!(scratch.rrXhistory)
         end
     else
         R = typeof(restore_from_checkpoint)<:AbstractString ?
@@ -29,7 +34,17 @@ function train(; nloops = 1,
                          "wpWeightX");
         wpWeightIn = load(joinpath(data_dir,"wpWeightIn-ckpt$restore_from_checkpoint.jld2"),
                           "wpWeightIn");
-        P = load(joinpath(data_dir,"P-ckpt$restore_from_checkpoint.jld2"), "P");
+        if p.PCompute == :fast
+            P = load(joinpath(data_dir,"P-ckpt$restore_from_checkpoint.jld2"), "P");
+        else
+            P = nothing
+            empty!(scratch.rrXhistory)
+            for rrXi in eachcol(load(joinpath(data_dir,
+                                              "rrXhistory-ckpt$restore_from_checkpoint.jld2"),
+                                     "rrXhistory"))
+                push!(scratch.rrXhistory, CuArray(rrXi))
+            end
+        end
     end;
 
     wpWeightOut = zeros(TCharge, maximum([length(x) for x in wpIndexOut])+1, p.Ncells+1);
@@ -49,7 +64,9 @@ function train(; nloops = 1,
     ntasks = size(utarg,3)
 
     # --- set up variables --- #
-    P = CuArray{p.PPrecision}(P);
+    if p.PCompute == :fast
+        P = CuArray{p.PPrecision}(P);
+    end
     X_stim = CuArray{TCurrent}(X_stim);
     utarg = CuArray{TCurrent}(utarg);
     rateX = CuArray{p.FloatPrecision}(rateX);
@@ -66,10 +83,17 @@ function train(; nloops = 1,
     pLtot = size(wpIndexIn,1) + p.LX
     raug = CuArray{TInvTime}(undef, pLtot, p.Ncells)
     k = CuArray{p.FloatPrecision}(undef, pLtot, p.Ncells)
+    k2 = reshape(k, pLtot, 1, p.Ncells)
+    rrXg = CuMatrix{p.PPrecision}(undef, pLtot, p.PComputeN)
     vPv = CuArray{TInvTime}(undef, p.Ncells)
     den = CuArray{TTime}(undef, p.Ncells)
     e = CuArray{TCurrent}(undef, p.Ncells)
     delta = CuArray{TCharge}(undef, pLtot, p.Ncells)
+    @static if p.PCompute == :small
+        Pinv = CuArray{p.PPrecision}(undef, pLtot, pLtot, p.PComputeN)
+    else
+        Pinv = nothing
+    end
 
     # --- monitor resources used --- #
     function monitor_resources(c::Channel)
@@ -107,13 +131,18 @@ function train(; nloops = 1,
         return A
     end
 
-    function save_weights_P(ckpt)
+    function save_weights_P_rrXhistory(ckpt)
         save(joinpath(data_dir,"wpWeightX-ckpt$ckpt.jld2"),
              "wpWeightX", Array(wpWeightX))
         save(joinpath(data_dir,"wpWeightIn-ckpt$ckpt.jld2"),
              "wpWeightIn", Array(wpWeightIn))
-        save(joinpath(data_dir,"P-ckpt$ckpt.jld2"),
-             "P", p.PType==Symmetric ? make_symmetric(Array(P)) : Array(P))
+        if p.PCompute == :fast
+            save(joinpath(data_dir,"P-ckpt$ckpt.jld2"),
+                 "P", p.PType==Symmetric ? make_symmetric(Array(P)) : Array(P))
+        else
+            save(joinpath(data_dir,"rrXhistory-ckpt$ckpt.jld2"),
+                 "rrXhistory", Array(scratch.rrXhistory.buffer))
+        end
     end
 
     iloop = 0
@@ -142,8 +171,8 @@ function train(; nloops = 1,
                      p.Ncells, nothing, p.LX, p.refrac, learn_step, learn_nsteps, invtau_bale,
                      invtau_bali, invtau_plas, X_bal, nothing, sig, nothing,
                      nothing, plusone, p.PScale, cellModel_args, bnotrefrac,
-                     bspike, bspikeX, scratch, raug, k, vPv, den, e, delta, rng,
-                     P, X_stim, utarg, rateX, w0Index, w0Weights, wpWeightX,
+                     bspike, bspikeX, scratch, raug, k, k2, rrXg, vPv, den, e, delta, rng,
+                     P, Pinv, X_stim, utarg, rateX, w0Index, w0Weights, wpWeightX,
                      wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn,
                      wpWeightOut)
 
@@ -155,7 +184,7 @@ function train(; nloops = 1,
                     p.LX, p.refrac, learn_step, learn_nsteps, invtau_bale, invtau_bali,
                     invtau_plas, X_bal, maxTimes, sig, p.wid, p.example_neurons,
                     plusone, p.PScale, cellModel_args, bnotrefrac, bspike,
-                    bspikeX, scratch, raug, k, vPv, den, e, delta, rng, P, X_stim,
+                    bspikeX, scratch, raug, k, k2, rrXg, vPv, den, e, delta, rng, P, Pinv, X_stim,
                     utarg, rateX, w0Index, w0Weights, wpWeightX, wpIndexIn,
                     wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut)
 
@@ -186,7 +215,7 @@ function train(; nloops = 1,
 
                 if save_best_checkpoint && thiscor>maxcor && all(bnotnan)
                     suffix = string(iloop, "-cor", round(thiscor, digits=3))
-                    save_weights_P(suffix)
+                    save_weights_P_rrXhistory(suffix)
                     if maxcor != -Inf
                         for oldckptfile in filter(x -> !contains(x, string("ckpt", iloop)) &&
                                                   contains(x, string("-cor", round(maxcor, digits=3))),
@@ -198,7 +227,7 @@ function train(; nloops = 1,
                 end
             end
 
-            iloop == R+nloops && save_weights_P(iloop)
+            iloop == R+nloops && save_weights_P_rrXhistory(iloop)
 
             this_elapsed_time = time()-start_time
             @printf "%#16g  " this_elapsed_time
@@ -223,7 +252,7 @@ function train(; nloops = 1,
     catch e
         println("stopping early")
         showerror(stdout, e, stacktrace(catch_backtrace()))
-        save_weights_P(string(iloop,'i'))
+        save_weights_P_rrXhistory(string(iloop,'i'))
     finally
         save(joinpath(data_dir,"learning-curve.jld2"),
              "correlation", correlation,
@@ -237,5 +266,7 @@ function train(; nloops = 1,
       close(chnl)
     end
 
-    return (; wpWeightIn, wpWeightX, :P => return_P ? P : nothing)
+    return (; wpWeightIn, wpWeightX,
+               :P => return_P_rrXhistory && p.PCompute == :fast ? P : nothing,
+               :rrXhistory => return_P_rrXhistory && p.PCompute == :small ? scratch.rrXhistory : nothing)
 end

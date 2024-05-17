@@ -2,7 +2,7 @@ module Param
     using LinearAlgebra, SymmetricFormats, Random, JLD2, UnPack
 
     get_param() = (;
-            PPrecision, PScale, FloatPrecision, IntPrecision, PType, PCompute,
+            PPrecision, PScale, FloatPrecision, IntPrecision, PType, PCompute, PComputeN,
             seed, rng_func, rng,
             example_neurons, wid, maxrate,
             penlambda, penlamFF, penmu,
@@ -68,6 +68,9 @@ function config(_data_dir, pu::Symbol=:cpu)
     eval(init_code)
     global p = load(joinpath(_data_dir, "param.jld2"), "param")
     global choose_task = eval(p.choose_task_func)
+
+    pu==:gpu && p.PCompute==:small && p.PType!=Array &&
+            @error "For :gpu, PType can only be Array if PCompute is :small"
 
     global extra = pu==:cpu ? 0 : 1
 

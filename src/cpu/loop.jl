@@ -36,7 +36,7 @@ function loop(::Val{Kind}, ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime},
               u0_skip_steps, u0_ncells, Ncells, Ne, LX, refrac, learn_step, learn_nsteps,
               invtau_bale, invtau_bali, invtau_plas, X_bal, maxTimes,
               sig, wid, example_neurons, plusone, exactlyzero, PScale,
-              cellModel_args, uavg, ustd, scratch, raug, k, rrXg, delta, rng, P, Pinv, PType,
+              cellModel_args, uavg, ustd, scratch, raug, k, rrXg, delta, rng, P, Pinv,
               X_stim, utarg, rateX, w0Index, w0Weights, wpIndexIn, wpIndexOut,
               wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut) where
               {Kind, TCurrent, TCharge, TTime}
@@ -141,13 +141,13 @@ function loop(::Val{Kind}, ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime},
                     @static if p.PCompute == :fast
                         rls(itask,
                             raug, k, delta, Ncells, r, rX, P,
-                            u_bal, utarg, learn_seq, wpIndexIn,
+                            u_bal, utarg, LX, learn_seq, wpIndexIn,
                             wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
                             plusone, exactlyzero, PScale)
                     else
                         rls(itask,
                             raug, k, rrXg, delta, Ncells, r, rX, Pinv, u_bal, utarg,
-                            rrXhistory, charge0, LX, p.penmu, p.penlamFF, p.penlambda, PType,
+                            rrXhistory, charge0, LX, p.penmu, p.penlamFF, p.penlambda,
                             learn_seq, wpIndexIn,
                             wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
                             plusone, exactlyzero, PScale)

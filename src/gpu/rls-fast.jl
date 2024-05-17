@@ -1,11 +1,10 @@
 function rls(itask,
              raug::CuMatrix{T}, k, vPv, den, e, delta, r, rX, P, u_bal,
-             utarg, learn_seq, wpIndexIn, wpIndexConvert, wpWeightX, wpWeightIn,
+             utarg, LX, learn_seq, wpIndexIn, wpIndexConvert, wpWeightX, wpWeightIn,
              wpWeightOut, plusone, exactlyzero, PScale) where T
 
-    lenrX = length(rX)
-    @static p.LX>0 && (raug[1:lenrX,:] .= rX)
-    raug[lenrX+1:end,:] = @view r[0x1 .+ wpIndexIn]
+    @static p.LX>0 && (raug[1:LX,:] .= rX)
+    raug[LX+1:end,:] = @view r[0x1 .+ wpIndexIn]
     _raug = T<:Real ? raug : ustrip(raug)
 
     @static if p.PType == Array
@@ -39,13 +38,13 @@ function rls(itask,
         batched_spr!('U', -_den*PScale, k, P)
     end
 
-    batched_dot!(_e, _wpWeightIn, _raug[lenrX+1:end,:])
+    batched_dot!(_e, _wpWeightIn, _raug[LX+1:end,:])
     e .+= u_bal .- @view utarg[learn_seq,:,itask]
     @static p.LX>0 && (e .+= wpWeightX * rX)
     delta .= e' .* k
     @static if !p.benchmark
-        wpWeightIn .-= @view delta[lenrX+1:end,:]
-        @static p.LX>0 && (wpWeightX .-= (@view delta[1:lenrX,:])')
+        wpWeightIn .-= @view delta[LX+1:end,:]
+        @static p.LX>0 && (wpWeightX .-= (@view delta[1:LX,:])')
     end
     wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn)
 
