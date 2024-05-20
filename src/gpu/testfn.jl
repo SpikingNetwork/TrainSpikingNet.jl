@@ -27,11 +27,11 @@ function test(; ntrials = 1,
 
     wpWeightOut = zeros(TCharge, maximum([length(x) for x in wpIndexOut])+1, p.Ncells+1);
 
-    w0Index = vv2m(w0Index);
+    w0Index = vv2m(w0Index);                w0Index .+= 0x1
     w0Weights = vv2m(w0Weights);
-    wpIndexIn = vv2m(wpIndexIn);
-    wpIndexOut = vv2m(wpIndexOut);
-    wpIndexConvert = vv2m(wpIndexConvert);
+    wpIndexIn = vv2m(wpIndexIn);            wpIndexIn .+= 0x1
+    wpIndexOut = vv2m(wpIndexOut);          wpIndexOut .+= 0x1
+    wpIndexConvert = vv2m(wpIndexConvert);  wpIndexConvert .+= 0x1
     wpWeightIn = vv2m(wpWeightIn);
 
     wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn);

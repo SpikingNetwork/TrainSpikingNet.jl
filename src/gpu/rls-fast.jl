@@ -4,7 +4,7 @@ function rls(itask,
              wpWeightOut, plusone, exactlyzero, PScale) where T
 
     @static p.LX>0 && (raug[1:LX,:] .= rX)
-    raug[LX+1:end,:] = @view r[0x1 .+ wpIndexIn]
+    raug[LX+1:end,:] = @view r[wpIndexIn]
     _raug = T<:Real ? raug : ustrip(raug)
 
     @static if p.PType == Array
