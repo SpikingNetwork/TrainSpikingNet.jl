@@ -49,13 +49,11 @@ function train(; nloops = 1,
 
     wpWeightOut = zeros(TCharge, maximum([length(x) for x in wpIndexOut])+1, p.Ncells+1);
 
-    w0Index = vv2m(w0Index);
+    w0Index = vv2m(w0Index);                w0Index .+= 0x1
     w0Weights = vv2m(w0Weights);
-    wpIndexIn = vv2m(wpIndexIn);
-    wpIndexOut = vv2m(wpIndexOut);
-    wpIndexConvert = vv2m(wpIndexConvert);
-
-    wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn);
+    wpIndexIn = vv2m(wpIndexIn);            wpIndexIn .+= 0x1
+    wpIndexOut = vv2m(wpIndexOut);          wpIndexOut .+= 0x1
+    wpIndexConvert = vv2m(wpIndexConvert);  wpIndexConvert .+= 0x1
 
     rng = eval(p.rng_func.gpu)
     isnothing(p.seed) || Random.seed!(rng, p.seed)
@@ -79,6 +77,8 @@ function train(; nloops = 1,
     wpWeightOut = CuArray{TCharge}(wpWeightOut);
     wpWeightX = CuArray{TCharge}(wpWeightX);
 
+    wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn);
+
     # --- dynamically sized scratch space --- #
     pLtot = size(wpIndexIn,1) + p.LX
     raug = CuArray{TInvTime}(undef, pLtot, p.Ncells)
@@ -91,8 +91,10 @@ function train(; nloops = 1,
     delta = CuArray{TCharge}(undef, pLtot, p.Ncells)
     @static if p.PCompute == :small
         Pinv = CuArray{p.PPrecision}(undef, pLtot, pLtot, p.PComputeN)
+        pivot = CuArray{Int32}(undef, pLtot, p.Ncells)
+        info = CuArray{Int32}(undef, p.Ncells)
     else
-        Pinv = nothing
+        Pinv = info = pivot = nothing
     end
 
     # --- monitor resources used --- #
@@ -172,7 +174,7 @@ function train(; nloops = 1,
                      invtau_bali, invtau_plas, X_bal, nothing, sig, nothing,
                      nothing, plusone, p.PScale, cellModel_args, bnotrefrac,
                      bspike, bspikeX, scratch, raug, k, k2, rrXg, vPv, den, e, delta, rng,
-                     P, Pinv, X_stim, utarg, rateX, w0Index, w0Weights, wpWeightX,
+                     P, Pinv, pivot, info, X_stim, utarg, rateX, w0Index, w0Weights, wpWeightX,
                      wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn,
                      wpWeightOut)
 
@@ -184,7 +186,7 @@ function train(; nloops = 1,
                     p.LX, p.refrac, learn_step, learn_nsteps, invtau_bale, invtau_bali,
                     invtau_plas, X_bal, maxTimes, sig, p.wid, p.example_neurons,
                     plusone, p.PScale, cellModel_args, bnotrefrac, bspike,
-                    bspikeX, scratch, raug, k, k2, rrXg, vPv, den, e, delta, rng, P, Pinv, X_stim,
+                    bspikeX, scratch, raug, k, k2, rrXg, vPv, den, e, delta, rng, P, Pinv, pivot, info, X_stim,
                     utarg, rateX, w0Index, w0Weights, wpWeightX, wpIndexIn,
                     wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut)
 

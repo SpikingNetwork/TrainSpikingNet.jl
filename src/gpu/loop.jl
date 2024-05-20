@@ -12,17 +12,16 @@ function update_inputs(bspike,
         jstride = blockDim().y * gridDim().y
 
         @inbounds for i=i0:istride:length(bspike)
-            if i<=length(bspike) && bspike[i]
-                for j=j0:jstride:max(size(w0Index,1),size(wpIndexOut,1))
-                    @static if p.K>0
-                        if j<=size(w0Index,1)
-                            CUDA.@atomic inputsE[0x1 + w0Index[j,i]] += max(w0Weights[j,i], charge0)
-                            CUDA.@atomic inputsI[0x1 + w0Index[j,i]] += min(w0Weights[j,i], charge0)
-                        end
+            bspike[i] || continue
+            for j=j0:jstride:max(size(w0Index,1),size(wpIndexOut,1))
+                @static if p.K>0
+                    if j<=size(w0Index,1)
+                        CUDA.@atomic inputsE[w0Index[j,i]] += max(w0Weights[j,i], charge0)
+                        CUDA.@atomic inputsI[w0Index[j,i]] += min(w0Weights[j,i], charge0)
                     end
-                    if j<=size(wpIndexOut,1)
-                        CUDA.@atomic inputsP[0x1 + wpIndexOut[j,i]] += wpWeightOut[j+1,i+1]
-                    end
+                end
+                if j<=size(wpIndexOut,1)
+                    CUDA.@atomic inputsP[wpIndexOut[j,i]] += wpWeightOut[j+1,i+1]
                 end
             end
         end
@@ -60,7 +59,7 @@ function loop(::Val{Kind}, ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime},
               Ncells, Ne, LX, refrac, learn_step, learn_nsteps, invtau_bale, invtau_bali,
               invtau_plas, X_bal, maxTimes, sig, wid, example_neurons,
               plusone, PScale, cellModel_args, bnotrefrac, bspike, bspikeX,
-              scratch, raug, k, k2, rrXg, vPv, den, e, delta, rng, P, Pinv,
+              scratch, raug, k, k2, rrXg, vPv, den, e, delta, rng, P, Pinv, pivot, info,
               X_stim, utarg,
               rateX, w0Index, w0Weights, wpWeightX, wpIndexIn, wpIndexOut,
               wpIndexConvert, wpWeightIn, wpWeightOut) where {Kind, TCurrent,
@@ -135,7 +134,7 @@ function loop(::Val{Kind}, ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime},
                     else
                         rls(itask,
                             raug, k, k2, rrXg, e, delta, Ncells, p.PComputeN, r, rX,
-                            Pinv, u_bal, utarg,
+                            Pinv, pivot, info, u_bal, utarg,
                             rrXhistory, charge0, LX, p.penmu, p.penlamFF, p.penlambda,
                             learn_seq, wpIndexIn,
                             wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,

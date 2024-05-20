@@ -4,7 +4,7 @@ function rls(itask,
              wpWeightOut, plusone, exactlyzero, PScale) where T
 
     @static p.LX>0 && (raug[1:LX,:] .= rX)
-    raug[LX+1:end,:] = @view r[0x1 .+ wpIndexIn]
+    raug[LX+1:end,:] = @view r[wpIndexIn]
     _raug = T<:Real ? raug : ustrip(raug)
 
     @static if p.PType == Array
@@ -38,7 +38,7 @@ function rls(itask,
         batched_spr!('U', -_den*PScale, k, P)
     end
 
-    batched_dot!(_e, _wpWeightIn, _raug[LX+1:end,:])
+    batched_dot!(_e, _wpWeightIn, (@view _raug[LX+1:end,:]))
     e .+= u_bal .- @view utarg[learn_seq,:,itask]
     @static p.LX>0 && (e .+= wpWeightX * rX)
     delta .= e' .* k
