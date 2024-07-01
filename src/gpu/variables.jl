@@ -75,38 +75,45 @@ scratch = Scratch{CuMatrix{_TTimeInt, CUDA.Mem.DeviceBuffer},
                   CuVector{TVoltage, CUDA.Mem.DeviceBuffer},
                   CuVector{_TNoise, CUDA.Mem.DeviceBuffer}}()
 
-function generate_Pinv!(Pinv, cis, wpWeightIn, charge0, LX, penmu, penlamFF, penlambda)
-    function kernel(Pinv, cis, wpWeightIn, charge0, LX, penmu, penlamFF, penlambda)
+function configurator(kernel, dim1)
+    config = launch_configuration(kernel.fun)
+    xthreads = min(32, dim1)
+    xblocks = min(config.blocks, cld(dim1, xthreads))
+    return (xthreads, ), (xblocks<<2, )
+end
+
+function configurator(kernel, dim1, dim2)
+    config = launch_configuration(kernel.fun)
+    xthreads = min(32, dim1)
+    ythreads = min(fld(config.threads, xthreads), cld(dim1*dim2, xthreads))
+    xblocks = min(config.blocks, cld(dim1, xthreads))
+    yblocks = min(cld(config.blocks, xblocks), cld(dim2, ythreads))
+    return (xthreads, ythreads), (xblocks<<2, yblocks<<2)
+end
+
+function generate_Pinv!(Pinv, ci, wpWeightIn, charge0, LX, penmu, penlamFF, penlambda)
+    function kernel(Pinv, ci, wpWeightIn, charge0, LX, penmu, penlamFF, penlambda)
         i0 = threadIdx().x + (blockIdx().x - 1) * blockDim().x
         j0 = threadIdx().y + (blockIdx().y - 1) * blockDim().y
         istride = blockDim().x * gridDim().x
         jstride = blockDim().y * gridDim().y
 
-        @inbounds for i=i0:istride:size(Pinv,1)
-            for j=j0:jstride:size(Pinv,2)
-                for k=1:size(Pinv,3)
-                    Pinv[i,j,k] = 0
-                    if i==j
-                        Pinv[i,j,k] = i<=LX ? penlamFF : penlambda
-                    end
-                    if i>LX && j>LX
-                        Pinv[i,j,k] += penmu * (
-                              (wpWeightIn[i,cis[k]] > charge0 && wpWeightIn[j,cis[k]] > charge0) ||
-                              (wpWeightIn[i,cis[k]] < charge0 && wpWeightIn[j,cis[k]] < charge0) )
-                    end
-                end
+        @inbounds for i=i0:istride:size(Pinv,1), j=j0:jstride:size(Pinv,2)
+            Pinv[i,j] = 0
+            if i==j
+                Pinv[i,j] = i<=LX ? penlamFF : penlambda
+            end
+            if i>LX && j>LX
+                Pinv[i,j] += penmu * (
+                      (wpWeightIn[i,ci] > charge0 && wpWeightIn[j,ci] > charge0) ||
+                      (wpWeightIn[i,ci] < charge0 && wpWeightIn[j,ci] < charge0) )
             end
         end
         return nothing
     end
 
-    kernel = @cuda launch=false kernel(Pinv, cis, wpWeightIn, charge0, LX, penmu, penlamFF, penlambda)
-    config = launch_configuration(kernel.fun)
-    dims = size(Pinv)[1:2]
-    xthreads = min(32, dims[1])
-    ythreads = min(fld(config.threads, xthreads), cld(prod(dims), xthreads))
-    xblocks = min(config.blocks, cld(dims[1], xthreads))
-    yblocks = min(cld(config.blocks, xblocks), cld(dims[2], ythreads))
-    kernel(Pinv, cis, wpWeightIn, charge0, LX, penmu, penlamFF, penlambda;
-           threads=(xthreads,ythreads), blocks=(xblocks<<2,yblocks<<2))
+    kernel = @cuda launch=false kernel(Pinv, ci, wpWeightIn, charge0, LX, penmu, penlamFF, penlambda)
+    threads, blocks = configurator(kernel, size(Pinv,1), size(Pinv,2))
+    kernel(Pinv, ci, wpWeightIn, charge0, LX, penmu, penlamFF, penlambda;
+           threads=threads, blocks=blocks)
 end

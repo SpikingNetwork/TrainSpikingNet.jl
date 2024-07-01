@@ -1,7 +1,7 @@
 module TrainSpikingNet
 
 using LinearAlgebra, LinearAlgebra.BLAS, Random, JLD2, StatsBase, Statistics, SymmetricFormats, UnPack, CodecZlib, Printf, CircularArrayBuffers
-using CUDA, NNlib, BatchedBLAS
+using CUDA, CUDA.CUBLAS, CUDA.CUSOLVER, NNlib, BatchedBLAS
 
 using NLsolve
 

@@ -6,21 +6,13 @@ function wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn)
         istride = blockDim().x * gridDim().x
         jstride = blockDim().y * gridDim().y
 
-        @inbounds for i=i0:istride:size(wpWeightIn,1)
-            for j=j0:jstride:size(wpWeightIn,2)
-                wpWeightOut[wpIndexConvert[i,j],wpIndexIn[i,j]] = wpWeightIn[i,j]
-            end
+        @inbounds for i=i0:istride:size(wpWeightIn,1), j=j0:jstride:size(wpWeightIn,2)
+            wpWeightOut[wpIndexConvert[i,j],wpIndexIn[i,j]] = wpWeightIn[i,j]
         end
         return nothing
     end
 
     kernel = @cuda launch=false kernel(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn)
-    config = launch_configuration(kernel.fun)
-    dims = size(wpWeightIn)
-    xthreads = min(32, dims[1])
-    ythreads = min(fld(config.threads, xthreads), cld(prod(dims), xthreads))
-    xblocks = min(config.blocks, cld(dims[1], xthreads))
-    yblocks = min(cld(config.blocks, xblocks), cld(dims[2], ythreads))
-    kernel(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn;
-           threads=(xthreads,ythreads), blocks=(xblocks<<2,yblocks<<2))
+    threads, blocks = configurator(kernel, size(wpWeightIn,1), size(wpWeightIn,2))
+    kernel(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn; threads=threads, blocks=blocks)
 end

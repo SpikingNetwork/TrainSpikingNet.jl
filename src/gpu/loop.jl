@@ -41,17 +41,12 @@ function update_inputs(bspike,
     kernel = @cuda launch=false kernel(bspike, _charge0,
                                        w0Index, _w0Weights, _inputsE, _inputsI,
                                        wpIndexOut, _wpWeightOut, _inputsP)
-    config = launch_configuration(kernel.fun)
-    dims = (length(bspike),
+    threads, blocks = configurator(kernel, length(bspike),
             (@static p.K>0 ? max(size(w0Index,1),size(wpIndexOut,1)) : size(wpIndexOut,1)))
-    xthreads = min(32, dims[1])
-    ythreads = min(fld(config.threads, xthreads), cld(prod(dims), xthreads))
-    xblocks = min(config.blocks, cld(dims[1], xthreads))
-    yblocks = min(cld(config.blocks, xblocks), cld(dims[2], ythreads))
     kernel(bspike, _charge0,
            w0Index, _w0Weights, _inputsE, _inputsI,
            wpIndexOut, _wpWeightOut, _inputsP;
-           threads=(xthreads,ythreads), blocks=(xblocks<<2,yblocks<<2))
+           threads=threads, blocks=blocks)
 end
 
 function loop(::Val{Kind}, ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime},
@@ -133,7 +128,7 @@ function loop(::Val{Kind}, ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime},
                             plusone, exactlyzero, PScale)
                     else
                         rls(itask,
-                            raug, k, k2, rrXg, e, delta, Ncells, p.PComputeN, r, rX,
+                            raug, k, k2, rrXg, delta, Ncells, r, rX,
                             Pinv, pivot, info, u_bal, utarg,
                             rrXhistory, charge0, LX, p.penmu, p.penlamFF, p.penlambda,
                             learn_seq, wpIndexIn,

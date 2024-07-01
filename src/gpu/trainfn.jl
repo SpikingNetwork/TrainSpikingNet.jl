@@ -81,20 +81,25 @@ function train(; nloops = 1,
 
     # --- dynamically sized scratch space --- #
     pLtot = size(wpIndexIn,1) + p.LX
-    raug = CuArray{TInvTime}(undef, pLtot, p.Ncells)
-    k = CuArray{p.FloatPrecision}(undef, pLtot, p.Ncells)
-    k2 = reshape(k, pLtot, 1, p.Ncells)
-    rrXg = CuMatrix{p.PPrecision}(undef, pLtot, p.PComputeN)
-    vPv = CuArray{TInvTime}(undef, p.Ncells)
-    den = CuArray{TTime}(undef, p.Ncells)
-    e = CuArray{TCurrent}(undef, p.Ncells)
-    delta = CuArray{TCharge}(undef, pLtot, p.Ncells)
-    @static if p.PCompute == :small
-        Pinv = CuArray{p.PPrecision}(undef, pLtot, pLtot, p.PComputeN)
-        pivot = CuArray{Int32}(undef, pLtot, p.Ncells)
-        info = CuArray{Int32}(undef, p.Ncells)
-    else
+    rrXg = CuArray{p.PPrecision}(undef, pLtot)
+    @static if p.PCompute == :fast
+        raug = CuArray{TInvTime}(undef, pLtot, p.Ncells)
+        k = CuArray{p.FloatPrecision}(undef, pLtot, p.Ncells)
+        k2 = reshape(k, pLtot, 1, p.Ncells)
+        vPv = CuArray{TInvTime}(undef, p.Ncells)
+        den = CuArray{TTime}(undef, p.Ncells)
+        e = CuArray{TCurrent}(undef, p.Ncells)
+        delta = CuArray{TCharge}(undef, pLtot, p.Ncells)
         Pinv = info = pivot = nothing
+    else
+        raug = CuArray{TInvTime}(undef, pLtot)
+        k = CuArray{p.FloatPrecision}(undef, pLtot)
+        k2 = reshape(k, pLtot, 1)
+        vPv = den = e = nothing
+        delta = CuArray{TCharge}(undef, pLtot)
+        Pinv = CuArray{p.PPrecision}(undef, pLtot, pLtot)
+        pivot = CuArray{Int32}(undef, pLtot)
+        info = CuArray{Int32}(undef, p.Ncells)
     end
 
     # --- monitor resources used --- #
