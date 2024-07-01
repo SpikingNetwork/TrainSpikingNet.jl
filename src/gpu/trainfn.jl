@@ -85,14 +85,14 @@ function train(; nloops = 1,
     raug = CuArray{TInvTime}(undef, pLtot, p.Ncells)
     k = CuArray{p.FloatPrecision}(undef, pLtot, p.Ncells)
     k2 = reshape(k, pLtot, 1, p.Ncells)
-    rrXg = CuMatrix{p.PPrecision}(undef, pLtot, p.PComputeN)
+    rrXg = CuArray{p.PPrecision}(undef, pLtot)
     vPv = CuArray{TInvTime}(undef, p.Ncells)
     den = CuArray{TTime}(undef, p.Ncells)
     e = CuArray{TCurrent}(undef, p.Ncells)
     delta = CuArray{TCharge}(undef, pLtot, p.Ncells)
     @static if p.PCompute == :small
-        Pinv = CuArray{p.PPrecision}(undef, pLtot, pLtot, p.PComputeN)
-        pivot = CuArray{Int32}(undef, pLtot, p.Ncells)
+        Pinv = CuArray{p.PPrecision}(undef, pLtot, pLtot)
+        pivot = CuArray{Int32}(undef, pLtot)
         info = CuArray{Int32}(undef, p.Ncells)
     else
         Pinv = info = pivot = nothing
