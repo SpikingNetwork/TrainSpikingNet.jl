@@ -89,11 +89,7 @@ function generate_Pinv!(Pinv, ci, wpWeightIn, charge0, LX, penmu, penlamFF, penl
     end
     for i in 1:length(wpWeightIn[ci])
         Pinv[LX+i, LX+i] = penlambda
-        @static if p.PType == Array
-            j0 = 1
-        elseif p.PType == Symmetric
-            j0 = i
-        end
+        j0 = @static p.PType == Array ? 1 : i
         for j in j0:length(wpWeightIn[ci])
             Pinv[LX+i, LX+j] += penmu * (
                     (wpWeightIn[ci][i] > charge0 && wpWeightIn[ci][j] > charge0) ||

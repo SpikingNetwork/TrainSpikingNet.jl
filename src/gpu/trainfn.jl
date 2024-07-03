@@ -93,9 +93,10 @@ function train(; nloops = 1,
     @static if p.PCompute == :small
         Pinv = CuArray{p.PPrecision}(undef, pLtot, pLtot)
         pivot = CuArray{Int32}(undef, pLtot)
-        info = CuArray{Int32}(undef, p.Ncells)
+        pivot64 = similar(pivot, Int64)
+        workspace = CuVector{UInt8}(undef, 1)
     else
-        Pinv = info = pivot = nothing
+        Pinv = workspace = pivot = pivot64 = nothing
     end
 
     # --- monitor resources used --- #
@@ -175,7 +176,8 @@ function train(; nloops = 1,
                      invtau_bali, invtau_plas, X_bal, nothing, sig, nothing,
                      nothing, plusone, p.PScale, cellModel_args, bnotrefrac,
                      bspike, bspikeX, scratch, raug, k, k2, rrXg, vPv, den, e, delta, rng,
-                     P, Pinv, pivot, info, X_stim, utarg, rateX, w0Index, w0Weights, wpWeightX,
+                     P, Pinv, pivot, pivot64, workspace, X_stim, utarg, rateX,
+                     w0Index, w0Weights, wpWeightX,
                      wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightIn,
                      wpWeightOut)
 
@@ -187,7 +189,8 @@ function train(; nloops = 1,
                     p.LX, p.refrac, learn_step, learn_nsteps, invtau_bale, invtau_bali,
                     invtau_plas, X_bal, maxTimes, sig, p.wid, p.example_neurons,
                     plusone, p.PScale, cellModel_args, bnotrefrac, bspike,
-                    bspikeX, scratch, raug, k, k2, rrXg, vPv, den, e, delta, rng, P, Pinv, pivot, info, X_stim,
+                    bspikeX, scratch, raug, k, k2, rrXg, vPv, den, e, delta, rng,
+                    P, Pinv, pivot, pivot64, workspace, X_stim,
                     utarg, rateX, w0Index, w0Weights, wpWeightX, wpIndexIn,
                     wpIndexOut, wpIndexConvert, wpWeightIn, wpWeightOut)
 

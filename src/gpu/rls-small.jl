@@ -1,6 +1,6 @@
 function rls(itask,
              raug::CuMatrix{T}, k, k2, rrXg, vPv, den, e, delta, Ncells, r, rX,
-             Pinv, pivot, info, u_bal, utarg,
+             Pinv, pivot, pivot64, workspace, u_bal, utarg,
              rrXhistory, charge0, LX, penmu, penlamFF, penlambda,
              learn_seq, wpIndexIn, wpIndexConvert, wpWeightX, wpWeightIn,
              wpWeightOut, plusone, exactlyzero, PScale) where T
@@ -24,11 +24,14 @@ function rls(itask,
         # k = Pinv \ (_raug / PScale)
         k .= _raug ./ PScale
     	@static if p.PType == Array
-    		CUSOLVER.getrf!(Pinv, pivot)
-    		CUSOLVER.getrs!('N', Pinv, pivot, view(k,:,ci))
+            #ldiv!(view(k,:,ci), lu!(Pinv), view(_raug,:,ci) ./ PScale)
+            CUSOLVER.getrf!(Pinv, pivot, workspace)
+            CUSOLVER.getrs!('N', Pinv, pivot, view(k,:,ci))
     	elseif p.PType == Symmetric
-    		CUSOLVER.sytrf!('U', Pinv)
-    		CUSOLVER.sytrs!('U', Pinv, view(k2,:,:,ci))
+            #ldiv!(view(k,:,ci), bunchkaufman!(Symmetric(Pinv)), view(_raug,:,ci) / PScale)
+            CUSOLVER.sytrf!('U', Pinv, pivot, workspace)
+            pivot64 .= pivot
+            CUSOLVER.sytrs!('U', Pinv, pivot64, view(k2,:,:,ci))
     	end
     end
 
