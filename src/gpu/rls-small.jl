@@ -1,6 +1,6 @@
 function rls(itask,
              raug::CuVector{T}, k, k2, rrXg, delta, Ncells, r, rX,
-             Pinv, pivot, info, u_bal, utarg,
+             Pinv, pivot, pivot64, workspace_gpu, workspace_cpu, devinfo, u_bal, utarg,
              rrXhistory, charge0, LX, penmu, penlamFF, penlambda,
              learn_seq, wpIndexIn, wpIndexConvert, wpWeightX, wpWeightIn,
              wpWeightOut, plusone, exactlyzero, PScale) where T
@@ -23,11 +23,14 @@ function rls(itask,
         # k = Pinv \ (raug / PScale)
         k .= raug ./ PScale
     	@static if p.PType == Array
-    		CUSOLVER.getrf!(Pinv, pivot)
-    		CUSOLVER.getrs!('N', Pinv, pivot, k)
+            #ldiv!(k, lu!(Pinv), raug ./ PScale)
+            CUSOLVER.getrf!(Pinv, pivot, devinfo, workspace_gpu)
+            CUSOLVER.getrs!('N', Pinv, pivot, k, devinfo)
     	elseif p.PType == Symmetric
-    		CUSOLVER.sytrf!('U', Pinv)
-    		CUSOLVER.sytrs!('U', Pinv, k2)
+            #ldiv!(k, bunchkaufman!(Symmetric(Pinv)), raug / PScale)
+            CUSOLVER.sytrf!('U', Pinv, pivot, devinfo, workspace_gpu)
+            pivot64 .= pivot
+            CUSOLVER.sytrs!('U', Pinv, pivot64, k2, devinfo, workspace_gpu, workspace_cpu)
     	end
 
         CUDA.@allowscalar e = view(wpWeightIn,:,ci)' * (@view raug[LX+1:end]) + u_bal[ci] - utarg[learn_seq,ci,itask]

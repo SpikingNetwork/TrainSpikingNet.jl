@@ -81,8 +81,16 @@ function train(; nloops = 1,
     delta = Matrix{TCharge}(undef, pLtot, Threads.nthreads())
     @static if p.PCompute == :small
         Pinv = Array{p.PPrecision}(undef, pLtot, pLtot, Threads.nthreads())
+        @static if p.PType == Array
+            work = lwork = nothing
+            pivot = [Array{Int64}(undef, pLtot) for _ in 1: Threads.nthreads()]
+        else
+            _work, lwork, _pivot = get_workspace(BunchKaufman, Symmetric(Pinv[:,:,1]))
+            work = [copy(_work) for _ in 1:Threads.nthreads()]
+            pivot = [copy(_pivot) for _ in 1:Threads.nthreads()]
+        end
     else
-        Pinv = nothing
+        Pinv = work = lwork = pivot = nothing
     end
 
     # --- monitor resources used --- #
@@ -145,8 +153,8 @@ function train(; nloops = 1,
                      learn_step, learn_nsteps, invtau_bale, invtau_bali, invtau_plas, X_bal,
                      nothing, sig, nothing, nothing, plusone, exactlyzero,
                      p.PScale, cellModel_args, uavg, ustd, scratch, raug, k, rrXg,
-                     delta, rng, P, Pinv, X_stim, utarg, rateX, w0Index, w0Weights,
-                     wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightX, wpWeightIn,
+                     delta, rng, P, Pinv, work, lwork, pivot, X_stim, utarg, rateX, w0Index,
+                     w0Weights, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightX, wpWeightIn,
                      wpWeightOut)
 
                 push!(correlation, missing)
@@ -158,8 +166,8 @@ function train(; nloops = 1,
                     invtau_bale, invtau_bali, invtau_plas, X_bal, maxTimes,
                     sig, p.wid, p.example_neurons, plusone, exactlyzero,
                     p.PScale, cellModel_args, uavg, ustd, scratch, raug, k, rrXg,
-                    delta, rng, P, Pinv, X_stim, utarg, rateX, w0Index, w0Weights,
-                    wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightX, wpWeightIn,
+                    delta, rng, P, Pinv, work, lwork, pivot, X_stim, utarg, rateX, w0Index,
+                    w0Weights, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightX, wpWeightIn,
                     wpWeightOut)
 
                 if p.correlation_var == :utotal
