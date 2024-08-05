@@ -158,8 +158,8 @@ X_bal[Ne+1:Ncells] .= X_bali
 
 
 # --- time-varying noise --- #
-noise_model=:current  # or :voltage
-sig = 0  # std dev of the Gaussian noise.  can be vector too
+noise_model=:voltage  # or :current
+sig = 0  # std dev of the Gaussian noise.  can be vector too.  0.65 works
 
 
 benchmark = false  # set to true to not update the weights thereby maintaining firing rate
