@@ -210,12 +210,12 @@ function train(; nloops = 1,
             iloop == R+nloops && save_weights_P_rrXhistory(iloop)
 
             this_elapsed_time = time()-start_time
-            @printf "%#16g  " this_elapsed_time
+            @printf "%16.11g  " this_elapsed_time
             push!(elapsed_time, this_elapsed_time)
 
             mean_rate = mean(scratch.ns) / (p.dt*p.Nsteps)
             if TTime <: Real
-                @printf "%#16g  " 1000*mean_rate
+                @printf "%16.11g  " 1000*mean_rate
             else
                 Printf.format(stdout, fmt, ustrip(uconvert(unit(p.maxrate), mean_rate)))
             end
@@ -223,7 +223,7 @@ function train(; nloops = 1,
                                              : uconvert(unit(p.maxrate), mean_rate))
 
             if mod(iloop, correlation_interval) == 0
-                @printf "%#11g" thiscor
+                @printf "%11.6g" thiscor
                 num_nan>0 && @printf "%s" string(" (", num_nan, " are NaN)")
             end
             println()
