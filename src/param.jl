@@ -16,6 +16,7 @@ example_neurons = 25  # no. of neurons to save for visualization
 wid = 50  # width (ms) of the moving average window in time
 maxrate = 500 # (Hz) maximum average firing rate; spikes will be lost if the average firing rate exceeds this value
 
+# for exact reproducibility set seed to something and use MersenneTwister for rng_func
 seed = nothing
 rng_func = (; :gpu => :(CUDA.RNG()), :cpu => :(Random.default_rng()))
 rng = eval(rng_func.cpu)
