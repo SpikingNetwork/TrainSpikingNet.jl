@@ -60,7 +60,7 @@ function loop(::Val{Kind}, ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime},
               wpIndexConvert, wpWeightIn, wpWeightOut) where {Kind, TCurrent,
               TCharge, TTime}
 
-    @unpack times, ns, timesX, nsX, inputsE, inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes, spikesPrev, spikesX, spikesXPrev, u_bale, u_bali, uX_plas, u_bal, u, r, rX, rrXhistory, X, lastSpike, v, noise, rndX, u_exccell, u_inhcell, u_bale_exccell, u_bali_exccell, u_bale_inhcell, u_bali_inhcell, u_plas_exccell, u_plas_inhcell, u_rollave, u_bale_rollave, u_bali_rollave, u_plas_rollave, u_rollave_cnt = scratch
+    @unpack times, ns, timesX, nsX, inputsE, inputsI, inputsP, inputsEPrev, inputsIPrev, inputsPPrev, spikes, spikesPrev, spikesX, spikesXPrev, u_bale, u_bali, uX_plas, u_bal, u, r, rX, raughist, X, lastSpike, v, noise, rndX, u_exccell, u_inhcell, u_bale_exccell, u_bali_exccell, u_bale_inhcell, u_bali_inhcell, u_plas_exccell, u_plas_inhcell, u_rollave, u_bale_rollave, u_bali_rollave, u_plas_rollave, u_rollave_cnt = scratch
 
     current0 = TCurrent(0)
     charge0 = TCharge(0)
@@ -130,7 +130,7 @@ function loop(::Val{Kind}, ::Type{TCurrent}, ::Type{TCharge}, ::Type{TTime},
                         rls(itask,
                             raug, k, k2, delta, Ncells, r, rX,
                             Pinv, pivot, pivot64, workspace_gpu, workspace_cpu, devinfo, u_bal, utarg,
-                            rrXhistory, charge0, LX, p.penmu, p.penlamFF, p.penlambda,
+                            raughist, charge0, LX, p.penmu, p.penlamFF, p.penlambda,
                             learn_seq, wpIndexIn,
                             wpIndexConvert, wpWeightX, wpWeightIn, wpWeightOut,
                             plusone, exactlyzero, PScale)

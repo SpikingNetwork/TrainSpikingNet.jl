@@ -1,7 +1,7 @@
 function rls(itask,
              raug::CuVector{T}, k, k2, delta, Ncells, r, rX,
              Pinv, pivot, pivot64, workspace_gpu, workspace_cpu, devinfo, u_bal, utarg,
-             rrXhistory, charge0, LX, penmu, penlamFF, penlambda,
+             raughist, charge0, LX, penmu, penlamFF, penlambda,
              learn_seq, wpIndexIn, wpIndexConvert, wpWeightX, wpWeightIn,
              wpWeightOut, plusone, exactlyzero, PScale) where T
 
@@ -10,8 +10,8 @@ function rls(itask,
 
         generate_Pinv!(Pinv, ci, wpWeightIn, charge0, LX, penmu, penlamFF, penlambda)
 
-        # Pinv += rrXhistory' * rrXhistory
-        update_Pinv_with_rrXhistory(Pinv, view(rrXhistory.buffer,:,1:rrXhistory.nframes), LX, wpIndexIn, ci)
+        # Pinv += raughist' * raughist
+        update_Pinv_with_raughist(Pinv, view(raughist.buffer,:,1:raughist.nframes), LX, wpIndexIn, ci)
 
         # k = Pinv \ (raug / PScale)
         k .= raug ./ PScale
@@ -37,9 +37,9 @@ function rls(itask,
 
     wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn)
 
-    push!(rrXhistory, 0)
-    @static p.LX>0 && (rrXhistory[1:LX, end] = rX)
-    rrXhistory[LX+1:end, end] = r
+    push!(raughist, 0)
+    @static p.LX>0 && (raughist[1:LX, end] = rX)
+    raughist[LX+1:end, end] = r
 
     return wpWeightIn, wpWeightOut
 end
@@ -61,9 +61,9 @@ function copyto_raug(raug, LX, rX, r, wpIndexIn, ci)
     kernel(raug, LX, rX, r, wpIndexIn, ci; threads=threads, blocks=blocks)
 end
 
-function update_Pinv_with_rrXhistory(Pinv, rrXhistory, LX, wpIndexIn, ci)
+function update_Pinv_with_raughist(Pinv, raughist, LX, wpIndexIn, ci)
 
-    function kernel(Pinv, rrXhistory, LX, wpIndexIn, ci)
+    function kernel(Pinv, raughist, LX, wpIndexIn, ci)
         i0 = threadIdx().x + (blockIdx().x - 1) * blockDim().x
         j0 = threadIdx().y + (blockIdx().y - 1) * blockDim().y
         istride = blockDim().x * gridDim().x
@@ -72,14 +72,14 @@ function update_Pinv_with_rrXhistory(Pinv, rrXhistory, LX, wpIndexIn, ci)
         @inbounds for i=i0:istride:size(Pinv,1), j=j0:jstride:size(Pinv,2)
             irrX = i<=LX ? i : wpIndexIn[i,ci]
             jrrX = j<=LX ? j : wpIndexIn[j,ci]
-            for h=1:size(rrXhistory,2)
-                Pinv[i,j] += rrXhistory[irrX,h] * rrXhistory[jrrX,h]
+            for h=1:size(raughist,2)
+                Pinv[i,j] += raughist[irrX,h] * raughist[jrrX,h]
             end
         end
         return nothing
     end
 
-    kernel = @cuda launch=false kernel(Pinv, rrXhistory, LX, wpIndexIn, ci)
+    kernel = @cuda launch=false kernel(Pinv, raughist, LX, wpIndexIn, ci)
     threads, blocks = configurator(kernel, size(Pinv,1), size(Pinv,2))
-    kernel(Pinv, rrXhistory, LX, wpIndexIn, ci; threads=threads, blocks=blocks)
+    kernel(Pinv, raughist, LX, wpIndexIn, ci; threads=threads, blocks=blocks)
 end

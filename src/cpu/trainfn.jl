@@ -3,7 +3,7 @@ function train(; nloops = 1,
                  save_best_checkpoint = false,
                  restore_from_checkpoint = nothing,
                  monitor_resources_used = nothing,
-                 return_P_rrXhistory = false)
+                 return_P_raughist = false)
 
     # --- load initialization --- #
     w0Index = load(joinpath(data_dir,"w0Index.jld2"), "w0Index");
@@ -25,7 +25,7 @@ function train(; nloops = 1,
             end
         else
             P = nothing
-            empty!(scratch.rrXhistory)
+            empty!(scratch.raughist)
         end
     else
         R = typeof(restore_from_checkpoint)<:AbstractString ?
@@ -38,11 +38,11 @@ function train(; nloops = 1,
             P = load(joinpath(data_dir,"P-ckpt$restore_from_checkpoint.jld2"), "P");
         else
             P = nothing
-            empty!(scratch.rrXhistory)
+            empty!(scratch.raughist)
             for rrXi in eachcol(load(joinpath(data_dir,
-                                              "rrXhistory-ckpt$restore_from_checkpoint.jld2"),
-                                     "rrXhistory"))
-                push!(scratch.rrXhistory, rrXi)
+                                              "raughist-ckpt$restore_from_checkpoint.jld2"),
+                                     "raughist"))
+                push!(scratch.raughist, rrXi)
             end
         end
     end;
@@ -77,7 +77,7 @@ function train(; nloops = 1,
     pLtot = maximum([length(x) for x in wpIndexIn]) + p.LX
     raug = Matrix{TInvTime}(undef, pLtot, Threads.nthreads())
     k = Matrix{p.FloatPrecision}(undef, pLtot, Threads.nthreads())
-    rrXg = Matrix{p.PPrecision}(undef, pLtot, Threads.nthreads())
+    rgather = Matrix{p.PPrecision}(undef, pLtot, Threads.nthreads())
     delta = Matrix{TCharge}(undef, pLtot, Threads.nthreads())
     @static if p.PCompute == :small
         Pinv = Array{p.PPrecision}(undef, pLtot, pLtot, Threads.nthreads())
@@ -116,13 +116,13 @@ function train(; nloops = 1,
     end
 
     # --- train the network --- #
-    function save_weights_P_rrXhistory(ckpt)
+    function save_weights_P_raughist(ckpt)
         save(joinpath(data_dir,"wpWeightIn-ckpt$ckpt.jld2"), "wpWeightIn", Array(wpWeightIn))
         save(joinpath(data_dir,"wpWeightX-ckpt$ckpt.jld2"), "wpWeightX", Array(wpWeightX))
         if p.PCompute == :fast
             save(joinpath(data_dir,"P-ckpt$ckpt.jld2"), "P", P)
         else
-            save(joinpath(data_dir,"rrXhistory-ckpt$ckpt.jld2"), "rrXhistory", scratch.rrXhistory)
+            save(joinpath(data_dir,"raughist-ckpt$ckpt.jld2"), "raughist", scratch.raughist)
         end
     end
 
@@ -152,7 +152,7 @@ function train(; nloops = 1,
                      nothing, nothing, p.Ncells, nothing, p.LX, p.refrac,
                      learn_step, learn_nsteps, invtau_bale, invtau_bali, invtau_plas, X_bal,
                      nothing, sig, nothing, nothing, plusone, exactlyzero,
-                     p.PScale, cellModel_args, uavg, ustd, scratch, raug, k, rrXg,
+                     p.PScale, cellModel_args, uavg, ustd, scratch, raug, k, rgather,
                      delta, rng, P, Pinv, work, lwork, pivot, X_stim, utarg, rateX, w0Index,
                      w0Weights, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightX, wpWeightIn,
                      wpWeightOut)
@@ -165,7 +165,7 @@ function train(; nloops = 1,
                     nothing, p.Ncells, nothing, p.LX, p.refrac, learn_step, learn_nsteps,
                     invtau_bale, invtau_bali, invtau_plas, X_bal, maxTimes,
                     sig, p.wid, p.example_neurons, plusone, exactlyzero,
-                    p.PScale, cellModel_args, uavg, ustd, scratch, raug, k, rrXg,
+                    p.PScale, cellModel_args, uavg, ustd, scratch, raug, k, rgather,
                     delta, rng, P, Pinv, work, lwork, pivot, X_stim, utarg, rateX, w0Index,
                     w0Weights, wpIndexIn, wpIndexOut, wpIndexConvert, wpWeightX, wpWeightIn,
                     wpWeightOut)
@@ -195,7 +195,7 @@ function train(; nloops = 1,
 
                 if save_best_checkpoint && thiscor>maxcor && all(bnotnan)
                     suffix = string(iloop, "-cor", round(thiscor, digits=3))
-                    save_weights_P_rrXhistory(suffix)
+                    save_weights_P_raughist(suffix)
                     if maxcor != -Inf
                         for oldckptfile in filter(x -> !contains(x, string("ckpt", iloop)) &&
                                                   contains(x, string("-cor", round(maxcor, digits=3))),
@@ -207,7 +207,7 @@ function train(; nloops = 1,
                 end
             end
 
-            iloop == R+nloops && save_weights_P_rrXhistory(iloop)
+            iloop == R+nloops && save_weights_P_raughist(iloop)
 
             this_elapsed_time = time()-start_time
             @printf "%16.11g  " this_elapsed_time
@@ -232,7 +232,7 @@ function train(; nloops = 1,
     catch e
         println("stopping early")
         showerror(stdout, e, stacktrace(catch_backtrace()))
-        save_weights_P_rrXhistory(string(iloop,'i'))
+        save_weights_P_raughist(string(iloop,'i'))
     finally
         save(joinpath(data_dir,"learning-curve.jld2"),
              "correlation", correlation,
@@ -247,6 +247,6 @@ function train(; nloops = 1,
     end
 
     return (; wpWeightIn, wpWeightX,
-              :P => return_P_rrXhistory && p.PCompute == :fast ? P : nothing,
-              :rrXhistory => return_P_rrXhistory && p.PCompute == :small ? scratch.rrXhistory : nothing)
+              :P => return_P_raughist && p.PCompute == :fast ? P : nothing,
+              :raughist => return_P_raughist && p.PCompute == :small ? scratch.raughist : nothing)
 end

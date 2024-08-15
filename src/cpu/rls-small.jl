@@ -1,6 +1,6 @@
 function rls(itask,
-             raug::Matrix{T}, k, rrXg, delta, Ncells, r, rX, Pinv, work, lwork, pivot,
-             u_bal, utarg, rrXhistory, charge0, LX, penmu, penlamFF, penlambda,
+             raug::Matrix{T}, k, rgather, delta, Ncells, r, rX, Pinv, work, lwork, pivot,
+             u_bal, utarg, raughist, charge0, LX, penmu, penlamFF, penlambda,
              learn_seq, wpIndexIn, wpIndexConvert, wpWeightX, wpWeightIn,
              wpWeightOut, plusone, exactlyzero, PScale) where T
 
@@ -14,19 +14,19 @@ function rls(itask,
         Pinv_tid = @view Pinv[1:LX+ncpIn, 1:LX+ncpIn, Threads.threadid()]
         @static p.PType == Symmetric && (work_tid = work[Threads.threadid()])
         pivot_tid = pivot[Threads.threadid()]
-        rrXg_tid = @view rrXg[1:LX+ncpIn, Threads.threadid()]
+        rgather_tid = @view rgather[1:LX+ncpIn, Threads.threadid()]
 
         generate_Pinv!(Pinv_tid, ci, wpWeightIn, charge0, LX, penmu, penlamFF, penlambda)
 
-        for rrXi in eachcol(rrXhistory)
-            copyto!(rrXg_tid, 1, rrXi, 1, LX)
+        for craughist in eachcol(raughist)
+            copyto!(rgather_tid, 1, craughist, 1, LX)
             for i=1:ncpIn
-                rrXg_tid[LX+i] = rrXi[wpIndexIn[ci][i]]
+                rgather_tid[LX+i] = craughist[wpIndexIn[ci][i]]
             end
             @static if p.PType == Array
-                ger!(plusone, rrXg_tid, rrXg_tid, Pinv_tid)
+                ger!(plusone, rgather_tid, rgather_tid, Pinv_tid)
             elseif p.PType == Symmetric
-                syr!('U', plusone, rrXg_tid, Pinv_tid)
+                syr!('U', plusone, rgather_tid, Pinv_tid)
             end
         end
 
@@ -50,9 +50,9 @@ function rls(itask,
     end
     wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn)
 
-    push!(rrXhistory, 0)
-    @static p.LX>0 && (rrXhistory[1:LX, end] = rX)
-    rrXhistory[LX+1:end, end] = r
+    push!(raughist, 0)
+    @static p.LX>0 && (raughist[1:LX, end] = rX)
+    raughist[LX+1:end, end] = r
 
     return wpWeightIn, wpWeightOut
 end

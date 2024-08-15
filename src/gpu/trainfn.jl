@@ -3,7 +3,7 @@ function train(; nloops = 1,
                  save_best_checkpoint = false,
                  restore_from_checkpoint = nothing,
                  monitor_resources_used = nothing,
-                 return_P_rrXhistory  = false)
+                 return_P_raughist  = false)
 
     # --- load initialization --- #
     X_stim = load(joinpath(data_dir,"X_stim.jld2"), "X_stim");
@@ -25,7 +25,7 @@ function train(; nloops = 1,
             end
         else
             P = nothing
-            empty!(scratch.rrXhistory)
+            empty!(scratch.raughist)
         end
     else
         R = typeof(restore_from_checkpoint)<:AbstractString ?
@@ -38,11 +38,11 @@ function train(; nloops = 1,
             P = load(joinpath(data_dir,"P-ckpt$restore_from_checkpoint.jld2"), "P");
         else
             P = nothing
-            empty!(scratch.rrXhistory)
+            empty!(scratch.raughist)
             for rrXi in eachcol(load(joinpath(data_dir,
-                                              "rrXhistory-ckpt$restore_from_checkpoint.jld2"),
-                                     "rrXhistory"))
-                push!(scratch.rrXhistory, CuArray(rrXi))
+                                              "raughist-ckpt$restore_from_checkpoint.jld2"),
+                                     "raughist"))
+                push!(scratch.raughist, CuArray(rrXi))
             end
         end
     end;
@@ -140,7 +140,7 @@ function train(; nloops = 1,
         return A
     end
 
-    function save_weights_P_rrXhistory(ckpt)
+    function save_weights_P_raughist(ckpt)
         save(joinpath(data_dir,"wpWeightX-ckpt$ckpt.jld2"),
              "wpWeightX", Array(wpWeightX))
         save(joinpath(data_dir,"wpWeightIn-ckpt$ckpt.jld2"),
@@ -149,8 +149,8 @@ function train(; nloops = 1,
             save(joinpath(data_dir,"P-ckpt$ckpt.jld2"),
                  "P", p.PType==Symmetric ? make_symmetric(Array(P)) : Array(P))
         else
-            save(joinpath(data_dir,"rrXhistory-ckpt$ckpt.jld2"),
-                 "rrXhistory", Array(scratch.rrXhistory.buffer))
+            save(joinpath(data_dir,"raughist-ckpt$ckpt.jld2"),
+                 "raughist", Array(scratch.raughist.buffer))
         end
     end
 
@@ -226,7 +226,7 @@ function train(; nloops = 1,
 
                 if save_best_checkpoint && thiscor>maxcor && all(bnotnan)
                     suffix = string(iloop, "-cor", round(thiscor, digits=3))
-                    save_weights_P_rrXhistory(suffix)
+                    save_weights_P_raughist(suffix)
                     if maxcor != -Inf
                         for oldckptfile in filter(x -> !contains(x, string("ckpt", iloop)) &&
                                                   contains(x, string("-cor", round(maxcor, digits=3))),
@@ -238,7 +238,7 @@ function train(; nloops = 1,
                 end
             end
 
-            iloop == R+nloops && save_weights_P_rrXhistory(iloop)
+            iloop == R+nloops && save_weights_P_raughist(iloop)
 
             this_elapsed_time = time()-start_time
             @printf "%16.11g  " this_elapsed_time
@@ -263,7 +263,7 @@ function train(; nloops = 1,
     catch e
         println("stopping early")
         showerror(stdout, e, stacktrace(catch_backtrace()))
-        save_weights_P_rrXhistory(string(iloop,'i'))
+        save_weights_P_raughist(string(iloop,'i'))
     finally
         save(joinpath(data_dir,"learning-curve.jld2"),
              "correlation", correlation,
@@ -278,6 +278,6 @@ function train(; nloops = 1,
     end
 
     return (; wpWeightIn, wpWeightX,
-               :P => return_P_rrXhistory && p.PCompute == :fast ? P : nothing,
-               :rrXhistory => return_P_rrXhistory && p.PCompute == :small ? scratch.rrXhistory : nothing)
+               :P => return_P_raughist && p.PCompute == :fast ? P : nothing,
+               :raughist => return_P_raughist && p.PCompute == :small ? scratch.raughist : nothing)
 end

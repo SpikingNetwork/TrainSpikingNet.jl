@@ -26,8 +26,8 @@ Base.@kwdef struct Scratch{MatrixTimeInt, VectorInt, VectorCharge, VectorFloat, 
     r::VectorInvTime = Vector(undef, p.Ncells+extra)  # synapse-filtered recurrent spikes (i.e. filtered version of spike)
     rX::VectorInvTime = Vector(undef, p.LX)     # synapse-filtered feed-forward spikes (i.e. filtered version of spikesX)
 
-    rrXhistory = CircularArrayBuffer(MatrixInvTime(zeros(p.LX+p.Ncells+extra,
-                                                         round(Int, p.PHistory / p.learn_every))))
+    raughist = CircularArrayBuffer(MatrixInvTime(zeros(p.LX+p.Ncells+extra,
+                                                       round(Int, p.PHistory / p.learn_every))))
 
     X::VectorCurrent = Vector(undef, p.Ncells)  # total external input to neurons
 
