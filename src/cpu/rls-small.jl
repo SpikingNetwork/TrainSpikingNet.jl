@@ -32,9 +32,11 @@ function rls(itask,
 
         _raug_tid ./= PScale
         @static if p.PType == Array
-            ldiv!(k_tid, lu!(Pinv_tid, pivot_tid), _raug_tid)
+            _f = lu!(Pinv_tid, pivot_tid)
+            ldiv!(k_tid, _f, _raug_tid)
         elseif p.PType == Symmetric
-            ldiv!(k_tid, bunchkaufman!(Symmetric(Pinv_tid), work_tid, lwork, pivot_tid), _raug_tid)
+            _f = bunchkaufman!(Symmetric(Pinv_tid), work_tid, lwork, pivot_tid)
+            ldiv!(k_tid, _f, _raug_tid)
         end
         
         delta_tid = @view delta[1:LX+ncpIn, Threads.threadid()]
