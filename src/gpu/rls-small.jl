@@ -1,5 +1,5 @@
 function rls(itask,
-             raug::CuVector{T}, k, k2, rrXg, delta, Ncells, r, rX,
+             raug::CuVector{T}, k, k2, delta, Ncells, r, rX,
              Pinv, pivot, pivot64, workspace_gpu, workspace_cpu, devinfo, u_bal, utarg,
              rrXhistory, charge0, LX, penmu, penlamFF, penlambda,
              learn_seq, wpIndexIn, wpIndexConvert, wpWeightX, wpWeightIn,
@@ -11,14 +11,7 @@ function rls(itask,
         generate_Pinv!(Pinv, ci, wpWeightIn, charge0, LX, penmu, penlamFF, penlambda)
 
         # Pinv += rrXhistory' * rrXhistory
-        for rrXi in eachcol(rrXhistory)
-            copyto_rrXg(rrXg, rrXi, LX, wpIndexIn, ci)
-            @static if p.PType == Array
-                CUBLAS.ger!(plusone, rrXg, rrXg, Pinv)
-            elseif p.PType == Symmetric
-                CUBLAS.syr!('U', plusone, rrXg, Pinv)
-            end
-        end
+        update_Pinv_with_rrXhistory(Pinv, view(rrXhistory.buffer,:,1:rrXhistory.nframes), LX, wpIndexIn, ci)
 
         # k = Pinv \ (raug / PScale)
         k .= raug ./ PScale
@@ -68,19 +61,25 @@ function copyto_raug(raug, LX, rX, r, wpIndexIn, ci)
     kernel(raug, LX, rX, r, wpIndexIn, ci; threads=threads, blocks=blocks)
 end
 
-function copyto_rrXg(rrXg, rrXi, LX, wpIndexIn, ci)
+function update_Pinv_with_rrXhistory(Pinv, rrXhistory, LX, wpIndexIn, ci)
 
-    function kernel(rrXg, rrXi, LX, wpIndexIn, ci)
+    function kernel(Pinv, rrXhistory, LX, wpIndexIn, ci)
         i0 = threadIdx().x + (blockIdx().x - 1) * blockDim().x
+        j0 = threadIdx().y + (blockIdx().y - 1) * blockDim().y
         istride = blockDim().x * gridDim().x
+        jstride = blockDim().y * gridDim().y
 
-        @inbounds for i=i0:istride:size(rrXg,1)
-            rrXg[i] = i<=LX ? rrXi[i] : rrXi[wpIndexIn[i,ci]]
+        @inbounds for i=i0:istride:size(Pinv,1), j=j0:jstride:size(Pinv,2)
+            irrX = i<=LX ? i : wpIndexIn[i,ci]
+            jrrX = j<=LX ? j : wpIndexIn[j,ci]
+            for h=1:size(rrXhistory,2)
+                Pinv[i,j] += rrXhistory[irrX,h] * rrXhistory[jrrX,h]
+            end
         end
         return nothing
     end
 
-    kernel = @cuda launch=false kernel(rrXg, rrXi, LX, wpIndexIn, ci)
-    threads, blocks = configurator(kernel, size(rrXg,1))
-    kernel(rrXg, rrXi, LX, wpIndexIn, ci; threads=threads, blocks=blocks)
+    kernel = @cuda launch=false kernel(Pinv, rrXhistory, LX, wpIndexIn, ci)
+    threads, blocks = configurator(kernel, size(Pinv,1), size(Pinv,2))
+    kernel(Pinv, rrXhistory, LX, wpIndexIn, ci; threads=threads, blocks=blocks)
 end
