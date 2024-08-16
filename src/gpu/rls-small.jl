@@ -50,8 +50,10 @@ function copyto_raug(raug, LX, rX, r, wpIndexIn, ci)
         i0 = threadIdx().x + (blockIdx().x - 1) * blockDim().x
         istride = blockDim().x * gridDim().x
 
-        @inbounds for i=i0:istride:size(raug,1)
+        i = i0
+        @inbounds while i <= size(raug,1)
             raug[i] = i<=LX ? rX[i] : r[wpIndexIn[i,ci]]
+            i += istride
         end
         return nothing
     end
@@ -69,12 +71,18 @@ function update_Pinv_with_raughist(Pinv, raughist, LX, wpIndexIn, ci)
         istride = blockDim().x * gridDim().x
         jstride = blockDim().y * gridDim().y
 
-        @inbounds for i=i0:istride:size(Pinv,1), j=j0:jstride:size(Pinv,2)
-            irrX = i<=LX ? i : wpIndexIn[i,ci]
-            jrrX = j<=LX ? j : wpIndexIn[j,ci]
-            for h=1:size(raughist,2)
-                Pinv[i,j] += raughist[irrX,h] * raughist[jrrX,h]
+        i = i0
+        @inbounds while i <= size(Pinv,1)
+            j = j0
+            while j <= size(Pinv,2)
+                irrX = i<=LX ? i : wpIndexIn[i,ci]
+                jrrX = j<=LX ? j : wpIndexIn[j,ci]
+                for h=1:size(raughist,2)
+                    Pinv[i,j] += raughist[irrX,h] * raughist[jrrX,h]
+                end
+                j += jstride
             end
+            i += istride
         end
         return nothing
     end

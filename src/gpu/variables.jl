@@ -75,20 +75,24 @@ scratch = Scratch{CuMatrix{_TTimeInt, CUDA.Mem.DeviceBuffer},
                   CuVector{TVoltage, CUDA.Mem.DeviceBuffer},
                   CuVector{_TNoise, CUDA.Mem.DeviceBuffer}}()
 
+const WARP_SIZE = CUDA.attribute(device(), CUDA.DEVICE_ATTRIBUTE_WARP_SIZE)
+const MAX_GRID_DIM_X = CUDA.attribute(device(), CUDA.DEVICE_ATTRIBUTE_MAX_GRID_DIM_X)
+const MAX_GRID_DIM_Y = CUDA.attribute(device(), CUDA.DEVICE_ATTRIBUTE_MAX_GRID_DIM_Y)
+
 function configurator(kernel, dim1)
     config = launch_configuration(kernel.fun)
-    xthreads = min(32, dim1)
-    xblocks = min(config.blocks, cld(dim1, xthreads))
-    return (xthreads, ), (xblocks<<2, )
+    xthreads = min(config.threads, dim1)
+    xblocks = min(MAX_GRID_DIM_X, cld(dim1, xthreads))
+    return (xthreads,), (xblocks,)
 end
 
 function configurator(kernel, dim1, dim2)
     config = launch_configuration(kernel.fun)
-    xthreads = min(32, dim1)
+    xthreads = min(WARP_SIZE, dim1)
     ythreads = min(fld(config.threads, xthreads), cld(dim1*dim2, xthreads))
-    xblocks = min(config.blocks, cld(dim1, xthreads))
-    yblocks = min(cld(config.blocks, xblocks), cld(dim2, ythreads))
-    return (xthreads, ythreads), (xblocks<<2, yblocks<<2)
+    xblocks = min(MAX_GRID_DIM_X, cld(dim1, xthreads))
+    yblocks = min(MAX_GRID_DIM_Y, cld(dim2, ythreads))
+    return (xthreads, ythreads), (xblocks, yblocks)
 end
 
 function generate_Pinv!(Pinv, ci, wpWeightIn, charge0, LX, penmu, penlamFF, penlambda)
@@ -98,16 +102,22 @@ function generate_Pinv!(Pinv, ci, wpWeightIn, charge0, LX, penmu, penlamFF, penl
         istride = blockDim().x * gridDim().x
         jstride = blockDim().y * gridDim().y
 
-        @inbounds for i=i0:istride:size(Pinv,1), j=j0:jstride:size(Pinv,2)
-            Pinv[i,j] = 0
-            if i==j
-                Pinv[i,j] = i<=LX ? penlamFF : penlambda
+        i = i0
+        @inbounds while i <= size(Pinv,1)
+            j = j0
+            while j <= size(Pinv,2)
+                Pinv[i,j] = 0
+                if i==j
+                    Pinv[i,j] = i<=LX ? penlamFF : penlambda
+                end
+                if i>LX && j>LX
+                    Pinv[i,j] += penmu * (
+                          (wpWeightIn[i,ci] > charge0 && wpWeightIn[j,ci] > charge0) ||
+                          (wpWeightIn[i,ci] < charge0 && wpWeightIn[j,ci] < charge0) )
+                end
+                j += jstride
             end
-            if i>LX && j>LX
-                Pinv[i,j] += penmu * (
-                      (wpWeightIn[i,ci] > charge0 && wpWeightIn[j,ci] > charge0) ||
-                      (wpWeightIn[i,ci] < charge0 && wpWeightIn[j,ci] < charge0) )
-            end
+            i += istride
         end
         return nothing
     end

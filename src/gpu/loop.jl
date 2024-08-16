@@ -11,19 +11,25 @@ function update_inputs(bspike,
         istride = blockDim().x * gridDim().x
         jstride = blockDim().y * gridDim().y
 
-        @inbounds for i=i0:istride:length(bspike)
-            bspike[i] || continue
-            for j=j0:jstride:max(size(w0Index,1),size(wpIndexOut,1))
-                @static if p.K>0
-                    if j<=size(w0Index,1)
-                        CUDA.@atomic inputsE[w0Index[j,i]] += max(w0Weights[j,i], charge0)
-                        CUDA.@atomic inputsI[w0Index[j,i]] += min(w0Weights[j,i], charge0)
+        i = i0
+        jmax = max(size(w0Index,1), size(wpIndexOut,1))
+        @inbounds while i <= length(bspike)
+            if bspike[i]
+                j = j0
+                while j <= jmax
+                    @static if p.K>0
+                        if j <= size(w0Index,1)
+                            CUDA.@atomic inputsE[w0Index[j,i]] += max(w0Weights[j,i], charge0)
+                            CUDA.@atomic inputsI[w0Index[j,i]] += min(w0Weights[j,i], charge0)
+                        end
                     end
-                end
-                if j<=size(wpIndexOut,1)
-                    CUDA.@atomic inputsP[wpIndexOut[j,i]] += wpWeightOut[j+1,i+1]
+                    if j <= size(wpIndexOut,1)
+                        CUDA.@atomic inputsP[wpIndexOut[j,i]] += wpWeightOut[j+1,i+1]
+                    end
+                    j += jstride
                 end
             end
+            i += istride
         end
         return nothing
     end

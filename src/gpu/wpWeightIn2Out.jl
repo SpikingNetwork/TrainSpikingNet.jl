@@ -6,8 +6,14 @@ function wpWeightIn2Out!(wpWeightOut, wpIndexIn, wpIndexConvert, wpWeightIn)
         istride = blockDim().x * gridDim().x
         jstride = blockDim().y * gridDim().y
 
-        @inbounds for i=i0:istride:size(wpWeightIn,1), j=j0:jstride:size(wpWeightIn,2)
-            wpWeightOut[wpIndexConvert[i,j],wpIndexIn[i,j]] = wpWeightIn[i,j]
+        i = i0
+        @inbounds while i <= size(wpWeightIn,1)
+            j = j0
+            while j <= size(wpWeightIn,2)
+                wpWeightOut[wpIndexConvert[i,j],wpIndexIn[i,j]] = wpWeightIn[i,j]
+                j += jstride
+            end
+            i += istride
         end
         return nothing
     end
